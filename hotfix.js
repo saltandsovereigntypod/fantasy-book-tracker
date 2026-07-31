@@ -73,4 +73,31 @@
       showToast(message || `+${activeGain} ${path().progressName}`);
     }
   };
+
+  function loadStyle(href) {
+    if ([...document.styleSheets].some(sheet => sheet.href && sheet.href.includes('investigation-features.css'))) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.body.appendChild(script);
+    });
+  }
+
+  loadStyle('investigation-features.css?v=20260731-1');
+  loadScript('investigation-features.js?v=20260731-1')
+    .then(() => {
+      if (typeof renderAll === 'function') renderAll();
+    })
+    .catch(error => {
+      console.error('Investigation features failed to load:', error);
+    });
 })();

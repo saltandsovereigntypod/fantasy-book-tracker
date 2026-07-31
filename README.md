@@ -1,57 +1,36 @@
-# The War College Archive V3
+# The Empyrean Tracker
 
-A private, static, Empyrean-inspired reading tracker designed for GitHub Pages. This build uses browser localStorage and does not require Supabase.
+A private, immersive reading and theory tracker hosted on GitHub Pages and synchronized through Supabase.
 
-## V3 changes
+## Finish the Supabase setup
 
-- Much steeper rank requirements across every path
-- Dark Wielder ranks require dramatically more Power than the other paths
-- Repaired Threshing and The Leap event buttons and completion flow
-- Rider and Flier rank progression is hard-gated until the required event is completed
-- Full-screen bond reveal appears immediately from any page after the event
-- Unacknowledged bond reveals return after a refresh until accepted
-- Reveal includes creature name, type, color, tail or channel, signet, and relic
-- Optional local image uploads for a bonded dragon or gryphon and the user's relic
-- Image compression before local storage to reduce browser quota usage
-- Completely separate Dragon, Gryphon, and Wyvern name pools
-- Permanent used-name registry prevents any creature name from being reused across species, even after changing paths
+1. Open the Supabase project with reference `udxatwvbxpefbdhnsycf`.
+2. Open **SQL Editor**, create a new query, paste the complete contents of `supabase-setup.sql`, and run it once.
+3. Create a private invitation code by running:
 
-## Existing major features
+```sql
+insert into public.invite_codes (code, max_uses)
+values ('REPLACE-WITH-YOUR-PRIVATE-CODE', 20);
+```
 
-- Six path-specific themes, voices, layouts, ranks, and progression systems
-- Sealed Rider and Gryphon assessments with delayed bond reveal
-- Immediate Dark Wielder wyvern assignment with grey wyverns and green, red, or blue fire
-- Expanded dragon colors, tail types, gryphon types, signets, and mind-based flier abilities
-- Book, series, progress, session, theory, and suspicion tracking
-- Multiple conspiracy walls with user-created names and card categories
-- Many-to-many links between cards, including cross-wall links and written reasons
-- Books, theories, and suspicions as linked wall sources
-- Global connection index and per-card link records
-- Local browser persistence
+4. Under **Authentication > URL Configuration**, set:
+   - Site URL: `https://saltandsovereigntypod.github.io/the-empyrean-book-tracker/`
+   - Redirect URL: `https://saltandsovereigntypod.github.io/the-empyrean-book-tracker/**`
+5. Keep Email authentication and Confirm Email enabled.
 
-## GitHub Pages
+## Included cloud features
 
-1. Create a GitHub repository.
-2. Upload `index.html`, `styles.css`, and `app.js` to the repository root.
-3. Open **Settings > Pages**.
-4. Choose **Deploy from a branch**, select `main`, and select `/ (root)`.
-5. Save and open the published URL after deployment completes.
+- Email and password signup, login, logout, confirmation, and password reset
+- Invitation-code-only account creation
+- One private cloud archive per authenticated user
+- Automatic cloud saves after tracker changes
+- Import prompt for existing browser data on first login
+- Row Level Security so users can only read and edit their own archive
 
-## Important
+## Important security note
 
-Data and uploaded images are stored only in the current browser. Clearing site data removes them. Multi-device sync and friend sharing require the future Supabase phase.
+The repository contains only the Supabase publishable key, which is intended for browser applications. Never add the service-role key or database password to GitHub.
 
-## Version 3 progression and bond updates
+## Email delivery
 
-- Rank thresholds are substantially higher, with Dark Wielder advancement requiring especially large totals.
-- Threshing and The Leap are gated by both standing and completion of every event stage.
-- Completing either event triggers a global bond reveal modal immediately, regardless of the active page.
-- Unacknowledged bond reveals reopen after refresh until accepted.
-- Bonded profiles can optionally store compressed images of the dragon or gryphon and relic locally in the browser.
-- Dragon, gryphon, and wyvern names share one permanent used-name registry, preventing cross-species duplicate names.
-- Every path now has its own permanent service record. Switching paths preserves and restores that path's exact points, rank, questionnaire, signet or lesser magic, creature, relic, event status, and uploaded images.
-- Entering a bonded path for the first time opens its assessment. Returning to a previously entered path never rerolls the result.
-
-## Path memory
-
-Version 3 preserves a separate permanent progression record for every path. Switching paths no longer resets previous progress. Returning to a path restores its exact rank, points, questionnaire assessment, bonding event status, dragon/gryphon/wyvern, signet, relic, pending reveal state, and locally uploaded creature/relic images. Creature names remain reserved globally across every saved path.
+No service beyond GitHub and Supabase is required for the basic setup. Supabase's built-in email delivery can be rate-limited, so custom SMTP may be added later if confirmation or reset emails become unreliable.

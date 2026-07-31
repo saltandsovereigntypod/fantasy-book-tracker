@@ -9,17 +9,15 @@
     }
   };
 
-  // The original restore helper did not report whether a saved path already
-  // existed. The path picker needs that boolean to avoid restarting a sealed
-  // questionnaire when returning to a previously used path.
+  // The original restore helper does not report whether a saved path existed.
+  // The clicked path card already carries that status in its subtitle, so use
+  // the UI state to preserve old bonds while still onboarding genuinely new paths.
   if (typeof window.restorePathRecord === 'function') {
     const originalRestorePathRecord = window.restorePathRecord;
     window.restorePathRecord = function restorePathRecordWithStatus(pathKey) {
-      const existed = Boolean(
-        window.state &&
-        window.state.pathRecords &&
-        Object.prototype.hasOwnProperty.call(window.state.pathRecords, pathKey)
-      );
+      const activeButton = document.activeElement?.closest?.('[data-new-path]');
+      const subtitle = activeButton?.querySelector('small')?.textContent?.trim() || '';
+      const existed = subtitle !== 'New path record';
       originalRestorePathRecord(pathKey);
       return existed;
     };

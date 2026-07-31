@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A private, immersive fantasy book tracker for readers who collect evidence, build theories, and survive every chapter.">
+  <title>The War College Archive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell" data-path="rider">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">✦</div>
+        <div>
+          <p class="eyebrow">Private Reading Command</p>
+          <h1>The War College Archive</h1>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item is-active" data-view="dashboard"><span>⌂</span><span data-copy="navDashboard">Command Hall</span></button>
+        <button class="nav-item" data-view="library"><span>▤</span><span data-copy="navLibrary">Campaigns</span></button>
+        <button class="nav-item" data-view="session"><span>◉</span><span data-copy="navSession">Reading Deployment</span></button>
+        <button class="nav-item" data-view="theories"><span>⌁</span><span data-copy="navTheories">Intelligence Ledger</span></button>
+        <button class="nav-item" data-view="wall"><span>✣</span><span data-copy="navWall">Conspiracy Wall</span></button>
+        <button class="nav-item" data-view="profile"><span>♜</span><span data-copy="navProfile">Service Record</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="rank-mini">
+          <span class="rank-icon" id="rankIcon">◆</span>
+          <div>
+            <small data-copy="currentRank">Current Rank</small>
+            <strong id="sidebarRank">Candidate</strong>
+          </div>
+        </div>
+        <button class="ghost-button" id="resetApp">Reset Demo Data</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="topEyebrow">Riders Quadrant</p>
+          <h2 id="viewTitle">Command Hall</h2>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="quickMarkBtn" title="Quick Mark" aria-label="Create a quick note">＋</button>
+          <button class="profile-chip" id="profileChip">
+            <span class="profile-avatar" id="profileInitial">A</span>
+            <span>
+              <small id="profilePath">Dragon Rider</small>
+              <strong id="profileName">Reader</strong>
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view is-visible"></section>
+      <section id="library" class="view"></section>
+      <section id="session" class="view"></section>
+      <section id="theories" class="view"></section>
+      <section id="wall" class="view"></section>
+      <section id="profile" class="view"></section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="onboardingModal" aria-hidden="true">
+    <section class="modal onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+      <div class="modal-header">
+        <p class="eyebrow">Entry Examination</p>
+        <h2 id="onboardingTitle">Choose your path</h2>
+        <p>Your path changes the voice, colors, materials, layout, ranks, and atmosphere of the entire archive. Every path receives the same tools.</p>
+      </div>
+      <div class="onboarding-step is-active" data-step="1">
+        <label class="field-label" for="readerName">What should the archive call you?</label>
+        <input id="readerName" class="text-input" maxlength="40" placeholder="Reader name">
+        <div class="path-grid" id="pathGrid"></div>
+        <button class="primary-button full-width" id="continueOnboarding">Continue</button>
+      </div>
+      <div class="onboarding-step" data-step="2">
+        <button class="text-button" id="backOnboarding">← Return to paths</button>
+        <div id="quizIntro"></div>
+        <div id="quizQuestions" class="quiz-stack"></div>
+        <button class="primary-button full-width" id="finishOnboarding">Receive Assignment</button>
+      </div>
+      <div class="onboarding-step" data-step="3">
+        <div id="assignmentResult"></div>
+        <button class="primary-button full-width" id="enterArchive">Enter the Archive</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="formModal" aria-hidden="true">
+    <section class="modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="formModalTitle">
+      <button class="modal-close" data-close-modal="formModal" aria-label="Close">×</button>
+      <div id="formModalContent"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <template id="emptyStateTemplate">
+    <div class="empty-state">
+      <div class="empty-icon">✦</div>
+      <h3></h3>
+      <p></p>
+      <button class="primary-button"></button>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A private, immersive fantasy book tracker for readers who collect evidence, build theories, and survive every chapter.">
-  <title>The War College Archive</title>
+  <title>The Empyrean Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="supabase.css">
 </head>
 <body>
   <div id="app" class="app-shell" data-path="rider">
@@ -17,7 +18,7 @@
         <div class="brand-mark" aria-hidden="true">✦</div>
         <div>
           <p class="eyebrow">Private Reading Command</p>
-          <h1>The War College Archive</h1>
+          <h1>The Empyrean Tracker</h1>
         </div>
       </div>
 
@@ -38,7 +39,9 @@
             <strong id="sidebarRank">Candidate</strong>
           </div>
         </div>
-        <button class="ghost-button" id="resetApp">Reset Demo Data</button>
+        <button class="ghost-button" id="syncStatus" disabled>Cloud preparing…</button>
+        <button class="ghost-button" id="signOutBtn">Sign Out</button>
+        <button class="ghost-button" id="resetApp">Reset My Archive</button>
       </div>
     </aside>
 
@@ -67,6 +70,29 @@
       <section id="wall" class="view"></section>
       <section id="profile" class="view"></section>
     </main>
+  </div>
+
+  <div class="modal-backdrop is-open" id="authModal" aria-hidden="false">
+    <section class="modal compact-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="auth-sigil">✦</div>
+      <p class="eyebrow">The Empyrean Tracker</p>
+      <h2 id="authTitle">Enter the Archive</h2>
+      <p id="authMessage">Sign in to reach your cloud archive from any device.</p>
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab is-active" data-auth-mode="signin">Sign In</button>
+        <button type="button" class="auth-tab" data-auth-mode="signup">Create Account</button>
+      </div>
+      <label class="form-group auth-name-field is-hidden"><span class="field-label">Display name</span><input class="text-input" id="authName" autocomplete="name" maxlength="40"></label>
+      <label class="form-group"><span class="field-label">Email</span><input class="text-input" id="authEmail" type="email" autocomplete="email"></label>
+      <label class="form-group"><span class="field-label">Password</span><input class="text-input" id="authPassword" type="password" autocomplete="current-password" minlength="8"></label>
+      <label class="form-group auth-invite-field is-hidden"><span class="field-label">Invitation code</span><input class="text-input" id="authInvite" autocomplete="off"></label>
+      <button type="button" class="primary-button full-width" id="authSubmit">Sign In</button>
+      <button type="button" class="text-button full-width" id="forgotPassword">Forgot password?</button>
+      <div class="auth-reset-fields is-hidden">
+        <label class="form-group"><span class="field-label">New password</span><input class="text-input" id="newPassword" type="password" minlength="8" autocomplete="new-password"></label>
+        <button type="button" class="primary-button full-width" id="saveNewPassword">Save New Password</button>
+      </div>
+    </section>
   </div>
 
   <div class="modal-backdrop" id="onboardingModal" aria-hidden="true">
@@ -113,6 +139,7 @@
     </div>
   </template>
 
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-bridge.js"></script>
 </body>
 </html>

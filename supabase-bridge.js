@@ -104,8 +104,14 @@
     closeAuth();
     document.body.classList.remove('cloud-locked');
     const script = document.createElement('script');
-    script.src = 'app.js';
-    script.onload = bindAppControls;
+    script.src = 'app.js?v=20260731-2';
+    script.onload = () => {
+      const hotfix = document.createElement('script');
+      hotfix.src = 'hotfix.js?v=20260731-2';
+      hotfix.onload = bindAppControls;
+      hotfix.onerror = bindAppControls;
+      document.body.appendChild(hotfix);
+    };
     script.onerror = () => setMessage('The tracker could not load. Refresh the page.');
     document.body.appendChild(script);
   }

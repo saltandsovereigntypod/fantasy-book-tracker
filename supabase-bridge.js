@@ -104,10 +104,10 @@
     closeAuth();
     document.body.classList.remove('cloud-locked');
     const script = document.createElement('script');
-    script.src = 'app.js?v=20260731-2';
+    script.src = 'app.js?v=20260731-3';
     script.onload = () => {
       const hotfix = document.createElement('script');
-      hotfix.src = 'hotfix.js?v=20260731-2';
+      hotfix.src = 'hotfix.js?v=20260731-3';
       hotfix.onload = bindAppControls;
       hotfix.onerror = bindAppControls;
       document.body.appendChild(hotfix);

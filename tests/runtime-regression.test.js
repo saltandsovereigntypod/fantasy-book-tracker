@@ -1,0 +1,25 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const html=read('index.html'),bridge=read('supabase-bridge.js'),app=read('app.js'),wall=read('infinite-wall.js'),experience=read('dossier-experience.js'),css=read('dossier-experience.css');
+
+assert.match(bridge,/\['app\.js', 'hotfix\.js', 'runtime-patches\.js', 'investigation-features\.js', 'infinite-wall\.js', 'mind-map\.js', 'dossier-experience\.js', 'visual-builder\.js'\]/,'runtime order is deterministic');
+assert.match(wall,/wallRoot\.onclick=.*\[data-action\]/,'rerender-safe wall action delegate exists');
+for(const action of ["'new-wall'","'edit-wall'","'create-link'"])assert.ok(app.includes(action),`${action} resolves in the base action router`);
+assert.match(wall,/return originalHandleAction\(a,id\)/,'unknown actions forward to the previous router');
+assert.match(wall,/openWallForm = function stableWallEditor/,'wall create/edit uses one stable editor');
+assert.match(wall,/openLinkForm = function\(prefill=''\)\{startQuickLink/,'Link Dossiers enters quick-link mode');
+assert.match(wall,/document\.body\.classList\.add\('modal-open'\)/,'modal opening locks body state');
+assert.match(wall,/document\.getElementById\('app'\)\.inert=true/,'modal opening makes wall inert');
+assert.match(wall,/document\.body\.classList\.remove\('modal-open'\)/,'modal closing unlocks body state');
+assert.match(wall,/backdrop\.dataset\.path=pathKey/,'active theme is copied to the modal host');
+assert.equal((html.match(/id="formModal"/g)||[]).length,1,'one shared form modal root exists');
+assert.match(experience,/selectedLabels=new Set\(initial\.detailKeys\.map/,'Card View resolves stored fact IDs to labels');
+assert.doesNotMatch(experience,/id="cvDetails" value="\$\{esc\(initial\.detailKeys\.join/,'Card View does not expose raw IDs');
+assert.match(experience,/class="secondary-button" id="cancelCardView"/,'Card View cancel is themed');
+assert.match(wall,/class="secondary-button" id="cancelWallStable"/,'wall editor cancel is themed');
+assert.match(css,/\.modal-backdrop\{[^}]*background:var\(--ui-backdrop/,'modal backdrop is opaque and themed');
+assert.match(css,/\.modal-backdrop \.modal input/,'region and wall editor controls share themed styling');
+assert.match(wall,/duplicate&&!confirm/,'identical quick links require confirmation');
+console.log('runtime regression assertions passed');

@@ -13,6 +13,8 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
+  const ASSET_VERSION = '20260801-3';
+  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js'];
 
   const $ = id => document.getElementById(id);
   const setMessage = text => { if ($('authMessage')) $('authMessage').textContent = text; };
@@ -98,22 +100,34 @@
     setSync('Cloud saved');
   }
 
-  function loadApp() {
+  function loadScript(file) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `${file}?v=${ASSET_VERSION}`;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load ${file}`));
+      document.body.appendChild(script);
+    });
+  }
+
+  async function loadApp() {
     if (appLoaded) return;
     appLoaded = true;
-    closeAuth();
-    document.body.classList.remove('cloud-locked');
-    const script = document.createElement('script');
-    script.src = 'app.js?v=20260731-3';
-    script.onload = () => {
-      const hotfix = document.createElement('script');
-      hotfix.src = 'hotfix.js?v=20260731-3';
-      hotfix.onload = bindAppControls;
-      hotfix.onerror = bindAppControls;
-      document.body.appendChild(hotfix);
-    };
-    script.onerror = () => setMessage('The tracker could not load. Refresh the page.');
-    document.body.appendChild(script);
+    try {
+      // These classic scripts intentionally share app.js's global lexical
+      // environment. Awaiting each load prevents patches from racing app boot
+      // or overriding one another in a stale order.
+      for (const file of APP_SCRIPTS) await loadScript(file);
+      renderAll();
+      bindAppControls();
+      closeAuth();
+      document.body.classList.remove('cloud-locked');
+    } catch (error) {
+      console.error('Production runtime failed to load:', error);
+      appLoaded = false;
+      setMessage('The tracker could not load its latest runtime. Refresh the page.');
+      openAuth();
+    }
   }
 
   function bindAppControls() {

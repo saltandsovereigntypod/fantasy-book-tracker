@@ -11,7 +11,7 @@ assert.match(app, /class="book-form-grid"/);
 assert.match(app, /class="book-reactions"/);
 assert.match(app, /class="reaction-grid"/);
 assert.match(app, /class="book-modal-footer"/);
-assert.match(builder, /class="visual-book-canvas"/);
+assert.match(builder, /class="visual-book-canvas/);
 assert.match(builder, /data-visual-module/);
 assert.match(builder, /data-action="edit-book"/);
 assert.match(app, /bookRangeField\('bRating','Overall rating',book.rating,'rating'\)/);

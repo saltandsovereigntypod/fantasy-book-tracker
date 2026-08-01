@@ -11,7 +11,7 @@ assert.match(app, /class="book-reactions"/);
 assert.match(app, /class="reaction-grid"/);
 assert.match(app, /class="book-modal-footer"/);
 assert.match(app, /class="book-metadata"/);
-assert.match(app, /class="book-metric"/);
+assert.match(app, /class="book-metric metric-/);
 assert.match(app, /data-action="edit-book"/);
 assert.match(app, /bookRangeField\('bRating','Overall rating',book.rating,'rating'\)/);
 assert.match(app, /data-range-format="percent"/);

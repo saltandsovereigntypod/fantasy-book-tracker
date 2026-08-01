@@ -6,6 +6,7 @@
   --text: #f5f2ea;
   --muted: #aaa59b;
   --accent: #8f1f2f;
+  --accent-contrast: #fff;
   --accent-soft: rgba(143,31,47,.18);
   --border: #343238;
   --paper: #d8c4a4;
@@ -193,11 +194,11 @@ body::before {
 .toast { position: fixed; z-index: 200; right: 22px; bottom: 22px; max-width: 360px; padding: 13px 16px; border-radius: 12px; background: var(--text); color: var(--bg); box-shadow: var(--shadow); transform: translateY(120px); opacity: 0; transition: .25s ease; }
 .toast.is-visible { transform: none; opacity: 1; }
 
-[data-path="scribe"] { --bg:#17140f; --panel:#211d16; --panel-2:#2a241b; --surface:#342d22; --text:#f4ead2; --muted:#c1b392; --accent:#9b7434; --accent-soft:rgba(155,116,52,.18); --border:#4b402f; --paper:#eadbb9; }
+[data-path="scribe"] { --bg:#17140f; --panel:#211d16; --panel-2:#2a241b; --surface:#342d22; --text:#f4ead2; --muted:#c1b392; --accent:#9b7434; --accent-contrast:#17140f; --accent-soft:rgba(155,116,52,.18); --border:#4b402f; --paper:#eadbb9; }
 [data-path="gryphon"] { --bg:#17100b; --panel:#21170f; --panel-2:#2b1d13; --surface:#39271a; --text:#f0dfc2; --muted:#bca786; --accent:#a75b2b; --accent-soft:rgba(167,91,43,.18); --border:#4a3524; }
 [data-path="dark"] { --bg:#100814; --panel:#190d20; --panel-2:#24102e; --surface:#32143e; --text:#f4e7f7; --muted:#c2a5c9; --accent:#a13bc2; --accent-soft:rgba(161,59,194,.2); --border:#472354; }
 [data-path="infantry"] { --bg:#0a1019; --panel:#101a27; --panel-2:#152234; --surface:#1c2b40; --text:#e6edf7; --muted:#9cabbd; --accent:#365f94; --accent-soft:rgba(54,95,148,.2); --border:#283a51; }
-[data-path="healer"] { --bg:#0d171b; --panel:#142126; --panel-2:#1a2b31; --surface:#21373f; --text:#eaf4f5; --muted:#a8c0c6; --accent:#5faac3; --accent-soft:rgba(95,170,195,.18); --border:#2b4751; }
+[data-path="healer"] { --bg:#0d171b; --panel:#142126; --panel-2:#1a2b31; --surface:#21373f; --text:#eaf4f5; --muted:#a8c0c6; --accent:#5faac3; --accent-contrast:#071216; --accent-soft:rgba(95,170,195,.18); --border:#2b4751; }
 
 [data-path="scribe"] .hero-panel, [data-path="scribe"] .panel, [data-path="scribe"] .metric-card { border-radius: 8px; }
 [data-path="gryphon"] .panel, [data-path="gryphon"] .metric-card { transform: rotate(-.15deg); }

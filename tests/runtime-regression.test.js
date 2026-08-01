@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const read=file=>fs.readFileSync(file,'utf8');
 const html=read('index.html'),bridge=read('supabase-bridge.js'),app=read('app.js'),wall=read('infinite-wall.js'),experience=read('dossier-experience.js'),css=read('dossier-experience.css');
 
-assert.match(bridge,/\['app\.js', 'hotfix\.js', 'runtime-patches\.js', 'investigation-features\.js', 'infinite-wall\.js', 'mind-map\.js', 'dossier-experience\.js'\]/,'runtime order is deterministic');
+assert.match(bridge,/\['app\.js', 'hotfix\.js', 'runtime-patches\.js', 'investigation-features\.js', 'infinite-wall\.js', 'mind-map\.js', 'dossier-experience\.js', 'visual-builder\.js'\]/,'runtime order is deterministic');
 assert.match(wall,/wallRoot\.onclick=.*\[data-action\]/,'rerender-safe wall action delegate exists');
 for(const action of ["'new-wall'","'edit-wall'","'create-link'"])assert.ok(app.includes(action),`${action} resolves in the base action router`);
 assert.match(wall,/return originalHandleAction\(a,id\)/,'unknown actions forward to the previous router');

@@ -21,11 +21,14 @@
 
   function snapshotTheory(theory) {
     return {
+      id: theory.id,
       statement: theory.statement || '',
       notes: theory.notes || '',
       bookId: theory.bookId || '',
       confidence: Number(theory.confidence) || 0,
-      status: theory.status || 'Under investigation'
+      status: theory.status || 'Under investigation',
+      createdAt: theory.createdAt || null,
+      updatedAt: theory.updatedAt || null
     };
   }
 
@@ -122,17 +125,19 @@
       if (!theoryChanged(previous, next)) return showToast('Nothing has changed yet.');
       if (!reason) return showToast('Record why the theory changed.');
 
+      const changedAt = Date.now();
+      const completeNext = { ...previous, ...next, updatedAt: changedAt };
       theory.history = Array.isArray(theory.history) ? theory.history : [];
       theory.history.push({
         id: uid(),
-        changedAt: Date.now(),
+        changedAt,
         reason,
         changedFields: describeChanges(previous, next),
-        before: previous,
-        after: next
+        before: { ...previous },
+        after: { ...completeNext }
       });
 
-      Object.assign(theory, next, { updatedAt: Date.now() });
+      Object.assign(theory, completeNext);
       saveState();
       closeModal();
       award(4, 'Theory revision preserved.');
@@ -231,7 +236,11 @@
     return `<div class="card-section-editor" data-section-editor="${sectionId}">
       <div class="section-editor-heading">
         <strong>Custom Section</strong>
-        <button type="button" class="small-button" data-remove-section="${sectionId}">Remove</button>
+        <div class="button-row">
+          <button type="button" class="small-button" data-move-section="up" aria-label="Move section up">↑</button>
+          <button type="button" class="small-button" data-move-section="down" aria-label="Move section down">↓</button>
+          <button type="button" class="small-button" data-remove-section="${sectionId}">Remove</button>
+        </div>
       </div>
       <label class="form-group">
         <span class="field-label">Section name</span>
@@ -245,7 +254,7 @@
         <span class="field-label">Reference cards from any wall</span>
         <select class="select-input section-links-input" multiple size="5">
           ${state.walls.flatMap(wall => state.wallCards
-            .filter(card => card.id !== section.cardId)
+            .filter(card => card.wallId === wall.id && card.id !== section.cardId)
             .map(card => `<option value="${card.id}" ${selected.has(card.id) ? 'selected' : ''}>${esc(wall.name)} › ${esc(card.title)}</option>`)
           ).join('')}
         </select>
@@ -288,6 +297,15 @@
     function bindSectionRemoveButtons() {
       editors.querySelectorAll('[data-remove-section]').forEach(button => {
         button.onclick = () => button.closest('.card-section-editor')?.remove();
+      });
+      editors.querySelectorAll('[data-move-section]').forEach(button => {
+        button.onclick = () => {
+          const row = button.closest('.card-section-editor');
+          const sibling = button.dataset.moveSection === 'up' ? row?.previousElementSibling : row?.nextElementSibling;
+          if (!row || !sibling) return;
+          if (button.dataset.moveSection === 'up') editors.insertBefore(row, sibling);
+          else editors.insertBefore(sibling, row);
+        };
       });
     }
 
@@ -383,6 +401,17 @@
   }
 
   enableWallDragging = function enableDraggingAndResizing() {
+    const board = document.getElementById('wallBoard');
+    if (board) {
+      board.querySelectorAll('.wall-card').forEach(card => {
+        card.addEventListener('mousedown', event => {
+          const rect = card.getBoundingClientRect();
+          if (rect.right - event.clientX <= 22 && rect.bottom - event.clientY <= 22) {
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      });
+    }
     originalEnableWallDragging();
     bindResizePersistence();
   };

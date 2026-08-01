@@ -14,7 +14,7 @@
   let saveTimer;
   let mode = 'signin';
   const ASSET_VERSION = '20260731-9';
-  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js'];
+  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js'];
 
   const $ = id => document.getElementById(id);
   const setMessage = text => { if ($('authMessage')) $('authMessage').textContent = text; };

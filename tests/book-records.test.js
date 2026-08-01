@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync('app.js','utf8');
 const css=fs.readFileSync('dossier-experience.css','utf8');
 const mind=fs.readFileSync('mind-map.js','utf8');
+const builder=fs.readFileSync('visual-builder.js','utf8');
 const context={__ABILITY_TEST__:true,console,setTimeout,clearTimeout,localStorage:{getItem:()=>null,setItem:()=>{}},globalThis:null};context.globalThis=context;
 vm.runInNewContext(source,context,{filename:'app.js'});
 const A=context.AbilityCatalog;
@@ -24,7 +25,7 @@ assert.match(source,/data-action="view-book"/);assert.match(source,/'view-book':
 for(const heading of ['About this book','Ratings','Connections','Dossiers','Theories','Walls','Book relationships','Notes'])assert.ok(source.includes(heading),heading);
 assert.match(source,/function openBookNoteEditor/);assert.match(source,/function openBookConnectionEditor/);
 assert.match(source,/linkedDossierIds:selectedValues\('bDossiers'\)/);assert.match(source,/linkedTheoryIds:selectedValues\('bTheories'\)/);assert.match(source,/linkedWallIds:selectedValues\('bWalls'\)/);
-assert.match(source,/data-notes-count/);assert.match(source,/data-theory-count/);assert.match(source,/data-dossier-count/);assert.match(source,/data-wall-count/);
+assert.match(builder,/data-notes-count/);assert.match(builder,/data-theory-count/);assert.match(builder,/data-dossier-count/);assert.match(builder,/data-wall-count/);
 assert.match(css,/\.book-profile>header/);assert.match(css,/var\(--ui-surface-raised\)/);assert.match(css,/var\(--ui-accent\)/);assert.match(css,/@media\(max-width:650px\)\{\.book-profile-backdrop/);
 assert.match(mind,/function bookGraphRecords/);assert.match(mind,/recordType:'book'/);assert.match(mind,/state\.bookConnections/);
 console.log('first-class book archive record assertions passed');

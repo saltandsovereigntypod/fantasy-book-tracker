@@ -5,14 +5,15 @@ const app = fs.readFileSync('app.js', 'utf8');
 const features = fs.readFileSync('investigation-features.js', 'utf8');
 const css = fs.readFileSync('dossier-experience.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
+const builder = fs.readFileSync('visual-builder.js', 'utf8');
 
 assert.match(app, /class="book-form-grid"/);
 assert.match(app, /class="book-reactions"/);
 assert.match(app, /class="reaction-grid"/);
 assert.match(app, /class="book-modal-footer"/);
-assert.match(app, /class="book-metadata"/);
-assert.match(app, /class="book-metric metric-/);
-assert.match(app, /data-action="edit-book"/);
+assert.match(builder, /class="visual-book-canvas"/);
+assert.match(builder, /data-visual-module/);
+assert.match(builder, /data-action="edit-book"/);
 assert.match(app, /bookRangeField\('bRating','Overall rating',book.rating,'rating'\)/);
 assert.match(app, /data-range-format="percent"/);
 assert.match(css, /\.book-metadata\{display:flex;flex-wrap:wrap/);

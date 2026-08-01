@@ -13,7 +13,7 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260801-3';
+  const ASSET_VERSION = '20260801-4';
   const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js'];
 
   const $ = id => document.getElementById(id);

@@ -19,7 +19,7 @@ for(const size of ['small','medium','large']) assert.match(css,new RegExp(`data-
 for(const key of ['cover','author','series','status','progress','rating','spice','impact','reaction','actions']) assert.match(app,new RegExp(`${key}:'[^']+'`));
 assert.match(app,/data-library-visible/);
 assert.match(app,/prefs\.visible\[input\.dataset\.libraryVisible\]=input\.checked/);
-assert.match(app,/libraryPreferences:\{sort:'added',group:'none',layout:'list',cardSize:'medium'/);
+assert.match(app,/libraryPreferences:\{sort:'added',group:'none',genre:'',layout:'list',cardSize:'medium'/);
 assert.match(app,/visible:\{\.\.\.defaults\.visible,\.\.\.\(saved\.visible\|\|\{\}\)\}/);
 assert.match(app,/list="bookAuthorSuggestions"/);
 assert.match(app,/list="bookSeriesSuggestions"/);

@@ -15,7 +15,7 @@
   let modalReturnFocus;
   let saveTimer;
   let frame;
-  let wallFilters = {query:'',category:'',tag:'',book:'',seriesId:'',status:'',region:'',unresolved:false,orphans:false,multiBook:false,noSeries:false,noBooks:false};
+  const WALL_FILTER_KEY='warCollegeWallFiltersV1';let wallFilters = {query:'',category:'',tag:'',book:'',seriesId:'',status:'',region:'',unresolved:false,orphans:false,multiBook:false,noSeries:false,noBooks:false};try{Object.assign(wallFilters,JSON.parse(localStorage.getItem(WALL_FILTER_KEY)||'{}'));}catch{}const rememberWallFilters=()=>localStorage.setItem(WALL_FILTER_KEY,JSON.stringify(wallFilters));
   const selectedAppearanceIds=new Set();
   const DEFAULT_CARD_VIEW={size:'medium',contentMode:'summary',showCategory:true,showImage:false,showTags:false,showSeries:false,showBooks:false,showConnections:true,detailKeys:[]};
   const quickLink={active:false,firstDossierId:'',secondDossierId:''};
@@ -101,14 +101,18 @@
         };
         state.dossiers.push(dossier); dossierIds.add(dossier.id);
       }
-      if (dossier && !appearanceSourceIds.has(card.id) && !state.wallAppearances.some(a => a.id === card.id)) {
+      const targetWallId=card.wallId || 'main';
+      if (dossier && !appearanceSourceIds.has(card.id) && !state.wallAppearances.some(a => a.id === card.id) && !appearanceOnWall(dossier.id,targetWallId)) {
         state.wallAppearances.push({
-          id:card.id, legacyCardId:card.id, dossierId:dossier.id, wallId:card.wallId || 'main', regionId:card.regionId || '',
+          id:card.id, legacyCardId:card.id, dossierId:dossier.id, wallId:targetWallId, regionId:card.regionId || '',
           appearanceType:'home', x:Number(card.x) || 30, y:Number(card.y) || 30, width:Number(card.width) || 300,
           height:Number(card.height) || null, displayMode:card.displayMode || dossier.tileSettings?.mode || 'standard',
           zIndex:Number(card.zIndex) || 10, locked:!!card.locked
         });
         appearanceSourceIds.add(card.id);
+      } else if (dossier && appearanceOnWall(dossier.id,targetWallId)) {
+        appearanceSourceIds.add(card.id);
+        if (location.search.includes('debugActions=1')) console.debug('[wall migration] skipped duplicate legacy appearance',dossier.id,targetWallId,card.id);
       }
     });
 
@@ -275,7 +279,7 @@
     });
   }
 
-  renderWall = function renderInfiniteWall() {
+  renderWall = function renderInfiniteWall() {rememberWallFilters();
     const previousTools=document.getElementById('mobileWallToolsScroll');if(previousTools)mobileToolsState.scrollTop=previousTools.scrollTop;
     runAutomaticAssignments(); applyRegionLayouts();
     const el=document.getElementById('wall'),wall=activeWall(),viewport=activeViewport();
@@ -294,7 +298,7 @@
   function worldPoint(clientX,clientY) { const rect=document.getElementById('infiniteCanvas').getBoundingClientRect(),v=activeViewport();return{x:(clientX-rect.left-v.panX)/v.zoom,y:(clientY-rect.top-v.panY)/v.zoom}; }
 
   function bindInfiniteWall() {
-    const canvas=document.getElementById('infiniteCanvas'),wallRoot=document.getElementById('wall'); if(!canvas)return;const mobileWallSelect=document.getElementById('mobileWallSelect');if(mobileWallSelect)mobileWallSelect.onchange=event=>{state.activeWallId=event.target.value;cancelQuickLink();saveState();renderWall();requestAnimationFrame(()=>document.getElementById('mobileWallSelect')?.focus({preventScroll:true}));};
+    const canvas=document.getElementById('infiniteCanvas'),wallRoot=document.getElementById('wall'); if(!canvas)return;const mobileWallSelect=document.getElementById('mobileWallSelect');if(mobileWallSelect)mobileWallSelect.onchange=event=>{state.activeWallId=event.target.value;rememberUiLocation();cancelQuickLink();saveState();renderWall();requestAnimationFrame(()=>document.getElementById('mobileWallSelect')?.focus({preventScroll:true}));};
     // The wall root owns toolbar data-actions. Canvas interactions are handled
     // separately so rerenders never leave stale or duplicate button listeners.
     wallRoot.onclick=event=>{if(event.target.closest('#infiniteCanvas')||event.defaultPrevented)return;const target=event.target.closest('button,[data-action]');if(!target)return;if(target.dataset.toggleMobileTools!==undefined)return openMobileTools();if(target.dataset.closeMobileTools!==undefined)return closeMobileTools();if(target.dataset.reviewDuplicates!==undefined)return openDuplicateReview();if(target.dataset.action){event.preventDefault();handleAction(target.dataset.action,target.dataset.id);return;}if(target.dataset.cancelQuickLink!==undefined)return cancelQuickLink();if(target.dataset.newDossier!==undefined)return openDossierEditor();if(target.dataset.newRegion!==undefined)return openRegionEditor();if(target.dataset.cardView!==undefined)return globalThis.DossierExperience?.openCardView?.();if(target.dataset.connectionsManager!==undefined)return openConnectionsManager();if(target.dataset.fitAll!==undefined)return fitAll();if(target.dataset.resetView!==undefined)return resetView();if(target.dataset.filterOrphans!==undefined){wallFilters.orphans=!wallFilters.orphans;return renderWall();}if(target.dataset.filterUnresolved!==undefined){wallFilters.unresolved=!wallFilters.unresolved;return renderWall();}if(target.dataset.filterMultibook!==undefined){wallFilters.multiBook=!wallFilters.multiBook;return renderWall();}if(target.dataset.filterNoseries!==undefined){wallFilters.noSeries=!wallFilters.noSeries;return renderWall();}if(target.dataset.filterNobooks!==undefined){wallFilters.noBooks=!wallFilters.noBooks;return renderWall();}};

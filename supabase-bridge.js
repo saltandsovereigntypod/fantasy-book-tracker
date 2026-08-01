@@ -13,7 +13,7 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260801-6';
+  const ASSET_VERSION = '20260801-8';
   const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js'];
 
   const $ = id => document.getElementById(id);
@@ -21,6 +21,7 @@
   const setSync = text => { if ($('syncStatus')) $('syncStatus').textContent = text; };
   const openAuth = () => { $('authModal')?.classList.add('is-open'); $('authModal')?.setAttribute('aria-hidden', 'false'); };
   const closeAuth = () => { $('authModal')?.classList.remove('is-open'); $('authModal')?.setAttribute('aria-hidden', 'true'); };
+  const finishHydration = () => { document.body.classList.remove('auth-hydrating'); $('authHydration')?.setAttribute('aria-hidden', 'true'); };
 
   function setMode(next) {
     mode = next;
@@ -122,10 +123,12 @@
       bindAppControls();
       closeAuth();
       document.body.classList.remove('cloud-locked');
+      finishHydration();
     } catch (error) {
       console.error('Production runtime failed to load:', error);
       appLoaded = false;
       setMessage('The tracker could not load its latest runtime. Refresh the page.');
+      finishHydration();
       openAuth();
     }
   }
@@ -212,9 +215,8 @@
 
   async function boot() {
     document.body.classList.add('cloud-locked');
-    openAuth();
     bindAuth();
-    if (!window.supabase) return setMessage('The cloud library could not load. Check your connection and refresh.');
+    if (!window.supabase) { finishHydration(); openAuth(); return setMessage('The cloud library could not load. Check your connection and refresh.'); }
     supabase = window.supabase.createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     supabase.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -224,11 +226,11 @@
       }
     });
     const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) return setMessage(error.message);
+    if (error) { finishHydration(); openAuth(); return setMessage(error.message); }
     if (session?.user) {
       try { await enter(session.user); }
-      catch (error) { console.error(error); setMessage(error.message || 'Your archive could not be opened.'); }
-    }
+      catch (error) { console.error(error); finishHydration(); openAuth(); setMessage(error.message || 'Your archive could not be opened.'); }
+    } else { finishHydration(); openAuth(); }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -11,8 +11,8 @@ assert.match(wall,/return originalHandleAction\(a,id\)/,'unknown actions forward
 assert.match(wall,/openWallForm = function stableWallEditor/,'wall create/edit uses one stable editor');
 assert.match(wall,/openLinkForm = function\(prefill=''\)\{startQuickLink/,'Link Dossiers enters quick-link mode');
 assert.match(wall,/document\.body\.classList\.add\('modal-open'\)/,'modal opening locks body state');
-assert.match(wall,/document\.getElementById\('app'\)\.inert=true/,'modal opening makes wall inert');
-assert.match(wall,/document\.body\.classList\.remove\('modal-open'\)/,'modal closing unlocks body state');
+assert.match(wall,/if\(app\)app\.inert=true/,'modal opening makes wall inert defensively');
+assert.match(wall,/document\.body\?\.classList\?\.remove\('modal-open'\)/,'modal closing unlocks body state defensively');
 assert.match(wall,/backdrop\.dataset\.path=pathKey/,'active theme is copied to the modal host');
 assert.equal((html.match(/id="formModal"/g)||[]).length,1,'one shared form modal root exists');
 assert.match(experience,/selectedLabels=new Set\(initial\.detailKeys\.map/,'Card View resolves stored fact IDs to labels');

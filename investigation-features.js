@@ -92,7 +92,7 @@
       <div class="form-grid">
         <label class="form-group">
           <span class="field-label">Confidence</span>
-          <input type="range" id="editTheoryConfidence" min="0" max="100" value="${Number(theory.confidence) || 50}">
+          <input class="shared-range" type="range" data-range-format="percent" id="editTheoryConfidence" min="0" max="100" value="${Number(theory.confidence) || 50}">
         </label>
         <label class="form-group">
           <span class="field-label">Status</span>
@@ -427,4 +427,77 @@
     if (action === 'theory-history') return openTheoryHistory(id);
     return originalHandleAction(action, id);
   };
+
+  function rangePercent(value, min, max) {
+    const low = Number.isFinite(Number(min)) ? Number(min) : 0;
+    const high = Number.isFinite(Number(max)) ? Number(max) : 100;
+    const current = Number.isFinite(Number(value)) ? Number(value) : low;
+    if (high <= low) return 0;
+    return Math.max(0, Math.min(100, ((current - low) / (high - low)) * 100));
+  }
+
+  function formatRangeValue(input) {
+    const value = Number(input.value), max = Number(input.max || 100);
+    const format = input.dataset.rangeFormat || (max === 100 ? 'percent' : 'value');
+    if (format === 'percent') return `${value}%`;
+    if (['rating', 'spice', 'impact'].includes(format)) return `${value} / ${max}`;
+    return String(input.value);
+  }
+
+  function updateRange(input) {
+    const percent = rangePercent(input.value, input.min, input.max), text = formatRangeValue(input);
+    input.style.setProperty('--range-percent', `${percent}%`);
+    input.setAttribute('aria-valuemin', input.min || '0');
+    input.setAttribute('aria-valuemax', input.max || '100');
+    input.setAttribute('aria-valuenow', input.value);
+    input.setAttribute('aria-valuetext', text);
+    const output = document.querySelector(`[data-range-value-for="${CSS.escape(input.id)}"]`);
+    const bubble = document.querySelector(`[data-range-bubble-for="${CSS.escape(input.id)}"]`);
+    if (output) output.textContent = `Current value: ${text}`;
+    if (bubble) { bubble.textContent = text; bubble.style.setProperty('--range-percent', `${percent}%`); }
+  }
+
+  function enhanceRange(input) {
+    if (!input || input.dataset.rangeEnhanced === 'true') return input;
+    input.dataset.rangeEnhanced = 'true';
+    input.classList.add('shared-range');
+    if (!input.id) input.id = `range-${uid()}`;
+    let shell = input.closest('.shared-range-shell');
+    if (!shell) { shell = document.createElement('span'); shell.className = 'shared-range-shell'; input.before(shell); shell.append(input); }
+    let output = document.querySelector(`[data-range-value-for="${CSS.escape(input.id)}"]`);
+    if (!output) { output = document.createElement('output'); output.className = 'range-value'; output.dataset.rangeValueFor = input.id; shell.before(output); }
+    if (!output.id) output.id = `${input.id}-value`;
+    if (!(input.getAttribute('aria-describedby') || '').split(/\s+/).includes(output.id)) input.setAttribute('aria-describedby', `${input.getAttribute('aria-describedby') || ''} ${output.id}`.trim());
+    let bubble = shell.querySelector(`[data-range-bubble-for="${CSS.escape(input.id)}"]`);
+    if (!bubble) { bubble = document.createElement('output'); bubble.className = 'range-bubble'; bubble.dataset.rangeBubbleFor = input.id; bubble.setAttribute('aria-hidden', 'true'); shell.append(bubble); }
+    const show = () => shell.classList.add('is-active'), hide = () => shell.classList.remove('is-active');
+    input.addEventListener('input', () => { updateRange(input); show(); });
+    input.addEventListener('change', () => updateRange(input));
+    input.addEventListener('pointerdown', show);
+    input.addEventListener('pointerup', hide);
+    input.addEventListener('pointercancel', hide);
+    input.addEventListener('blur', hide);
+    input.addEventListener('keydown', () => { show(); requestAnimationFrame(() => updateRange(input)); });
+    input.addEventListener('dragstart', event => event.preventDefault());
+    updateRange(input);
+    return input;
+  }
+
+  function enhanceRanges(root = document) { root.querySelectorAll?.('input[type="range"]').forEach(enhanceRange); }
+  globalThis.RangeUI = { enhance: enhanceRanges, enhanceRange, update: updateRange, rangePercent, formatRangeValue };
+  enhanceRanges();
+  let viewportFrame;
+  const updateVisualViewport = () => {
+    cancelAnimationFrame(viewportFrame);
+    viewportFrame = requestAnimationFrame(() => document.documentElement.style.setProperty('--visual-viewport-height', `${Math.round(globalThis.visualViewport?.height || globalThis.innerHeight)}px`));
+  };
+  updateVisualViewport();
+  globalThis.visualViewport?.addEventListener('resize', updateVisualViewport, { passive: true });
+  globalThis.addEventListener('orientationchange', updateVisualViewport, { passive: true });
+  if (!globalThis.__rangeObserver && typeof MutationObserver !== 'undefined') {
+    globalThis.__rangeObserver = new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+      if (node.nodeType === 1) { if (node.matches?.('input[type="range"]')) enhanceRange(node); enhanceRanges(node); }
+    })));
+    globalThis.__rangeObserver.observe(document.body, { childList: true, subtree: true });
+  }
 })();

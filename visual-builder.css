@@ -96,3 +96,16 @@
 .builder-floating-toolbar [data-floating-action=delete]{border-color:var(--ui-danger,var(--danger,var(--ui-border,var(--border))));color:var(--ui-danger,var(--danger,var(--ui-text,var(--text))))}
 .visual-book-module[data-rotation-snap=true] .builder-rotate-handle{box-shadow:0 0 0 6px color-mix(in srgb,var(--ui-accent,var(--accent)) 28%,transparent)}
 @media(max-width:650px){.builder-palette{grid-template-columns:1fr}.builder-side-rail{grid-auto-flow:column;grid-auto-columns:minmax(72px,1fr);overflow-x:auto;border-right:0;border-bottom:1px solid var(--ui-border,var(--border))}.builder-floating-toolbar{position:relative;width:auto;border-radius:18px}.builder-floating-toolbar span{flex-basis:100%;max-width:none;text-align:center}}
+
+/* Usability pass: the Canva shell should not crush its own controls. */
+.visual-builder .builder-workspace{grid-template-columns:minmax(320px,390px) minmax(520px,1fr) minmax(340px,420px)}
+.builder-palette{grid-template-columns:minmax(88px,104px) minmax(210px,1fr)}
+.builder-save-status{display:inline-block;margin-block:8px 0;padding:6px 10px;border:1px solid var(--ui-accent,var(--accent));border-radius:999px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text));font-size:.85rem;font-weight:800}
+.builder-palette button,.builder-palette select,.builder-palette input,.builder-inspector button,.builder-inspector select,.builder-inspector input{min-width:0;overflow-wrap:normal;word-break:normal}
+.builder-align-grid,.builder-layer-grid{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:8px}
+.builder-asset-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}
+.builder-layers li{grid-template-columns:minmax(160px,1fr) 48px 48px}
+.builder-layers li>button,.builder-layers [data-layer-select]{border:1px solid var(--ui-border,var(--border));border-radius:10px;background:var(--ui-surface,var(--panel));color:var(--ui-text,var(--text))}
+.builder-layers [data-layer-select][aria-pressed=true]{border-color:var(--ui-accent,var(--accent));box-shadow:var(--shadow)}
+@media(max-width:1100px){.visual-builder .builder-workspace{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}.visual-builder .builder-inspector{grid-column:1/-1}}
+@media(max-width:650px){.visual-builder .builder-workspace{display:flex}.builder-palette{grid-template-columns:1fr}.builder-align-grid,.builder-layer-grid,.builder-asset-grid{grid-template-columns:1fr 1fr}.builder-layers li{grid-template-columns:minmax(0,1fr) 48px 48px}}

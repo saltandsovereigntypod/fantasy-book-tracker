@@ -7,6 +7,9 @@ context.globalThis=context;vm.runInNewContext(source,context);const B=context.Vi
 const narrow=B.createModule('metadata',{id:'author',customWidth:120,customHeight:44,dataBinding:{path:'author'},style:{fontSize:18,minFontSize:6,maxFontSize:18,autoFit:true}});
 assert.ok(B.fitTextSize(narrow,'Rebecca Yarros')<18,'auto-fit accounts for wrapping, labels, and available height');
 narrow.style.autoFit=false;assert.equal(B.fitTextSize(narrow,'Rebecca Yarros'),18,'manual typography uses the selected maximum');
+assert.equal(B.snapRotation(88),90,'rotation snaps near 90 degrees');
+assert.equal(B.snapRotation(177),180,'rotation snaps near 180 degrees');
+assert.equal(B.snapRotation(44),44,'rotation remains free away from snap points');
 
 const movable=B.createModule('metadata',{id:'move',x:40,y:20,width:120,height:52,dataBinding:{path:'author'}});
 const moveTemplate=B.createTemplate({canvas:{width:420,height:380,grid:1,snap:false},modules:[movable]});
@@ -30,11 +33,11 @@ assert.match(html,/data-style-preset="glass"/,'existing modules render their sel
 assert.match(html,/data-sizing-mode="custom"/,'live cards use fixed saved boxes instead of content-hugging auto boxes');
 assert.match(html,/data-saved-sizing-mode="custom"/,'the renderer preserves the original saved sizing mode for auditing');
 
-for(const hook of ['renderCard','data-editor-view','data-builder-zoom="fit"','data-builder-zoom="100"','data-upload-asset','data-template-preset','autoArrangeBookTemplate','data-action="view-book"','data-saved-sizing-mode','const action=button.dataset.builderZoom','data-style-preset-quick','data-style-swatch','type="color"'])
+for(const hook of ['renderCard','data-editor-view','data-builder-zoom="fit"','data-builder-zoom="100"','data-upload-asset','data-template-preset','autoArrangeBookTemplate','data-action="view-book"','data-saved-sizing-mode','const action=button.dataset.builderZoom','data-style-preset-quick','data-style-swatch','type="color"','builder-side-rail','builder-floating-toolbar','data-floating-action="duplicate"','data-floating-action="delete"','data-floating-action="rotate-left"','rotationSnap'])
   assert.ok(source.includes(hook),hook);
 assert.doesNotMatch(source,/querySelector\('\[data-builder-zoom-fit\]'\)\.onclick/,'zoom controls do not bind to missing selectors');
 
-for(const style of ['Canvas parity repair','visual-card-viewport','data-style-preset=glass','data-style-preset=raised-panel','data-style-preset=pill','visual-book-actions button:after','builder-color-control','builder-color-swatches','builder-style-gallery','style-tile','builder-layers','font-size:var(--module-font-size)','scrollbar-gutter:stable','visual-builder-backdrop>.modal'])
+for(const style of ['Canvas parity repair','Canva workspace foundation','visual-card-viewport','data-style-preset=glass','data-style-preset=raised-panel','data-style-preset=pill','visual-book-actions button:after','builder-color-control','builder-color-swatches','builder-style-gallery','style-tile','builder-layers','builder-side-rail','builder-floating-toolbar','font-size:var(--module-font-size)','scrollbar-gutter:stable','visual-builder-backdrop>.modal'])
   assert.ok(css.includes(style),style);
 assert.doesNotMatch(css,/font-size:max\(14px/,'small cards do not force desktop title text');
 assert.doesNotMatch(css,/\.visual-book-module\{[^}]*container-type:size/,'modules do not create isolated size containers that make text measure against tiny boxes');

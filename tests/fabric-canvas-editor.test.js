@@ -26,6 +26,10 @@ assert.ok(scene.objects.length>=8,'starter Fabric scene includes card modules');
 const rebound=CE.bindRecord(scene,{title:'Fourth Wing',author:'Rebecca Yarros',series:'The Empyrean',status:'reading',progress:44,rating:4.5,spice:3,impact:5});
 assert.equal(rebound.objects.find(item=>item.id==='title').text,'Fourth Wing');
 assert.equal(rebound.objects.find(item=>item.id==='progress').text,'44%');
+const nestedRatings=CE.bindRecord(scene,{title:'Onyx Storm 2',author:'Rebecca Yarros',series:'The Empyrean',status:'reading',progress:0,ratings:{overall:5,spice:2,impact:2,reaction:'Loved it'}});
+assert.match(nestedRatings.objects.find(item=>item.id==='rating').text,/★★★★★\n5 of 5/);
+assert.match(nestedRatings.objects.find(item=>item.id==='spice').text,/🔥🔥···\n2 of 5/);
+assert.match(nestedRatings.objects.find(item=>item.id==='impact').text,/♥♥♡♡♡\n2 of 5/);
 const fallback=CE.bindRecord({}, {title:'Onyx Storm',author:'Rebecca Yarros',series:'The Empyrean',status:'completed',progress:100,rating:5,spice:2,impact:3});
 assert.equal(fallback.objects.find(item=>item.id==='title').text,'Onyx Storm','empty saved Fabric JSON falls back to starter book fields');
 assert.equal(CE.validScene({}),null);
@@ -54,7 +58,7 @@ assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards d
 
 for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','overscroll-behavior','place-items:start center'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
 assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);

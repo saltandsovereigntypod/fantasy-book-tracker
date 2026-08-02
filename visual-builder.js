@@ -2,7 +2,7 @@
   'use strict';
 
   const BUILDER_SCHEMA_VERSION=6;
-  const VISUAL_ASSET_VERSION='20260802-30';
+  const VISUAL_ASSET_VERSION='20260802-31';
   const debugVisual=(event,details={})=>{if(globalThis.__VISUAL_DEBUG__)console.debug('[VisualBuilder]',event,{cacheVersion:VISUAL_ASSET_VERSION,...details});};
   const MODULE_TYPES=['text','image','title','metadata','button','rating','slider','progress','stars','icons','counter','linked-record','linked-dossier','linked-theory','relationship-count','quote','notes','tags','custom','horizontal-line','vertical-line','divider','rectangle','rounded-rectangle','circle','pill','card-border','background-panel','icon','decorative-text','uploaded-image','transparent-overlay'];
   const TRACKER_TYPES=['rating','slider','progress','stars','icons','counter'];

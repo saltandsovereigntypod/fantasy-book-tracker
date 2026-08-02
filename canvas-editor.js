@@ -64,6 +64,35 @@
       || validScene(template.canvas?.fabricJson);
   }
 
+  function pathValue(source = {}, path = '') {
+    return String(path).split('.').reduce((current, key) => current?.[key], source);
+  }
+
+  function recordValue(record = {}, path = '') {
+    const direct = pathValue(record, path);
+    if (direct !== undefined && direct !== null && direct !== '') return direct;
+    if (path === 'rating') return record.ratings?.overall ?? record.ratings?.rating ?? 0;
+    if (path === 'spice') return record.ratings?.spice ?? 0;
+    if (path === 'impact') return record.ratings?.impact ?? 0;
+    if (path === 'reaction') return record.ratings?.reaction ?? record.reaction ?? '';
+    if (path === 'progress') return record.progress ?? record.readingProgress ?? record.percentComplete ?? 0;
+    return direct;
+  }
+
+  function displayNumber(value, fallback = 0) {
+    const resolved = number(value, fallback);
+    return Number.isInteger(resolved) ? String(resolved) : resolved.toFixed(1).replace(/\.0$/, '');
+  }
+
+  function ratingDisplay(path, value, max = 5) {
+    const rating = clamp(value ?? 0, 0, max);
+    const filled = clamp(Math.round(rating), 0, max);
+    const emptyCount = Math.max(0, max - filled);
+    if (path === 'spice') return `${'🔥'.repeat(filled)}${'·'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+    if (path === 'impact') return `${'♥'.repeat(filled)}${'♡'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+    return `${'★'.repeat(filled)}${'☆'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+  }
+
   function baseScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
     return {
       version: FABRIC_VERSION,
@@ -75,10 +104,10 @@
         { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .34, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
         { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'metadata', dataBinding: { path: 'series' }, left: width * .64, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.series || 'Series' },
         { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'metadata', dataBinding: { path: 'status' }, left: width * .06, top: height * .53, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'status' },
-        { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .34, top: height * .53, width: width * .58, fontSize: Math.max(16, width * .042), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${record.progress ?? 0}%` },
-        { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .06, top: height * .72, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `★★★★★\n${record.rating ?? 0} of 5` },
-        { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .37, top: height * .72, width: width * .22, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `🔥🔥\n${record.spice ?? 0} of 5` },
-        { type: 'Textbox', id: 'impact', name: 'Impact', cardRole: 'rating', dataBinding: { path: 'impact' }, left: width * .67, top: height * .72, width: width * .24, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `♥♥♥\n${record.impact ?? 0} of 5` }
+        { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .34, top: height * .53, width: width * .58, fontSize: Math.max(16, width * .042), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` },
+        { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .06, top: height * .72, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
+        { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .37, top: height * .72, width: width * .22, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: ratingDisplay('spice', recordValue(record, 'spice')) },
+        { type: 'Textbox', id: 'impact', name: 'Impact', cardRole: 'rating', dataBinding: { path: 'impact' }, left: width * .67, top: height * .72, width: width * .24, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('impact', recordValue(record, 'impact')) }
       ],
       background: theme.surfaceSoft
     };
@@ -89,9 +118,14 @@
     (clone.objects || []).forEach(object => {
       const path = object.dataBinding?.path;
       if (!path) return;
-      const value = path.split('.').reduce((current, key) => current?.[key], record);
-      if (path === 'progress') object.text = `${value ?? 0}%`;
-      else if (['rating', 'spice', 'impact'].includes(path)) object.text = object.text?.replace(/\n.*/, `\n${value ?? 0} of 5`) || `${value ?? 0} of 5`;
+      const value = recordValue(record, path);
+      const type = String(object.type || '').toLowerCase();
+      const textLike = ['textbox', 'text', 'i-text', 'itext'].includes(type);
+      if (path === 'progress' && !textLike && object.sliderConfig?.trackWidth) {
+        object.width = object.sliderConfig.trackWidth * clamp(value ?? 0, 0, 100) / 100;
+        object.sliderConfig.value = clamp(value ?? 0, 0, 100);
+      } else if (path === 'progress') object.text = `${displayNumber(clamp(value ?? 0, 0, 100))}%`;
+      else if (['rating', 'spice', 'impact'].includes(path)) object.text = ratingDisplay(path, value);
       else object.text = String(value ?? object.text ?? '');
     });
     return clone;
@@ -157,9 +191,9 @@
           { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: 26, ry: 26, selectable: false, evented: false },
           { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .08, top: height * .10, width: width * .84, fontSize: Math.max(34, width * .095), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: record.title || 'Book Title' },
           { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .12, top: height * .32, width: width * .76, fontSize: Math.max(17, width * .045), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.muted, text: record.author || 'Author' },
-          { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .16, top: height * .60, width: width * .30, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `★★★★★\n${record.rating ?? 0} of 5` },
-          { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .55, top: height * .60, width: width * .28, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `🔥🔥\n${record.spice ?? 0} of 5` },
-          { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .20, top: height * .80, width: width * .60, fontSize: Math.max(16, width * .04), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: `${record.progress ?? 0}%` }
+          { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .16, top: height * .60, width: width * .30, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
+          { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .55, top: height * .60, width: width * .28, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: ratingDisplay('spice', recordValue(record, 'spice')) },
+          { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .20, top: height * .80, width: width * .60, fontSize: Math.max(16, width * .04), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` }
         ]
       },
       dashboard: {
@@ -207,8 +241,9 @@
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
     const left = options.left || 64, top = options.top || 120, trackWidth = options.width || Math.min(260, width * .62);
     const track = new fabric.Rect({ left, top, width: trackWidth, height: 8, rx: 8, ry: 8, fill: options.fill || theme.border, opacity: .8, id: makeObjectId('progress-track'), name: 'Progress track', cardRole: 'progress' });
-    const fill = new fabric.Rect({ left, top, width: trackWidth * clamp(record.progress ?? 0, 0, 100) / 100, height: 8, rx: 8, ry: 8, fill: options.accent || theme.accent, id: makeObjectId('progress-fill'), name: 'Progress fill', cardRole: 'progress', dataBinding: { path: 'progress' } });
-    const label = new fabric.Textbox(`${record.progress ?? 0}%`, { left, top: top + 14, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, id: makeObjectId('progress-label'), name: 'Progress label', cardRole: 'progress', dataBinding: { path: 'progress' } });
+    const progress = clamp(recordValue(record, 'progress') ?? 0, 0, 100);
+    const fill = new fabric.Rect({ left, top, width: trackWidth * progress / 100, height: 8, rx: 8, ry: 8, fill: options.accent || theme.accent, id: makeObjectId('progress-fill'), name: 'Progress fill', cardRole: 'progress', dataBinding: { path: 'progress' }, sliderConfig: { style: 'bar', value: progress, max: 100, trackWidth } });
+    const label = new fabric.Textbox(`${displayNumber(progress)}%`, { left, top: top + 14, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, id: makeObjectId('progress-label'), name: 'Progress label', cardRole: 'progress', dataBinding: { path: 'progress' } });
     canvas.add(track, fill, label);
     canvas.setActiveObject(label);
     canvas.requestRenderAll();
@@ -280,11 +315,9 @@
   }
 
   function fieldText(path, record = {}) {
-    const value = path.split('.').reduce((current, key) => current?.[key], record);
-    if (path === 'progress') return `${value ?? 0}%`;
-    if (path === 'rating') return `★★★★★\n${value ?? 0} of 5`;
-    if (path === 'spice') return `🔥🔥\n${value ?? 0} of 5`;
-    if (path === 'impact') return `♥♥♥\n${value ?? 0} of 5`;
+    const value = recordValue(record, path);
+    if (path === 'progress') return `${displayNumber(clamp(value ?? 0, 0, 100))}%`;
+    if (['rating', 'spice', 'impact'].includes(path)) return ratingDisplay(path, value);
     return String(value ?? path);
   }
 

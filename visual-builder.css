@@ -109,3 +109,9 @@
 .builder-layers [data-layer-select][aria-pressed=true]{border-color:var(--ui-accent,var(--accent));box-shadow:var(--shadow)}
 @media(max-width:1100px){.visual-builder .builder-workspace{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}.visual-builder .builder-inspector{grid-column:1/-1}}
 @media(max-width:650px){.visual-builder .builder-workspace{display:flex}.builder-palette{grid-template-columns:1fr}.builder-align-grid,.builder-layer-grid,.builder-asset-grid{grid-template-columns:1fr 1fr}.builder-layers li{grid-template-columns:minmax(0,1fr) 48px 48px}}
+
+/* Canvas command menu: one action model feeds toolbar, keyboard, and right-click actions. */
+.builder-context-menu{position:fixed;z-index:90;left:var(--menu-x);top:var(--menu-y);display:grid;gap:4px;min-width:190px;padding:8px;border:1px solid var(--ui-border,var(--border));border-radius:16px;background:var(--ui-surface-raised,var(--panel-2));box-shadow:var(--shadow)}
+.builder-context-menu button{display:flex;justify-content:space-between;min-height:36px;border:0;border-radius:10px;background:transparent;color:var(--ui-text,var(--text));font:inherit;font-weight:800;text-align:left}
+.builder-context-menu button:hover,.builder-context-menu button:focus-visible{background:var(--ui-surface,var(--panel));outline:2px solid var(--ui-focus,var(--focus-ring,var(--accent)))}
+.builder-context-menu button:disabled{opacity:.45;cursor:not-allowed}

@@ -13,6 +13,9 @@ assert.equal(typeof CE.setUniformScale,'function');
 assert.equal(typeof CE.addShapeBox,'function');
 assert.equal(typeof CE.addEditableTextBox,'function');
 assert.equal(typeof CE.addBoundTextBox,'function');
+assert.equal(typeof CE.addProgressSlider,'function');
+assert.equal(typeof CE.applyCardPreset,'function');
+assert.equal(typeof CE.applyAppearancePreset,'function');
 assert.equal(typeof CE.addImageFromFile,'function');
 assert.equal(typeof CE.deleteActiveElement,'function');
 assert.equal(typeof CE.validScene,'function');
@@ -27,13 +30,19 @@ assert.equal(CE.validScene({}),null);
 assert.ok(CE.validScene(scene));
 
 let saves=0;
-const state={libraryPreferences:{cardSize:'medium'},books:[{id:'book',title:'Fourth Wing',visualTemplateId:''}],sessions:[],visualTemplates:[]};
+const detailedBook={id:'book',title:'Fourth Wing',author:'Rebecca Yarros',series:'The Empyrean',genres:['Romantasy'],tags:['dragons'],summary:'Violet goes to war college.',about:'Archive note',status:'completed',progress:100,rating:5,spice:2,impact:4,reaction:'Loved it',coverUrl:'cover.jpg',images:[{id:'img',url:'x'}],notes:[{id:'note',text:'Do not erase'}],metadata:{source:'manual'},visualTemplateId:''};
+const state={libraryPreferences:{cardSize:'medium'},books:[detailedBook],sessions:[],visualTemplates:[]};
 const builderContext={globalThis:null,state,console,Date,Math,Number,String,Boolean,Array,Set,Map,JSON,setTimeout,CanvasEditor:{bindRecord:CE.bindRecord},saveState(){saves++;},renderAll(){},bookCardStats(){return{notesCount:0,theoryCount:0,dossierCount:0,wallCount:0}}};
 builderContext.globalThis=builderContext;
 vm.runInNewContext(builderSource,builderContext,{filename:'visual-builder.js'});
 const B=builderContext.VisualBuilder,saved=B.saveFabricBookTemplate(state.books[0],scene,{width:420,height:380,name:'Fourth Wing Fabric Card'});
 assert.equal(saved.fabricCanvasJson.objects.length,scene.objects.length);
 assert.equal(state.books[0].visualTemplateId,saved.id);
+assert.equal(state.books[0].title,'Fourth Wing');
+assert.equal(state.books[0].author,'Rebecca Yarros');
+assert.deepEqual(state.books[0].genres,['Romantasy']);
+assert.deepEqual(state.books[0].notes,[{id:'note',text:'Do not erase'}]);
+assert.equal(state.books[0].coverUrl,'cover.jpg');
 assert.ok(saves>0,'Fabric card save uses the existing state persistence pipeline');
 const card=B.renderBookCard(state.books[0],{size:'medium'});
 assert.match(card,/fabric-card-canvas/);
@@ -41,9 +50,9 @@ assert.match(card,/data-fabric-card-json=/);
 assert.match(card,/CanvasEditor\.renderSavedCanvas|fabric-card-canvas/);
 assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards do not render the old editor canvas');
 
-for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene'])
+for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
 assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);

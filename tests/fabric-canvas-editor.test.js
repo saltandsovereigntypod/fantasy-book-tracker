@@ -12,13 +12,19 @@ assert.equal(typeof CE.serializeCanvas,'function');
 assert.equal(typeof CE.setUniformScale,'function');
 assert.equal(typeof CE.addShapeBox,'function');
 assert.equal(typeof CE.addEditableTextBox,'function');
+assert.equal(typeof CE.addBoundTextBox,'function');
 assert.equal(typeof CE.addImageFromFile,'function');
 assert.equal(typeof CE.deleteActiveElement,'function');
+assert.equal(typeof CE.validScene,'function');
 const scene=CE.baseScene({width:420,height:380,theme,record:{title:'Onyx Storm',author:'Rebecca Yarros',series:'The Empyrean',status:'completed',progress:100,rating:5,spice:2,impact:3}});
 assert.ok(scene.objects.length>=8,'starter Fabric scene includes card modules');
 const rebound=CE.bindRecord(scene,{title:'Fourth Wing',author:'Rebecca Yarros',series:'The Empyrean',status:'reading',progress:44,rating:4.5,spice:3,impact:5});
 assert.equal(rebound.objects.find(item=>item.id==='title').text,'Fourth Wing');
 assert.equal(rebound.objects.find(item=>item.id==='progress').text,'44%');
+const fallback=CE.bindRecord({}, {title:'Onyx Storm',author:'Rebecca Yarros',series:'The Empyrean',status:'completed',progress:100,rating:5,spice:2,impact:3});
+assert.equal(fallback.objects.find(item=>item.id==='title').text,'Onyx Storm','empty saved Fabric JSON falls back to starter book fields');
+assert.equal(CE.validScene({}),null);
+assert.ok(CE.validScene(scene));
 
 let saves=0;
 const state={libraryPreferences:{cardSize:'medium'},books:[{id:'book',title:'Fourth Wing',visualTemplateId:''}],sessions:[],visualTemplates:[]};
@@ -35,9 +41,9 @@ assert.match(card,/data-fabric-card-json=/);
 assert.match(card,/CanvasEditor\.renderSavedCanvas|fabric-card-canvas/);
 assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards do not render the old editor canvas');
 
-for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson'])
+for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
 assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);

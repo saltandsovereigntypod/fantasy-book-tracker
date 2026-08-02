@@ -3,7 +3,7 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked', 'originX', 'originY'];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
   const FIELD_META = {
     title: { label: 'Title', role: 'title' },
@@ -86,11 +86,12 @@
 
   function ratingDisplay(path, value, max = 5) {
     const rating = clamp(value ?? 0, 0, max);
-    const filled = clamp(Math.round(rating), 0, max);
-    const emptyCount = Math.max(0, max - filled);
-    if (path === 'spice') return `${'🔥'.repeat(filled)}${'·'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
-    if (path === 'impact') return `${'♥'.repeat(filled)}${'♡'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
-    return `${'★'.repeat(filled)}${'☆'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+    const full = Math.floor(rating);
+    const hasHalf = rating - full >= .5 && full < max;
+    const emptyCount = Math.max(0, max - full - (hasHalf ? 1 : 0));
+    if (path === 'spice') return `${'🔥'.repeat(full)}${hasHalf ? '½' : ''}${'·'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+    if (path === 'impact') return `${'♥'.repeat(full)}${hasHalf ? '◐' : ''}${'♡'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+    return `${'★'.repeat(full)}${hasHalf ? '⯨' : ''}${'☆'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
   }
 
   function sliderDisplay(config = {}, path = '') {
@@ -154,6 +155,7 @@
     if (!canvas.getObjects().length) {
       await canvas.loadFromJSON(baseScene({ width: canvas.__designWidth, height: canvas.__designHeight, record }));
     }
+    applyCenterOrigins(canvas);
     canvas.renderAll();
     return canvas;
   }
@@ -166,12 +168,44 @@
     return Boolean(object && (object.type === 'Textbox' || object.type === 'textbox' || object.type === 'Text' || object.type === 'IText' || object.isType?.('textbox') || object.isType?.('text')));
   }
 
+  function isSliderObject(object) {
+    const path = bindingPath(object);
+    return Boolean(object?.sliderConfig || object?.cardRole === 'custom-slider' || ['progress', 'rating', 'spice', 'impact'].includes(path));
+  }
+
+  function centerOriginObject(object) {
+    if (!object || object.selectable === false) return object;
+    const center = object.getCenterPoint?.();
+    object.set?.({ originX: 'center', originY: 'center', centeredRotation: true });
+    if (center && object.setPositionByOrigin) object.setPositionByOrigin(center, 'center', 'center');
+    object.setCoords?.();
+    return object;
+  }
+
+  function applyCenterOrigins(canvas) {
+    canvas.getObjects?.().forEach(centerOriginObject);
+    canvas.requestRenderAll?.();
+  }
+
   function updateActiveObject(canvas, changes = {}) {
     const active = getActive(canvas);
     if (!active) return false;
     Object.entries(changes).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') active.set(key, value);
     });
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function applyTextEffect(canvas, effect = 'clear') {
+    const active = getActive(canvas);
+    if (!isTextObject(active)) return false;
+    const theme = currentTheme();
+    if (effect === 'shadow') active.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
+    if (effect === 'glow') active.set({ shadow: `0 0 16px ${theme.accent}` });
+    if (effect === 'outline') active.set({ stroke: theme.accent, strokeWidth: 1 });
+    if (effect === 'clear') active.set({ shadow: null, stroke: null, strokeWidth: 0 });
     active.setCoords?.();
     canvas.requestRenderAll();
     return true;
@@ -486,12 +520,16 @@
     const width = canvas.__designWidth || canvas.getWidth(), height = canvas.__designHeight || canvas.getHeight();
     objects.forEach(object => {
       const scaledWidth = object.getScaledWidth?.() || object.width || 0, scaledHeight = object.getScaledHeight?.() || object.height || 0;
-      if (alignment === 'left') object.set('left', 0);
-      if (alignment === 'center') object.set('left', (width - scaledWidth) / 2);
-      if (alignment === 'right') object.set('left', width - scaledWidth);
-      if (alignment === 'top') object.set('top', 0);
-      if (alignment === 'middle') object.set('top', (height - scaledHeight) / 2);
-      if (alignment === 'bottom') object.set('top', height - scaledHeight);
+      const rect = object.getBoundingRect?.() || { left: number(object.left, 0), top: number(object.top, 0), width: scaledWidth, height: scaledHeight };
+      let left = rect.left, top = rect.top;
+      if (alignment === 'left') left = 0;
+      if (alignment === 'center') left = (width - scaledWidth) / 2;
+      if (alignment === 'right') left = width - scaledWidth;
+      if (alignment === 'top') top = 0;
+      if (alignment === 'middle') top = (height - scaledHeight) / 2;
+      if (alignment === 'bottom') top = height - scaledHeight;
+      if (object.setPositionByOrigin) object.setPositionByOrigin({ x: left, y: top }, 'left', 'top');
+      else object.set({ left, top });
       object.setCoords?.();
     });
     canvas.requestRenderAll();
@@ -562,11 +600,12 @@
       backgroundColor: theme.surfaceSoft || currentTheme().surfaceSoft,
       preserveObjectStacking: true,
       selection: true,
-      controlsAboveOverlay: true
+      controlsAboveOverlay: true,
+      centeredRotation: true
     });
     canvas.__designWidth = width;
     canvas.__designHeight = height;
-    canvas.on('object:added', () => options.onChange?.(canvas));
+    canvas.on('object:added', event => { if (!canvas.__restoringHistory) centerOriginObject(event.target); options.onChange?.(canvas); });
     canvas.on('object:modified', () => options.onChange?.(canvas));
     canvas.on('object:removed', () => options.onChange?.(canvas));
     return {
@@ -586,6 +625,7 @@
       toggleLockActive: () => toggleLockActive(canvas),
       cloneActiveElement: () => cloneActiveElement(canvas),
       applyAppearancePreset: preset => applyAppearancePreset(canvas, preset),
+      applyTextEffect: effect => applyTextEffect(canvas, effect),
       applyCardPreset: (preset, record) => applyCardPreset(canvas, preset, record),
       updateActiveObject: changes => updateActiveObject(canvas, changes),
       addImageFromFile: file => addImageFromFile(canvas, file),
@@ -603,7 +643,7 @@
     return `<section class="fabric-card-editor" aria-label="Canvas card editor">
       <header class="fabric-editor-header">
         <div><p class="eyebrow">Canvas card editor</p><h2 id="formModalTitle">${escapeHtml(title)}</h2><p>${width} × ${height} · Fabric.js ${FABRIC_VERSION}</p></div>
-        <div class="fabric-editor-actions"><button type="button" class="primary-button" data-fabric-save>Save</button><button type="button" data-fabric-close>Cancel</button></div>
+        <div class="fabric-editor-actions"><button type="button" data-fabric-undo disabled>Undo</button><button type="button" data-fabric-redo disabled>Redo</button><button type="button" class="primary-button" data-fabric-save>Save</button><button type="button" data-fabric-close>Cancel</button></div>
       </header>
       <div class="fabric-editor-layout">
         <aside class="fabric-editor-sidebar" aria-label="Canvas tools">
@@ -639,14 +679,20 @@
             <label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label>
             <label>Maximum <input type="number" min="1" max="100" step="1" value="5" data-fabric-slider-max></label>
             <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option></select></label>
+            <label class="fabric-upload-control">Upload slider icon<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-slider-icon></label>
           </div>
           <div class="fabric-quick-actions" aria-label="Object actions">
             <button type="button" data-fabric-action="duplicate">Duplicate</button>
             <button type="button" data-fabric-action="lock">Lock</button>
-            <button type="button" data-fabric-action="rotate-left">↺ 15°</button>
-            <button type="button" data-fabric-action="rotate-right">↻ 15°</button>
+            <button type="button" data-fabric-action="flip-x">Flip X</button>
+            <button type="button" data-fabric-action="flip-y">Flip Y</button>
             <button type="button" data-fabric-action="front">To front</button>
             <button type="button" data-fabric-action="back">To back</button>
+          </div>
+          <div class="fabric-text-tools" data-fabric-text-tools aria-label="Text tools" hidden>
+            <label>Font <select data-fabric-font-family><option value="Libre Baskerville">Libre Baskerville</option><option value="Inter">Inter</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Trebuchet MS">Trebuchet</option><option value="Impact">Impact</option><option value="Brush Script MT">Brush Script</option><option value="Courier New">Courier</option></select></label>
+            <label>Align <select data-fabric-text-align><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></label>
+            <div class="fabric-text-effect-grid"><button type="button" data-fabric-text-effect="shadow">Shadow</button><button type="button" data-fabric-text-effect="glow">Glow</button><button type="button" data-fabric-text-effect="outline">Outline</button><button type="button" data-fabric-text-effect="clear">Clear FX</button></div>
           </div>
           <div class="fabric-preset-grid" aria-label="Appearance presets">
             ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
@@ -662,7 +708,7 @@
           <label>Corner radius <input type="range" min="0" max="80" value="16" data-fabric-prop="cornerRadius"></label>
           <label>Border <input type="range" min="0" max="12" value="1" data-fabric-prop="strokeWidth"></label>
           <div class="fabric-color-row"><label>Border <input type="color" value="#75451f" data-fabric-stroke></label><label>Shadow <input type="checkbox" data-fabric-shadow></label></div>
-          <p class="fabric-editor-hint">Select a title, rating, pill, shape, or uploaded image, then use these controls to style it.</p>
+          <p class="fabric-editor-hint">Select a title, rating, pill, shape, or uploaded image, then use these controls to style it. Use the circular Fabric handle on the selection box for free rotation.</p>
         </aside>
       </div>
     </section>`;
@@ -682,6 +728,42 @@
     host?.classList.add('fabric-editor-backdrop');
     const editor = initCanvasEditor(canvasId, currentTheme(), { width, height, record: book });
     const scene = templateJson(template) || baseScene({ width, height, theme: currentTheme(), record: book });
+    const undoButton = document.querySelector('[data-fabric-undo]');
+    const redoButton = document.querySelector('[data-fabric-redo]');
+    let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null;
+    const historyJson = () => JSON.stringify(serializeCanvas(editor.canvas));
+    const syncHistoryButtons = () => {
+      if (undoButton) undoButton.disabled = historyIndex <= 0;
+      if (redoButton) redoButton.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
+    };
+    const pushHistory = () => {
+      if (restoringHistory) return;
+      clearTimeout(historyTimer);
+      historyTimer = setTimeout(() => {
+        const snapshot = historyJson();
+        if (history[historyIndex] === snapshot) return;
+        history = history.slice(0, historyIndex + 1);
+        history.push(snapshot);
+        if (history.length > 60) history.shift();
+        historyIndex = history.length - 1;
+        syncHistoryButtons();
+      }, 0);
+    };
+    const restoreHistory = async nextIndex => {
+      if (nextIndex < 0 || nextIndex >= history.length) return false;
+      restoringHistory = true;
+      editor.canvas.__restoringHistory = true;
+      await editor.canvas.loadFromJSON(JSON.parse(history[nextIndex]));
+      applyCenterOrigins(editor.canvas);
+      historyIndex = nextIndex;
+      editor.canvas.__restoringHistory = false;
+      restoringHistory = false;
+      editor.canvas.discardActiveObject();
+      editor.canvas.requestRenderAll();
+      syncInspector();
+      syncHistoryButtons();
+      return true;
+    };
     const fitCanvasToWorkspace = () => {
       const workspace = document.querySelector('.fabric-canvas-workspace');
       const available = Math.max(260, number(workspace?.clientWidth, width) - 42);
@@ -693,7 +775,10 @@
     loadScene(editor.canvas, scene, book).catch(error => {
       console.error(error);
       loadScene(editor.canvas, baseScene({ width, height, theme: currentTheme(), record: book }), book);
-    }).finally(fitCanvasToWorkspace);
+    }).finally(() => {
+      fitCanvasToWorkspace();
+      pushHistory();
+    });
     const syncInspector = () => {
       const active = getActive(editor.canvas);
       const selectedName = document.querySelector('[data-fabric-selected-name]');
@@ -705,8 +790,12 @@
       const styleSelect = document.querySelector('[data-fabric-slider-style]');
       const nameInput = document.querySelector('[data-fabric-slider-name]');
       const maxInput = document.querySelector('[data-fabric-slider-max]');
-      const isValueObject = Boolean(active && (activePath || active.sliderConfig || active.cardRole === 'custom-slider'));
+      const textTools = document.querySelector('[data-fabric-text-tools]');
+      const fontSelect = document.querySelector('[data-fabric-font-family]');
+      const textAlignSelect = document.querySelector('[data-fabric-text-align]');
+      const isValueObject = Boolean(active && isSliderObject(active));
       if (valueControls) valueControls.hidden = !isValueObject;
+      if (textTools) textTools.hidden = !isTextObject(active);
       if (isValueObject && valueInput) {
         const max = sliderMaxForPath(activePath, number(active.sliderConfig?.max, 5));
         const value = clamp(active.sliderConfig?.value ?? recordValue(book, activePath), 0, max);
@@ -724,6 +813,10 @@
           maxInput.disabled = activePath === 'progress';
         }
       }
+      if (isTextObject(active)) {
+        if (fontSelect) fontSelect.value = active.fontFamily || 'Libre Baskerville';
+        if (textAlignSelect) textAlignSelect.value = active.textAlign || 'left';
+      }
       document.querySelectorAll('[data-fabric-prop]').forEach(input => {
         if (!active) return;
         const prop = input.dataset.fabricProp;
@@ -736,6 +829,9 @@
     editor.canvas.on('selection:updated', syncInspector);
     editor.canvas.on('selection:cleared', syncInspector);
     editor.canvas.on('object:modified', syncInspector);
+    editor.canvas.on('object:modified', pushHistory);
+    editor.canvas.on('object:added', pushHistory);
+    editor.canvas.on('object:removed', pushHistory);
     editor.canvas.on('mouse:dblclick', () => {
       const active = getActive(editor.canvas);
       if (isTextObject(active)) active.enterEditing?.();
@@ -744,19 +840,26 @@
       if (!document.querySelector('[data-fabric-snapping]')?.checked) return;
       const object = event.target;
       const guide = 8, canvasWidth = editor.canvas.__designWidth || width, canvasHeight = editor.canvas.__designHeight || height;
-      const objectWidth = object.getScaledWidth?.() || object.width || 0, objectHeight = object.getScaledHeight?.() || object.height || 0;
-      const centers = { x: number(object.left, 0) + objectWidth / 2, y: number(object.top, 0) + objectHeight / 2 };
-      if (Math.abs(number(object.left, 0)) < guide) object.set('left', 0);
-      if (Math.abs(number(object.top, 0)) < guide) object.set('top', 0);
-      if (Math.abs((number(object.left, 0) + objectWidth) - canvasWidth) < guide) object.set('left', canvasWidth - objectWidth);
-      if (Math.abs((number(object.top, 0) + objectHeight) - canvasHeight) < guide) object.set('top', canvasHeight - objectHeight);
-      if (Math.abs(centers.x - canvasWidth / 2) < guide) object.set('left', (canvasWidth - objectWidth) / 2);
-      if (Math.abs(centers.y - canvasHeight / 2) < guide) object.set('top', (canvasHeight - objectHeight) / 2);
+      const rect = object.getBoundingRect?.() || { left: number(object.left, 0), top: number(object.top, 0), width: object.getScaledWidth?.() || object.width || 0, height: object.getScaledHeight?.() || object.height || 0 };
+      let left = rect.left, top = rect.top;
+      const centers = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      if (Math.abs(rect.left) < guide) left = 0;
+      if (Math.abs(rect.top) < guide) top = 0;
+      if (Math.abs((rect.left + rect.width) - canvasWidth) < guide) left = canvasWidth - rect.width;
+      if (Math.abs((rect.top + rect.height) - canvasHeight) < guide) top = canvasHeight - rect.height;
+      if (Math.abs(centers.x - canvasWidth / 2) < guide) left = (canvasWidth - rect.width) / 2;
+      if (Math.abs(centers.y - canvasHeight / 2) < guide) top = (canvasHeight - rect.height) / 2;
+      if (left !== rect.left || top !== rect.top) {
+        if (object.setPositionByOrigin) object.setPositionByOrigin({ x: left, y: top }, 'left', 'top');
+        else object.set({ left, top });
+      }
     });
     document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
       button.addEventListener('click', () => {
         if (!confirm('Replace this card layout with this starter look? Book details stay safe.')) return;
         editor.applyCardPreset(button.dataset.fabricCardPreset, book);
+        pushHistory();
+        syncInspector();
       });
     });
     document.querySelector('[data-fabric-add="shape"]')?.addEventListener('click', () => editor.addShapeBox());
@@ -790,61 +893,99 @@
       const active = editor.canvas.getActiveObject();
       if (active) active.set('fill', event.target.value);
       editor.canvas.requestRenderAll();
+      pushHistory();
     });
     document.querySelector('[data-fabric-text]')?.addEventListener('input', event => {
       const active = editor.canvas.getActiveObject();
       if (isTextObject(active)) active.set('fill', event.target.value);
       editor.canvas.requestRenderAll();
+      pushHistory();
     });
-    document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => editor.updateActiveObject({ stroke: event.target.value }));
-    document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }));
+    document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => { editor.updateActiveObject({ stroke: event.target.value }); pushHistory(); });
+    document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => { editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }); pushHistory(); });
     document.querySelector('[data-fabric-value]')?.addEventListener('input', event => {
       const active = getActive(editor.canvas);
-      if (!active) return;
+      if (!isSliderObject(active)) return;
       const path = bindingPath(active);
       const value = number(event.target.value, 0);
       updateSliderObject(active, value, { style: document.querySelector('[data-fabric-slider-style]')?.value });
       if (path) setBookValue(book, path, value);
       editor.canvas.requestRenderAll();
+      pushHistory();
       syncInspector();
     });
     document.querySelector('[data-fabric-slider-style]')?.addEventListener('change', event => {
       const active = getActive(editor.canvas);
-      if (!active) return;
+      if (!isSliderObject(active)) return;
       updateSliderObject(active, active.sliderConfig?.value ?? recordValue(book, bindingPath(active)), { style: event.target.value });
       editor.canvas.requestRenderAll();
+      pushHistory();
       syncInspector();
     });
     document.querySelector('[data-fabric-slider-max]')?.addEventListener('input', event => {
       const active = getActive(editor.canvas);
-      if (!active) return;
+      if (!isSliderObject(active)) return;
       const max = clamp(event.target.value, 1, 100);
       const value = clamp(active.sliderConfig?.value ?? 0, 0, max);
       updateSliderObject(active, value, { max, style: document.querySelector('[data-fabric-slider-style]')?.value });
       editor.canvas.requestRenderAll();
+      pushHistory();
       syncInspector();
     });
     document.querySelector('[data-fabric-slider-name]')?.addEventListener('input', event => {
       const active = getActive(editor.canvas);
-      if (!active) return;
+      if (!isSliderObject(active)) return;
       updateSliderObject(active, active.sliderConfig?.value ?? 0, { name: event.target.value, style: document.querySelector('[data-fabric-slider-style]')?.value });
       editor.canvas.requestRenderAll();
+      pushHistory();
       syncInspector();
+    });
+    document.querySelector('[data-fabric-font-family]')?.addEventListener('change', event => {
+      const active = getActive(editor.canvas);
+      if (!isTextObject(active)) return;
+      active.set('fontFamily', event.target.value);
+      active.setCoords?.();
+      editor.canvas.requestRenderAll();
+      pushHistory();
+      syncInspector();
+    });
+    document.querySelector('[data-fabric-text-align]')?.addEventListener('change', event => {
+      const active = getActive(editor.canvas);
+      if (!isTextObject(active)) return;
+      active.set('textAlign', event.target.value);
+      active.setCoords?.();
+      editor.canvas.requestRenderAll();
+      pushHistory();
+      syncInspector();
+    });
+    document.querySelectorAll('[data-fabric-text-effect]').forEach(button => {
+      button.addEventListener('click', () => {
+        editor.applyTextEffect(button.dataset.fabricTextEffect);
+        pushHistory();
+        syncInspector();
+      });
     });
     document.querySelectorAll('[data-fabric-action]').forEach(button => {
       button.addEventListener('click', () => {
         const action = button.dataset.fabricAction;
         if (action === 'duplicate') editor.cloneActiveElement();
         if (action === 'lock') editor.toggleLockActive();
-        if (action === 'rotate-left') editor.rotateActiveObjects(-15);
-        if (action === 'rotate-right') editor.rotateActiveObjects(15);
+        if (action === 'flip-x') {
+          const active = getActive(editor.canvas);
+          if (active) editor.updateActiveObject({ flipX: !active.flipX });
+        }
+        if (action === 'flip-y') {
+          const active = getActive(editor.canvas);
+          if (active) editor.updateActiveObject({ flipY: !active.flipY });
+        }
         if (action === 'front') editor.moveLayer('front');
         if (action === 'back') editor.moveLayer('back');
+        pushHistory();
         syncInspector();
       });
     });
-    document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => editor.applyAppearancePreset(button.dataset.fabricAppearance)));
-    document.querySelectorAll('[data-fabric-align]').forEach(button => button.addEventListener('click', () => editor.alignActiveObjects(button.dataset.fabricAlign)));
+    document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => { editor.applyAppearancePreset(button.dataset.fabricAppearance); pushHistory(); syncInspector(); }));
+    document.querySelectorAll('[data-fabric-align]').forEach(button => button.addEventListener('click', () => { editor.alignActiveObjects(button.dataset.fabricAlign); pushHistory(); syncInspector(); }));
     document.querySelectorAll('[data-fabric-prop]').forEach(input => {
       input.addEventListener('input', event => {
         const prop = event.target.dataset.fabricProp;
@@ -852,6 +993,8 @@
         if (prop === 'opacity') editor.updateActiveObject({ opacity: raw / 100 });
         else if (prop === 'cornerRadius') editor.updateActiveObject({ rx: raw, ry: raw });
         else editor.updateActiveObject({ [prop]: raw });
+        pushHistory();
+        syncInspector();
       });
     });
     let copiedObject = null;
@@ -875,6 +1018,16 @@
       if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 's') {
         event.preventDefault();
         saveEditor();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'z') {
+        event.preventDefault();
+        restoreHistory(historyIndex + (event.shiftKey ? 1 : -1));
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'y') {
+        event.preventDefault();
+        restoreHistory(historyIndex + 1);
         return;
       }
       if (!active && !((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'a')) return;
@@ -947,6 +1100,8 @@
     };
     document.addEventListener('keydown', keyHandler, true);
     window.addEventListener?.('resize', fitCanvasToWorkspace);
+    undoButton?.addEventListener('click', () => restoreHistory(historyIndex - 1));
+    redoButton?.addEventListener('click', () => restoreHistory(historyIndex + 1));
     document.querySelector('[data-fabric-close]')?.addEventListener('click', closeEditor);
     document.querySelector('[data-fabric-save]')?.addEventListener('click', saveEditor);
     setTimeout(syncInspector, 0);

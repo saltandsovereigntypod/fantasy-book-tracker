@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const source=fs.readFileSync('visual-builder.js','utf8');
+const css=fs.readFileSync('visual-builder.css','utf8');
+const app=fs.readFileSync('app.js','utf8');
+const state={books:[{id:'book',title:'A Very Long Fourth Wing Archive Title',author:'Rebecca Yarros',series:'The Empyrean',status:'reading',progress:64,rating:4.5,spice:3,impact:5,trackerValues:{}}],sessions:[],visualTemplates:[]};
+const context={globalThis:null,state,console,Date,Math,Number,String,Boolean,Array,Set,Map,saveState:()=>{},renderAll:()=>{},bookCardStats:()=>({notesCount:0,theoryCount:0,dossierCount:0,wallCount:0})};context.globalThis=context;
+vm.runInNewContext(source,context,{filename:'visual-builder.js'});
+const B=context.VisualBuilder,standard=B.standardBookTemplate(),coordinates=standard.modules.map(module=>[module.id,module.x,module.y,module.width,module.height]);
+assert.ok(B.CARD_SIZES.small.titleSize<B.CARD_SIZES.medium.titleSize&&B.CARD_SIZES.medium.titleSize<B.CARD_SIZES.large.titleSize);
+assert.ok(B.CARD_SIZES.small.gap<B.CARD_SIZES.medium.gap&&B.CARD_SIZES.medium.gap<B.CARD_SIZES.large.gap);
+assert.notEqual(B.CARD_SIZES.large.titleSize/B.CARD_SIZES.medium.titleSize,B.CARD_SIZES.large.width/B.CARD_SIZES.medium.width,'density presets are curated rather than uniform multiplication');
+for(const size of ['small','medium','large']){const canvas=B.renderTemplateCanvas(standard,state.books[0],{size,presentation:'card'});assert.match(canvas,new RegExp(`data-card-size="${size}"`));for(const role of ['header','progress','ratings','actions'])assert.match(canvas,new RegExp(`data-container-role="${role}"`));assert.match(canvas,/data-layout-mode="responsive"/);}
+assert.deepEqual(standard.modules.map(module=>[module.id,module.x,module.y,module.width,module.height]),coordinates,'responsive previews do not mutate expert coordinates');
+const small=B.renderBookCard(state.books[0],{size:'small',presentation:'card'}),large=B.renderBookCard(state.books[0],{size:'large',presentation:'card'}),list=B.renderBookCard(state.books[0],{size:'medium',presentation:'list'});assert.match(small,/data-card-size="small"/);assert.match(large,/data-card-size="large"/);assert.match(list,/data-presentation="list"/);assert.match(list,/responsive-card-container/);
+const preview=B.renderTemplateCanvas(standard,state.books[0],{size:'medium',presentation:'card'}),final=B.renderBookCard(state.books[0],{size:'medium',presentation:'card'});assert.ok(final.includes(preview),'preview and final card share exactly the same renderer output');
+const custom=B.createTemplate({id:'freeform',composer:{enabled:false},groups:[{id:'free',name:'Freeform',layout:'freeform'}],modules:[B.createModule('text',{id:'custom',groupId:'free',x:73,y:91,width:177,height:83,responsive:{mode:'absolute'}})]});const customMarkup=B.renderTemplateCanvas(custom,state.books[0],{size:'small'});assert.match(customMarkup,/data-layout-mode="absolute"/);assert.match(customMarkup,/--module-x:/,'custom expert coordinates remain available');
+assert.match(source,/editingMode==='composer'\?'responsive':'absolute'/);assert.match(source,/target\.responsive\.mode='absolute'/,'dragging out of a composer region preserves freeform design');assert.match(source,/data-responsive-mode/);assert.match(app,/size:compact\?'small':state\.libraryPreferences\?\.cardSize/,'library forwards its selected readable density');
+for(const role of ['header','progress','ratings','actions'])assert.match(css,new RegExp(`data-container-role=${role}`));assert.match(css,/data-presentation=list/);assert.match(css,/min-height:44px/);assert.match(css,/@media\(max-width:650px\)/);assert.doesNotMatch(css.slice(css.indexOf('/* Responsive card composition')),/(#[0-9a-f]{3,8}|rgba?\()/i);
+console.log('readable card densities, responsive containers, shared previews, list presentation, and expert preservation assertions passed');

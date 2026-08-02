@@ -3,7 +3,7 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'selectable', 'evented'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented'];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
   const FIELD_META = {
     title: { label: 'Title', role: 'title' },
@@ -215,6 +215,47 @@
     return label;
   }
 
+  function sliderGlyphs(style, value, max) {
+    const glyph = { stars: '★', hearts: '♥', fire: '🔥', dots: '●' }[style] || '★';
+    const empty = { stars: '☆', hearts: '♡', fire: '·', dots: '○' }[style] || '☆';
+    const filled = clamp(Math.round(value), 0, max);
+    return `${glyph.repeat(filled)}${empty.repeat(Math.max(0, max - filled))}`;
+  }
+
+  function addCustomSlider(canvas, options = {}) {
+    const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
+    const name = String(options.name || 'Custom Tracker').trim() || 'Custom Tracker';
+    const style = ['bar', 'stars', 'hearts', 'fire', 'dots'].includes(options.style) ? options.style : 'bar';
+    const max = clamp(options.max ?? 5, 1, 100), value = clamp(options.value ?? 0, 0, max);
+    const left = options.left || 64, top = options.top || 150, trackWidth = options.width || Math.min(280, width * .66);
+    if (style === 'bar') {
+      const label = new fabric.Textbox(name, { left, top, width: trackWidth, fontSize: 13, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, name: `${name} label`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
+      const track = new fabric.Rect({ left, top: top + 22, width: trackWidth, height: 10, rx: 999, ry: 999, fill: theme.border, opacity: .75, name: `${name} track`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
+      const fill = new fabric.Rect({ left, top: top + 22, width: trackWidth * value / max, height: 10, rx: 999, ry: 999, fill: options.accent || theme.accent, name: `${name} fill`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
+      const valueText = new fabric.Textbox(`${value} of ${max}`, { left, top: top + 38, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, name: `${name} value`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
+      canvas.add(label, track, fill, valueText);
+      canvas.setActiveObject(valueText);
+      canvas.requestRenderAll();
+      return valueText;
+    }
+    const tracker = new fabric.Textbox(`${name}\n${sliderGlyphs(style, value, max)}\n${value} of ${max}`, {
+      left,
+      top,
+      width: trackWidth,
+      fontSize: options.fontSize || 22,
+      fontFamily: 'Libre Baskerville',
+      fontWeight: '700',
+      fill: options.fill || theme.accent,
+      name,
+      cardRole: 'custom-slider',
+      sliderConfig: { name, style, value, max }
+    });
+    canvas.add(tracker);
+    canvas.setActiveObject(tracker);
+    canvas.requestRenderAll();
+    return tracker;
+  }
+
   function makeObjectId(prefix) {
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
   }
@@ -294,6 +335,30 @@
     return true;
   }
 
+  function selectedObjects(canvas) {
+    const active = getActive(canvas);
+    if (!active) return [];
+    return active.type === 'activeSelection' && typeof active.getObjects === 'function' ? active.getObjects() : [active];
+  }
+
+  function alignActiveObjects(canvas, alignment) {
+    const objects = selectedObjects(canvas).filter(object => object.selectable !== false);
+    if (!objects.length) return false;
+    const width = canvas.__designWidth || canvas.getWidth(), height = canvas.__designHeight || canvas.getHeight();
+    objects.forEach(object => {
+      const scaledWidth = object.getScaledWidth?.() || object.width || 0, scaledHeight = object.getScaledHeight?.() || object.height || 0;
+      if (alignment === 'left') object.set('left', 0);
+      if (alignment === 'center') object.set('left', (width - scaledWidth) / 2);
+      if (alignment === 'right') object.set('left', width - scaledWidth);
+      if (alignment === 'top') object.set('top', 0);
+      if (alignment === 'middle') object.set('top', (height - scaledHeight) / 2);
+      if (alignment === 'bottom') object.set('top', height - scaledHeight);
+      object.setCoords?.();
+    });
+    canvas.requestRenderAll();
+    return true;
+  }
+
   function initCanvasEditor(canvasId, theme = currentTheme(), options = {}) {
     const fabric = requireFabric(), element = typeof canvasId === 'string' ? document.getElementById(canvasId) : canvasId;
     if (!element) throw new Error('Canvas element was not found.');
@@ -320,6 +385,8 @@
       addTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
       addBoundTextBox: (path, record, extra) => addBoundTextBox(canvas, path, record, extra),
       addProgressSlider: (record, extra) => addProgressSlider(canvas, record, extra),
+      addCustomSlider: extra => addCustomSlider(canvas, extra),
+      alignActiveObjects: alignment => alignActiveObjects(canvas, alignment),
       applyAppearancePreset: preset => applyAppearancePreset(canvas, preset),
       applyCardPreset: (preset, record) => applyCardPreset(canvas, preset, record),
       updateActiveObject: changes => updateActiveObject(canvas, changes),
@@ -351,6 +418,7 @@
           <button type="button" data-fabric-add="shape">Shape box</button>
           <button type="button" data-fabric-add="text">Text box</button>
           <button type="button" data-fabric-add="progress-slider">Progress slider</button>
+          <button type="button" data-fabric-add="custom-slider">Custom slider</button>
           <div class="fabric-field-palette" aria-label="Book fields">
             <p>Book fields</p>
             ${Object.entries(FIELD_META).map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}
@@ -369,6 +437,9 @@
           </div>
           <div class="fabric-preset-grid" aria-label="Appearance presets">
             ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
+          </div>
+          <div class="fabric-align-grid" aria-label="Alignment controls">
+            ${['left', 'center', 'right', 'top', 'middle', 'bottom'].map(action => `<button type="button" data-fabric-align="${action}">${action}</button>`).join('')}
           </div>
           <label>Font size <input type="range" min="8" max="72" value="24" data-fabric-prop="fontSize"></label>
           <label>Object width <input type="range" min="20" max="${Math.max(240, width)}" value="180" data-fabric-prop="width"></label>
@@ -427,6 +498,14 @@
     document.querySelector('[data-fabric-add="shape"]')?.addEventListener('click', () => editor.addShapeBox());
     document.querySelector('[data-fabric-add="text"]')?.addEventListener('click', () => editor.addEditableTextBox());
     document.querySelector('[data-fabric-add="progress-slider"]')?.addEventListener('click', () => editor.addProgressSlider(book));
+    document.querySelector('[data-fabric-add="custom-slider"]')?.addEventListener('click', () => {
+      const name = prompt('What should this slider track?', 'Scare level');
+      if (!name) return;
+      const style = prompt('Slider style: bar, stars, hearts, fire, or dots', 'stars') || 'stars';
+      const max = clamp(prompt('Maximum value?', '5'), 1, 100);
+      const value = clamp(prompt('Current value?', '0'), 0, max);
+      editor.addCustomSlider({ name, style: style.toLowerCase(), max, value });
+    });
     document.querySelectorAll('[data-fabric-field]').forEach(button => {
       button.addEventListener('click', () => editor.addBoundTextBox(button.dataset.fabricField, book, {
         width: Math.max(140, width * .4),
@@ -456,6 +535,7 @@
     document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => editor.updateActiveObject({ stroke: event.target.value }));
     document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }));
     document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => editor.applyAppearancePreset(button.dataset.fabricAppearance)));
+    document.querySelectorAll('[data-fabric-align]').forEach(button => button.addEventListener('click', () => editor.alignActiveObjects(button.dataset.fabricAlign)));
     document.querySelectorAll('[data-fabric-prop]').forEach(input => {
       input.addEventListener('input', event => {
         const prop = event.target.dataset.fabricProp;
@@ -465,12 +545,35 @@
         else editor.updateActiveObject({ [prop]: raw });
       });
     });
-    document.querySelector('[data-fabric-close]')?.addEventListener('click', () => adapters.closeModal?.());
+    const closeEditor = () => {
+      document.removeEventListener('keydown', keyHandler, true);
+      adapters.closeModal?.();
+    };
+    const keyHandler = event => {
+      const active = getActive(editor.canvas);
+      if (!active || active.isEditing || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return;
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        editor.deleteActiveElement();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        const objects = editor.canvas.getObjects().filter(object => object.selectable !== false);
+        if (objects.length) {
+          const fabric = requireFabric();
+          const selection = new fabric.ActiveSelection(objects, { canvas: editor.canvas });
+          editor.canvas.setActiveObject(selection);
+          editor.canvas.requestRenderAll();
+        }
+      }
+    };
+    document.addEventListener('keydown', keyHandler, true);
+    document.querySelector('[data-fabric-close]')?.addEventListener('click', closeEditor);
     document.querySelector('[data-fabric-save]')?.addEventListener('click', () => {
       const saved = adapters.save?.(serializeCanvas(editor.canvas), { width, height, name: title, sourceTemplate: template });
       adapters.showToast?.(saved ? 'Canvas card saved.' : 'Canvas card could not be saved.');
       adapters.renderAll?.();
-      adapters.closeModal?.();
+      closeEditor();
     });
     setTimeout(syncInspector, 0);
     return editor;
@@ -506,6 +609,8 @@
     addEditableTextBox,
     addBoundTextBox,
     addProgressSlider,
+    addCustomSlider,
+    alignActiveObjects,
     applyAppearancePreset,
     applyCardPreset,
     updateActiveObject,

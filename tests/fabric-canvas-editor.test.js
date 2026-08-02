@@ -14,6 +14,8 @@ assert.equal(typeof CE.addShapeBox,'function');
 assert.equal(typeof CE.addEditableTextBox,'function');
 assert.equal(typeof CE.addBoundTextBox,'function');
 assert.equal(typeof CE.addProgressSlider,'function');
+assert.equal(typeof CE.addCustomSlider,'function');
+assert.equal(typeof CE.alignActiveObjects,'function');
 assert.equal(typeof CE.applyCardPreset,'function');
 assert.equal(typeof CE.applyAppearancePreset,'function');
 assert.equal(typeof CE.addImageFromFile,'function');
@@ -50,9 +52,9 @@ assert.match(card,/data-fabric-card-json=/);
 assert.match(card,/CanvasEditor\.renderSavedCanvas|fabric-card-canvas/);
 assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards do not render the old editor canvas');
 
-for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset'])
+for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','overscroll-behavior','place-items:start center'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
 assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);

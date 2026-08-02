@@ -123,13 +123,15 @@
 .book-collection[data-card-size="large"] .visual-card-viewport{max-height:520px}
 
 /* Fabric canvas editor: new unrestricted Canva-style card engine. */
-.fabric-editor-backdrop>.modal{width:min(96vw,1280px);max-width:1280px;height:min(92dvh,900px);padding:0;overflow:hidden;background:var(--ui-surface,var(--panel));border:1px solid var(--ui-border,var(--border));box-shadow:var(--shadow)}
+.fabric-editor-backdrop{place-items:start center;padding:8px 12px;overflow:hidden}
+.fabric-editor-backdrop>.modal{width:min(96vw,1280px);max-width:1280px;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);margin:0;padding:0;overflow:hidden;background:var(--ui-surface,var(--panel));border:1px solid var(--ui-border,var(--border));box-shadow:var(--shadow)}
+.fabric-editor-backdrop>.modal #formModalContent{height:100%;min-height:0;overflow:hidden}
 .fabric-card-editor{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%;min-height:0;color:var(--ui-text,var(--text))}
 .fabric-editor-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;border-bottom:1px solid var(--ui-border,var(--border));background:linear-gradient(135deg,var(--ui-surface-raised,var(--panel-2)),var(--ui-surface,var(--panel)))}
 .fabric-editor-header h2{margin:0}.fabric-editor-header p{margin:.2rem 0 0;color:var(--ui-text-muted,var(--muted))}
 .fabric-editor-actions{display:flex;align-items:center;gap:10px}.fabric-editor-actions button{min-height:44px}
-.fabric-editor-layout{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr) minmax(250px,320px);min-height:0}
-.fabric-editor-sidebar,.fabric-editor-inspector{display:grid;align-content:start;gap:12px;min-height:0;padding:18px;overflow:auto;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 88%,black)}
+.fabric-editor-layout{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr) minmax(250px,320px);height:100%;min-height:0;overflow:hidden}
+.fabric-editor-sidebar,.fabric-editor-inspector{display:grid;align-content:start;gap:12px;height:100%;min-height:0;max-height:100%;padding:18px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 88%,black);scrollbar-color:var(--ui-accent,var(--accent)) color-mix(in srgb,var(--ui-surface,var(--panel)) 72%,black)}
 .fabric-editor-sidebar{border-right:1px solid var(--ui-border,var(--border))}
 .fabric-editor-inspector{border-left:1px solid var(--ui-border,var(--border))}
 .fabric-editor-sidebar button,.fabric-editor-inspector button,.fabric-upload-control{display:grid;place-items:center;min-height:48px;padding:10px 12px;border:1px solid var(--ui-border,var(--border));border-radius:16px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text));font:inherit;font-weight:800;box-shadow:var(--shadow);cursor:pointer}
@@ -142,10 +144,10 @@
 .fabric-field-palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border:1px solid var(--ui-border,var(--border));border-radius:18px;background:color-mix(in srgb,var(--ui-surface-raised,var(--panel-2)) 82%,transparent)}
 .fabric-field-palette p{grid-column:1/-1;margin:0;color:var(--ui-text-muted,var(--muted));font-weight:900;letter-spacing:.04em;text-transform:uppercase}
 .fabric-field-palette button{min-height:38px;border-radius:12px;box-shadow:none}
-.fabric-preset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fabric-preset-grid button{text-transform:capitalize;min-height:40px;box-shadow:none}
+.fabric-preset-grid,.fabric-align-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fabric-preset-grid button,.fabric-align-grid button{text-transform:capitalize;min-height:40px;box-shadow:none}
 .fabric-color-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fabric-color-row input{width:100%;min-height:44px;padding:4px;border:1px solid var(--ui-border,var(--border));border-radius:12px;background:var(--ui-surface-raised,var(--panel-2))}
 .fabric-editor-hint{margin:8px 0 0;padding:12px;border:1px dashed var(--ui-border,var(--border));border-radius:16px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text-muted,var(--muted))}
-.fabric-canvas-workspace{display:grid;place-items:center;min-height:0;padding:24px;overflow:auto;background:radial-gradient(circle at top,var(--ui-surface-raised,var(--panel-2)),transparent 42%),var(--ui-surface,var(--panel))}
+.fabric-canvas-workspace{display:grid;place-items:start center;min-height:0;padding:24px 24px 80px;overflow:auto;overscroll-behavior:contain;background:radial-gradient(circle at top,var(--ui-surface-raised,var(--panel-2)),transparent 42%),var(--ui-surface,var(--panel))}
 .fabric-canvas-frame{padding:18px;border:1px solid var(--ui-border,var(--border));border-radius:28px;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 72%,transparent);box-shadow:var(--shadow)}
 .fabric-canvas-frame canvas,.fabric-card-canvas{display:block;max-width:100%;border-radius:22px}
 .fabric-card-viewport{display:grid;place-items:stretch;overflow:hidden;background:transparent}.fabric-card-viewport canvas{inline-size:100%;block-size:100%}

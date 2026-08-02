@@ -30,11 +30,11 @@ assert.match(html,/data-style-preset="glass"/,'existing modules render their sel
 assert.match(html,/data-sizing-mode="custom"/,'live cards use fixed saved boxes instead of content-hugging auto boxes');
 assert.match(html,/data-saved-sizing-mode="custom"/,'the renderer preserves the original saved sizing mode for auditing');
 
-for(const hook of ['renderCard','data-editor-view','data-builder-zoom="fit"','data-builder-zoom="100"','data-upload-asset','data-template-preset','autoArrangeBookTemplate','data-action="view-book"','data-saved-sizing-mode','const action=button.dataset.builderZoom'])
+for(const hook of ['renderCard','data-editor-view','data-builder-zoom="fit"','data-builder-zoom="100"','data-upload-asset','data-template-preset','autoArrangeBookTemplate','data-action="view-book"','data-saved-sizing-mode','const action=button.dataset.builderZoom','data-style-preset-quick','data-style-swatch','type="color"'])
   assert.ok(source.includes(hook),hook);
 assert.doesNotMatch(source,/querySelector\('\[data-builder-zoom-fit\]'\)\.onclick/,'zoom controls do not bind to missing selectors');
 
-for(const style of ['Canvas parity repair','visual-card-viewport','data-style-preset=glass','data-style-preset=raised-panel','data-style-preset=pill','visual-book-actions button:after','builder-color-control','builder-layers','font-size:var(--module-font-size)','scrollbar-gutter:stable','visual-builder-backdrop>.modal'])
+for(const style of ['Canvas parity repair','visual-card-viewport','data-style-preset=glass','data-style-preset=raised-panel','data-style-preset=pill','visual-book-actions button:after','builder-color-control','builder-color-swatches','builder-style-gallery','style-tile','builder-layers','font-size:var(--module-font-size)','scrollbar-gutter:stable','visual-builder-backdrop>.modal'])
   assert.ok(css.includes(style),style);
 assert.doesNotMatch(css,/font-size:max\(14px/,'small cards do not force desktop title text');
 assert.doesNotMatch(css,/\.visual-book-module\{[^}]*container-type:size/,'modules do not create isolated size containers that make text measure against tiny boxes');

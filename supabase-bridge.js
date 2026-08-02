@@ -105,7 +105,7 @@
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = `${file}?v=${ASSET_VERSION}`;
-      script.onload = resolve;
+      script.onload = () => { if (window.__VISUAL_DEBUG__) console.debug('[VisualBuilder] runtime-asset', { file, source: script.src, cacheVersion: ASSET_VERSION, active: file === 'visual-builder.js' }); resolve(); };
       script.onerror = () => reject(new Error(`Failed to load ${file}`));
       document.body.appendChild(script);
     });
@@ -119,6 +119,7 @@
       // environment. Awaiting each load prevents patches from racing app boot
       // or overriding one another in a stale order.
       for (const file of APP_SCRIPTS) await loadScript(file);
+      if (window.__VISUAL_DEBUG__) console.debug('[VisualBuilder] runtime-ready', { activeRenderer: window.VisualBuilder?.renderBookCard ? 'VisualBuilder.renderBookCard' : 'app.bookCard fallback', cacheVersion: ASSET_VERSION, scriptOrder: [...APP_SCRIPTS], visualBuilderVersion: window.VisualBuilder?.VISUAL_ASSET_VERSION || 'missing' });
       renderAll();
       bindAppControls();
       closeAuth();

@@ -69,13 +69,13 @@
   }
 
   function recordValue(record = {}, path = '') {
+    if (path === 'rating') return record.ratings?.overall ?? record.ratings?.rating ?? pathValue(record, path) ?? 0;
+    if (path === 'spice') return record.ratings?.spice ?? pathValue(record, path) ?? 0;
+    if (path === 'impact') return record.ratings?.impact ?? pathValue(record, path) ?? 0;
+    if (path === 'reaction') return record.ratings?.reaction ?? record.reaction ?? '';
+    if (path === 'progress') return pathValue(record, path) ?? record.readingProgress ?? record.percentComplete ?? 0;
     const direct = pathValue(record, path);
     if (direct !== undefined && direct !== null && direct !== '') return direct;
-    if (path === 'rating') return record.ratings?.overall ?? record.ratings?.rating ?? 0;
-    if (path === 'spice') return record.ratings?.spice ?? 0;
-    if (path === 'impact') return record.ratings?.impact ?? 0;
-    if (path === 'reaction') return record.ratings?.reaction ?? record.reaction ?? '';
-    if (path === 'progress') return record.progress ?? record.readingProgress ?? record.percentComplete ?? 0;
     return direct;
   }
 
@@ -123,9 +123,16 @@
       const textLike = ['textbox', 'text', 'i-text', 'itext'].includes(type);
       if (path === 'progress' && !textLike && object.sliderConfig?.trackWidth) {
         object.width = object.sliderConfig.trackWidth * clamp(value ?? 0, 0, 100) / 100;
-        object.sliderConfig.value = clamp(value ?? 0, 0, 100);
-      } else if (path === 'progress') object.text = `${displayNumber(clamp(value ?? 0, 0, 100))}%`;
-      else if (['rating', 'spice', 'impact'].includes(path)) object.text = ratingDisplay(path, value);
+        object.sliderConfig = { ...(object.sliderConfig || {}), path, value: clamp(value ?? 0, 0, 100), max: 100, style: 'bar' };
+      } else if (path === 'progress') {
+        const progressValue = clamp(value ?? 0, 0, 100);
+        object.text = `${displayNumber(progressValue)}%`;
+        object.sliderConfig = { ...(object.sliderConfig || {}), path, name: 'Progress', style: 'bar', value: progressValue, max: 100 };
+      }
+      else if (['rating', 'spice', 'impact'].includes(path)) {
+        object.text = ratingDisplay(path, value);
+        object.sliderConfig = { ...(object.sliderConfig || {}), path, name: FIELD_META[path]?.label || path, style: sliderStyleForPath(path), value: clamp(value ?? 0, 0, 5), max: 5 };
+      }
       else object.text = String(value ?? object.text ?? '');
     });
     return clone;
@@ -257,6 +264,58 @@
     return `${glyph.repeat(filled)}${empty.repeat(Math.max(0, max - filled))}`;
   }
 
+  function bindingPath(object) {
+    return object?.dataBinding?.path || object?.sliderConfig?.path || '';
+  }
+
+  function sliderStyleForPath(path, fallback = 'stars') {
+    if (path === 'rating') return 'stars';
+    if (path === 'spice') return 'fire';
+    if (path === 'impact') return 'hearts';
+    if (path === 'progress') return 'bar';
+    return fallback;
+  }
+
+  function sliderMaxForPath(path, fallback = 5) {
+    return path === 'progress' ? 100 : fallback;
+  }
+
+  function setBookValue(record = {}, path = '', value) {
+    const numeric = number(value, 0);
+    if (path === 'rating') {
+      record.rating = numeric;
+      record.ratings = { ...(record.ratings || {}), overall: numeric };
+    } else if (path === 'spice' || path === 'impact') {
+      record[path] = numeric;
+      record.ratings = { ...(record.ratings || {}), [path]: numeric };
+    } else if (path === 'progress') {
+      record.progress = clamp(numeric, 0, 100);
+      if (record.progress > 0 && record.status === 'want') record.status = 'reading';
+      if (record.progress >= 100) record.status = 'completed';
+    }
+    record.updatedAt = Date.now();
+  }
+
+  function updateSliderObject(object, value, extra = {}) {
+    if (!object) return false;
+    const path = bindingPath(object);
+    const config = { ...(object.sliderConfig || {}) };
+    const max = sliderMaxForPath(path, number(extra.max ?? config.max, path === 'progress' ? 100 : 5));
+    const style = extra.style || config.style || sliderStyleForPath(path);
+    const numeric = clamp(value, 0, max);
+    object.sliderConfig = { ...config, path: path || config.path, style, value: numeric, max };
+    if (path === 'progress') object.set?.('text', `${displayNumber(numeric)}%`);
+    else if (['rating', 'spice', 'impact'].includes(path)) object.set?.('text', ratingDisplay(path, numeric, max));
+    else if (object.cardRole === 'custom-slider' || config.name) {
+      const name = String(extra.name || config.name || object.name || 'Custom Tracker');
+      object.sliderConfig.name = name;
+      if (style === 'bar') object.set?.('text', `${name}\n${displayNumber(numeric)} of ${max}`);
+      else object.set?.('text', `${name}\n${sliderGlyphs(style, numeric, max)}\n${displayNumber(numeric)} of ${max}`);
+    }
+    object.setCoords?.();
+    return true;
+  }
+
   function addCustomSlider(canvas, options = {}) {
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
     const name = String(options.name || 'Custom Tracker').trim() || 'Custom Tracker';
@@ -273,7 +332,7 @@
       canvas.requestRenderAll();
       return valueText;
     }
-    const tracker = new fabric.Textbox(`${name}\n${sliderGlyphs(style, value, max)}\n${value} of ${max}`, {
+    const tracker = new fabric.Textbox(`${name}\n${sliderGlyphs(style, value, max)}\n${displayNumber(value)} of ${max}`, {
       left,
       top,
       width: trackWidth,
@@ -324,11 +383,13 @@
   function addBoundTextBox(canvas, path, record = {}, options = {}) {
     const meta = FIELD_META[path] || { label: path, role: 'metadata' };
     const object = addEditableTextBox(canvas, fieldText(path, record), options);
+    const isBoundSlider = ['rating', 'spice', 'impact', 'progress'].includes(path);
     object.set({
       id: options.id || path,
       name: options.name || meta.label,
       dataBinding: { path },
-      cardRole: options.cardRole || meta.role
+      cardRole: options.cardRole || meta.role,
+      ...(isBoundSlider ? { sliderConfig: { path, name: meta.label, style: sliderStyleForPath(path), value: clamp(recordValue(record, path), 0, sliderMaxForPath(path)), max: sliderMaxForPath(path) } } : {})
     });
     object.exitEditing?.();
     canvas.requestRenderAll();
@@ -468,6 +529,10 @@
             <p>Selected piece</p>
             <output data-fabric-selected-name>Nothing selected</output>
           </div>
+          <div class="fabric-value-controls" data-fabric-value-controls hidden>
+            <label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label>
+            <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option></select></label>
+          </div>
           <div class="fabric-preset-grid" aria-label="Appearance presets">
             ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
           </div>
@@ -509,7 +574,23 @@
     const syncInspector = () => {
       const active = getActive(editor.canvas);
       const selectedName = document.querySelector('[data-fabric-selected-name]');
+      const activePath = bindingPath(active);
       if (selectedName) selectedName.textContent = active ? (active.name || active.id || active.type || 'Selected piece') : 'Nothing selected';
+      const valueControls = document.querySelector('[data-fabric-value-controls]');
+      const valueInput = document.querySelector('[data-fabric-value]');
+      const valueOutput = document.querySelector('[data-fabric-value-output]');
+      const styleSelect = document.querySelector('[data-fabric-slider-style]');
+      const isValueObject = Boolean(active && (activePath || active.sliderConfig || active.cardRole === 'custom-slider'));
+      if (valueControls) valueControls.hidden = !isValueObject;
+      if (isValueObject && valueInput) {
+        const max = sliderMaxForPath(activePath, number(active.sliderConfig?.max, 5));
+        const value = clamp(active.sliderConfig?.value ?? recordValue(book, activePath), 0, max);
+        valueInput.max = String(max);
+        valueInput.step = activePath === 'progress' ? '1' : '0.5';
+        valueInput.value = String(value);
+        if (valueOutput) valueOutput.textContent = activePath === 'progress' ? `${displayNumber(value)}%` : `${displayNumber(value)} of ${max}`;
+        if (styleSelect) styleSelect.value = active.sliderConfig?.style || sliderStyleForPath(activePath);
+      }
       document.querySelectorAll('[data-fabric-prop]').forEach(input => {
         if (!active) return;
         const prop = input.dataset.fabricProp;
@@ -567,6 +648,23 @@
     });
     document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => editor.updateActiveObject({ stroke: event.target.value }));
     document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }));
+    document.querySelector('[data-fabric-value]')?.addEventListener('input', event => {
+      const active = getActive(editor.canvas);
+      if (!active) return;
+      const path = bindingPath(active);
+      const value = number(event.target.value, 0);
+      updateSliderObject(active, value, { style: document.querySelector('[data-fabric-slider-style]')?.value });
+      if (path) setBookValue(book, path, value);
+      editor.canvas.requestRenderAll();
+      syncInspector();
+    });
+    document.querySelector('[data-fabric-slider-style]')?.addEventListener('change', event => {
+      const active = getActive(editor.canvas);
+      if (!active) return;
+      updateSliderObject(active, active.sliderConfig?.value ?? recordValue(book, bindingPath(active)), { style: event.target.value });
+      editor.canvas.requestRenderAll();
+      syncInspector();
+    });
     document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => editor.applyAppearancePreset(button.dataset.fabricAppearance)));
     document.querySelectorAll('[data-fabric-align]').forEach(button => button.addEventListener('click', () => editor.alignActiveObjects(button.dataset.fabricAlign)));
     document.querySelectorAll('[data-fabric-prop]').forEach(input => {

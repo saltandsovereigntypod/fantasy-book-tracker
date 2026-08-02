@@ -30,6 +30,10 @@ const nestedRatings=CE.bindRecord(scene,{title:'Onyx Storm 2',author:'Rebecca Ya
 assert.match(nestedRatings.objects.find(item=>item.id==='rating').text,/★★★★★\n5 of 5/);
 assert.match(nestedRatings.objects.find(item=>item.id==='spice').text,/🔥🔥···\n2 of 5/);
 assert.match(nestedRatings.objects.find(item=>item.id==='impact').text,/♥♥♡♡♡\n2 of 5/);
+const staleDirectZeros=CE.bindRecord(scene,{title:'Madness',rating:0,spice:0,impact:0,ratings:{overall:2,spice:1,impact:1.5}});
+assert.match(staleDirectZeros.objects.find(item=>item.id==='rating').text,/2 of 5/);
+assert.match(staleDirectZeros.objects.find(item=>item.id==='spice').text,/1 of 5/);
+assert.match(staleDirectZeros.objects.find(item=>item.id==='impact').text,/1.5 of 5/);
 const fallback=CE.bindRecord({}, {title:'Onyx Storm',author:'Rebecca Yarros',series:'The Empyrean',status:'completed',progress:100,rating:5,spice:2,impact:3});
 assert.equal(fallback.objects.find(item=>item.id==='title').text,'Onyx Storm','empty saved Fabric JSON falls back to starter book fields');
 assert.equal(CE.validScene({}),null);
@@ -56,9 +60,9 @@ assert.match(card,/data-fabric-card-json=/);
 assert.match(card,/CanvasEditor\.renderSavedCanvas|fabric-card-canvas/);
 assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards do not render the old editor canvas');
 
-for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection'])
+for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection','data-fabric-value','data-fabric-slider-style','setBookValue','updateSliderObject'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','fabric-value-controls','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
 assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);

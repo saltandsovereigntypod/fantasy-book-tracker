@@ -13,12 +13,15 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
+  const ASSET_VERSION = '20260801-19';
+  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-builder.js'];
 
   const $ = id => document.getElementById(id);
   const setMessage = text => { if ($('authMessage')) $('authMessage').textContent = text; };
   const setSync = text => { if ($('syncStatus')) $('syncStatus').textContent = text; };
   const openAuth = () => { $('authModal')?.classList.add('is-open'); $('authModal')?.setAttribute('aria-hidden', 'false'); };
   const closeAuth = () => { $('authModal')?.classList.remove('is-open'); $('authModal')?.setAttribute('aria-hidden', 'true'); };
+  const finishHydration = () => { document.body.classList.remove('auth-hydrating'); $('authHydration')?.setAttribute('aria-hidden', 'true'); };
 
   function setMode(next) {
     mode = next;
@@ -98,22 +101,36 @@
     setSync('Cloud saved');
   }
 
-  function loadApp() {
+  function loadScript(file) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `${file}?v=${ASSET_VERSION}`;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load ${file}`));
+      document.body.appendChild(script);
+    });
+  }
+
+  async function loadApp() {
     if (appLoaded) return;
     appLoaded = true;
-    closeAuth();
-    document.body.classList.remove('cloud-locked');
-    const script = document.createElement('script');
-    script.src = 'app.js?v=20260731-3';
-    script.onload = () => {
-      const hotfix = document.createElement('script');
-      hotfix.src = 'hotfix.js?v=20260731-3';
-      hotfix.onload = bindAppControls;
-      hotfix.onerror = bindAppControls;
-      document.body.appendChild(hotfix);
-    };
-    script.onerror = () => setMessage('The tracker could not load. Refresh the page.');
-    document.body.appendChild(script);
+    try {
+      // These classic scripts intentionally share app.js's global lexical
+      // environment. Awaiting each load prevents patches from racing app boot
+      // or overriding one another in a stale order.
+      for (const file of APP_SCRIPTS) await loadScript(file);
+      renderAll();
+      bindAppControls();
+      closeAuth();
+      document.body.classList.remove('cloud-locked');
+      finishHydration();
+    } catch (error) {
+      console.error('Production runtime failed to load:', error);
+      appLoaded = false;
+      setMessage('The tracker could not load its latest runtime. Refresh the page.');
+      finishHydration();
+      openAuth();
+    }
   }
 
   function bindAppControls() {
@@ -198,9 +215,8 @@
 
   async function boot() {
     document.body.classList.add('cloud-locked');
-    openAuth();
     bindAuth();
-    if (!window.supabase) return setMessage('The cloud library could not load. Check your connection and refresh.');
+    if (!window.supabase) { finishHydration(); openAuth(); return setMessage('The cloud library could not load. Check your connection and refresh.'); }
     supabase = window.supabase.createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     supabase.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -210,11 +226,11 @@
       }
     });
     const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) return setMessage(error.message);
+    if (error) { finishHydration(); openAuth(); return setMessage(error.message); }
     if (session?.user) {
       try { await enter(session.user); }
-      catch (error) { console.error(error); setMessage(error.message || 'Your archive could not be opened.'); }
-    }
+      catch (error) { console.error(error); finishHydration(); openAuth(); setMessage(error.message || 'Your archive could not be opened.'); }
+    } else { finishHydration(); openAuth(); }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

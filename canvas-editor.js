@@ -15,6 +15,30 @@
     spice: { label: 'Spice', role: 'rating' },
     impact: { label: 'Impact', role: 'rating' }
   };
+  const TEXT_STYLE_PRESETS = {
+    romantasy: { label: 'Romantasy title', text: 'Moonlit Archive', fontFamily: 'Libre Baskerville', fontSize: 34, fontWeight: '700', fill: 'theme:text', shadow: '0 10px 24px rgba(0,0,0,.48)' },
+    neon: { label: 'Neon script', text: 'Glowing Fate', fontFamily: 'Brush Script MT', fontSize: 42, fontWeight: '700', fill: '#ff82d8', shadow: '0 0 8px #ff82d8, 0 0 22px #a855f7' },
+    tattoo: { label: 'Tattoo serif', text: 'Marked', fontFamily: 'Georgia', fontSize: 36, fontWeight: '700', fill: 'theme:text', stroke: 'theme:accent', strokeWidth: .8 },
+    metallic: { label: 'Metallic emboss', text: 'Gilded', fontFamily: 'Impact', fontSize: 38, fontWeight: '700', fill: '#f3d28b', stroke: '#6b421f', strokeWidth: 1.2, shadow: '3px 4px 0 rgba(0,0,0,.34)' },
+    softScript: { label: 'Soft script', text: 'Secret Chapter', fontFamily: 'Brush Script MT', fontSize: 40, fontWeight: '400', fill: 'theme:muted', shadow: '0 6px 18px rgba(0,0,0,.25)' },
+    archive: { label: 'Archive label', text: 'BOOK ARCHIVE', fontFamily: 'Inter', fontSize: 16, fontWeight: '900', fill: 'theme:muted', charSpacing: 180, textAlign: 'center' },
+    sticker: { label: 'Sticker pop', text: 'Obsessed', fontFamily: 'Trebuchet MS', fontSize: 34, fontWeight: '900', fill: 'theme:text', stroke: 'theme:accent', strokeWidth: 2.5, shadow: '0 8px 0 rgba(0,0,0,.28)' }
+  };
+  const ELEMENT_PRESETS = {
+    divider: { label: 'Divider', kind: 'divider' },
+    banner: { label: 'Banner', kind: 'banner' },
+    badge: { label: 'Badge', kind: 'badge' },
+    panel: { label: 'Panel', kind: 'panel' },
+    circle: { label: 'Circle', kind: 'circle' },
+    frame: { label: 'Frame', kind: 'frame' },
+    sparkle: { label: 'Sparkles', kind: 'glyph', glyph: '✦ ✧ ✦' },
+    moon: { label: 'Moon', kind: 'glyph', glyph: '☾' },
+    stars: { label: 'Stars', kind: 'glyph', glyph: '★ ✦ ★' },
+    hearts: { label: 'Hearts', kind: 'glyph', glyph: '♥ ♥ ♥' },
+    corners: { label: 'Corners', kind: 'corners' },
+    flourish: { label: 'Flourish', kind: 'glyph', glyph: '❦' }
+  };
+  const FONT_OPTIONS = ['Libre Baskerville', 'Inter', 'Georgia', 'Arial', 'Trebuchet MS', 'Impact', 'Brush Script MT', 'Courier New', 'Verdana', 'Times New Roman', 'Palatino', 'Didot', 'Copperplate', 'Marker Felt', 'Papyrus'];
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, number(value, min)));
@@ -31,6 +55,15 @@
     border: themeValue('--ui-border', themeValue('--border', '#75451f')),
     shadow: themeValue('--shadow', '0 20px 60px rgba(0,0,0,.35)')
   });
+  function themeToken(value, theme = currentTheme()) {
+    if (value === 'theme:text') return theme.text;
+    if (value === 'theme:muted') return theme.muted;
+    if (value === 'theme:accent') return theme.accent;
+    if (value === 'theme:border') return theme.border;
+    if (value === 'theme:surface') return theme.surface;
+    if (value === 'theme:surfaceSoft') return theme.surfaceSoft;
+    return value;
+  }
 
   function requireFabric() {
     const fabric = fabricApi();
@@ -101,7 +134,8 @@
     const name = config.name || FIELD_META[path]?.label || 'Custom Tracker';
     if (path === 'progress') return `${displayNumber(value)}%`;
     if (['rating', 'spice', 'impact'].includes(path)) return ratingDisplay(path, value, max);
-    return `${name}\n${sliderGlyphs(style, value, max)}\n${displayNumber(value)} of ${max}`;
+    const iconNote = style === 'custom-icon' && config.iconName ? ` (${config.iconName})` : '';
+    return `${name}${iconNote}\n${sliderGlyphs(style, value, max)}\n${displayNumber(value)} of ${max}`;
   }
 
   function baseScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
@@ -205,6 +239,8 @@
     if (effect === 'shadow') active.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
     if (effect === 'glow') active.set({ shadow: `0 0 16px ${theme.accent}` });
     if (effect === 'outline') active.set({ stroke: theme.accent, strokeWidth: 1 });
+    if (effect === 'hollow') active.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
+    if (effect === 'lift') active.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
     if (effect === 'clear') active.set({ shadow: null, stroke: null, strokeWidth: 0 });
     active.setCoords?.();
     canvas.requestRenderAll();
@@ -288,6 +324,61 @@
     return rect;
   }
 
+  function addTextPreset(canvas, presetKey = 'romantasy') {
+    const fabric = requireFabric(), theme = currentTheme();
+    const preset = TEXT_STYLE_PRESETS[presetKey] || TEXT_STYLE_PRESETS.romantasy;
+    const textbox = new fabric.Textbox(preset.text, {
+      left: 72,
+      top: 72,
+      width: 260,
+      fontSize: preset.fontSize || 28,
+      fontFamily: preset.fontFamily || 'Libre Baskerville',
+      fontWeight: preset.fontWeight || '700',
+      fill: themeToken(preset.fill, theme),
+      stroke: themeToken(preset.stroke, theme),
+      strokeWidth: number(preset.strokeWidth, 0),
+      shadow: preset.shadow || null,
+      charSpacing: number(preset.charSpacing, 0),
+      textAlign: preset.textAlign || 'left',
+      name: preset.label,
+      cardRole: 'text-preset',
+      splitByGrapheme: true
+    });
+    canvas.add(textbox);
+    centerOriginObject(textbox);
+    canvas.setActiveObject(textbox);
+    canvas.requestRenderAll();
+    return textbox;
+  }
+
+  function addElement(canvas, elementKey = 'panel') {
+    const fabric = requireFabric(), theme = currentTheme();
+    const preset = ELEMENT_PRESETS[elementKey] || ELEMENT_PRESETS.panel;
+    let object;
+    if (preset.kind === 'divider') {
+      object = new fabric.Rect({ left: 72, top: 92, width: 220, height: 4, rx: 999, ry: 999, fill: theme.accent, name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'banner') {
+      object = new fabric.Rect({ left: 64, top: 64, width: 230, height: 56, rx: 18, ry: 18, fill: theme.accent, stroke: theme.border, strokeWidth: 1, shadow: '0 14px 28px rgba(0,0,0,.30)', name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'badge') {
+      object = new fabric.Circle({ left: 84, top: 72, radius: 44, fill: theme.surfaceSoft, stroke: theme.accent, strokeWidth: 3, shadow: '0 16px 34px rgba(0,0,0,.34)', name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'panel') {
+      object = new fabric.Rect({ left: 48, top: 48, width: 260, height: 150, rx: 24, ry: 24, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 2, opacity: .9, shadow: '0 20px 46px rgba(0,0,0,.36)', name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'circle') {
+      object = new fabric.Circle({ left: 86, top: 76, radius: 54, fill: 'transparent', stroke: theme.accent, strokeWidth: 2, name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'frame') {
+      object = new fabric.Rect({ left: 52, top: 52, width: 180, height: 230, rx: 18, ry: 18, fill: 'transparent', stroke: theme.muted, strokeWidth: 3, shadow: 'inset 0 0 0 1px rgba(255,255,255,.12)', name: preset.label, cardRole: 'frame' });
+    } else if (preset.kind === 'corners') {
+      object = new fabric.Textbox('⌜        ⌝\n\n\n⌞        ⌟', { left: 60, top: 60, width: 220, fontSize: 34, fontFamily: 'Georgia', fontWeight: '700', fill: theme.accent, name: preset.label, cardRole: 'decor', splitByGrapheme: true });
+    } else {
+      object = new fabric.Textbox(preset.glyph || '✦', { left: 76, top: 76, width: 180, fontSize: 34, fontFamily: 'Georgia', fontWeight: '700', fill: theme.accent, name: preset.label, cardRole: 'decor', splitByGrapheme: true });
+    }
+    canvas.add(object);
+    centerOriginObject(object);
+    canvas.setActiveObject(object);
+    canvas.requestRenderAll();
+    return object;
+  }
+
   function addProgressSlider(canvas, record = {}, options = {}) {
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
     const left = options.left || 64, top = options.top || 120, trackWidth = options.width || Math.min(260, width * .62);
@@ -307,13 +398,16 @@
   function sliderGlyphs(style, value, max) {
     if (style === 'bar') {
       const cells = 10;
-      const filled = clamp(Math.round((number(value, 0) / Math.max(1, number(max, 1))) * cells), 0, cells);
-      return `${'█'.repeat(filled)}${'░'.repeat(cells - filled)}`;
+      const raw = (number(value, 0) / Math.max(1, number(max, 1))) * cells;
+      const full = Math.floor(raw), half = raw - full >= .5 && full < cells;
+      return `${'█'.repeat(full)}${half ? '▌' : ''}${'░'.repeat(Math.max(0, cells - full - (half ? 1 : 0)))}`;
     }
-    const glyph = { stars: '★', hearts: '♥', fire: '🔥', dots: '●' }[style] || '★';
-    const empty = { stars: '☆', hearts: '♡', fire: '·', dots: '○' }[style] || '☆';
-    const filled = clamp(Math.round(value), 0, max);
-    return `${glyph.repeat(filled)}${empty.repeat(Math.max(0, max - filled))}`;
+    const glyph = { stars: '★', hearts: '♥', fire: '🔥', dots: '●', 'custom-icon': '◆' }[style] || '★';
+    const halfGlyph = { stars: '⯨', hearts: '◐', fire: '½', dots: '◐', 'custom-icon': '◐' }[style] || '⯨';
+    const empty = { stars: '☆', hearts: '♡', fire: '·', dots: '○', 'custom-icon': '◇' }[style] || '☆';
+    const numeric = clamp(value, 0, max);
+    const full = Math.floor(numeric), half = numeric - full >= .5 && full < max;
+    return `${glyph.repeat(full)}${half ? halfGlyph : ''}${empty.repeat(Math.max(0, max - full - (half ? 1 : 0)))}`;
   }
 
   function bindingPath(object) {
@@ -377,7 +471,7 @@
   function addCustomSlider(canvas, options = {}) {
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
     const name = String(options.name || 'Custom Tracker').trim() || 'Custom Tracker';
-    const style = ['bar', 'stars', 'hearts', 'fire', 'dots'].includes(options.style) ? options.style : 'bar';
+    const style = ['bar', 'stars', 'hearts', 'fire', 'dots', 'custom-icon'].includes(options.style) ? options.style : 'bar';
     const max = clamp(options.max ?? 5, 1, 100), value = clamp(options.value ?? 0, 0, max);
     const left = options.left || 64, top = options.top || 150, trackWidth = options.width || Math.min(280, width * .66);
     const sliderId = makeObjectId('custom-slider');
@@ -402,7 +496,7 @@
       fill: options.fill || theme.accent,
       name,
       cardRole: 'custom-slider',
-      sliderConfig: { sliderId, role: 'value', name, style, value, max }
+      sliderConfig: { sliderId, role: 'value', name, style, value, max, iconSrc: options.iconSrc || '', iconName: options.iconName || '' }
     });
     canvas.add(tracker);
     canvas.setActiveObject(tracker);
@@ -505,6 +599,82 @@
       canvas.setActiveObject(clone);
       canvas.requestRenderAll();
       return clone;
+    });
+  }
+
+  function styleSnapshot(object) {
+    if (!object) return null;
+    const keys = ['fill', 'stroke', 'strokeWidth', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'underline', 'textAlign', 'shadow', 'opacity', 'rx', 'ry', 'charSpacing'];
+    return keys.reduce((snapshot, key) => {
+      if (object[key] !== undefined) snapshot[key] = object[key];
+      return snapshot;
+    }, {});
+  }
+
+  function pasteStyle(canvas, snapshot) {
+    const active = getActive(canvas);
+    if (!active || !snapshot) return false;
+    Object.entries(snapshot).forEach(([key, value]) => active.set?.(key, value));
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function groupSelection(canvas) {
+    const fabric = requireFabric();
+    const active = getActive(canvas);
+    if (!active || active.type !== 'activeSelection' || typeof active.toGroup !== 'function') return false;
+    const group = active.toGroup();
+    group.set({ name: 'Group', cardRole: 'group' });
+    centerOriginObject(group);
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function ungroupSelection(canvas) {
+    const active = getActive(canvas);
+    if (!active || active.type !== 'group' || typeof active.toActiveSelection !== 'function') return false;
+    active.toActiveSelection();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function distributeActiveObjects(canvas, axis = 'horizontal') {
+    const objects = selectedObjects(canvas).filter(object => object.selectable !== false);
+    if (objects.length < 3) return false;
+    const entries = objects.map(object => ({ object, rect: object.getBoundingRect?.() || { left: number(object.left, 0), top: number(object.top, 0), width: object.getScaledWidth?.() || object.width || 0, height: object.getScaledHeight?.() || object.height || 0 } }));
+    const key = axis === 'vertical' ? 'top' : 'left';
+    const sizeKey = axis === 'vertical' ? 'height' : 'width';
+    entries.sort((a, b) => a.rect[key] - b.rect[key]);
+    const first = entries[0].rect[key], last = entries[entries.length - 1].rect[key], totalSize = entries.reduce((sum, entry) => sum + entry.rect[sizeKey], 0);
+    const gap = (last + entries[entries.length - 1].rect[sizeKey] - first - totalSize) / (entries.length - 1);
+    let cursor = first;
+    entries.forEach(entry => {
+      const left = axis === 'vertical' ? entry.rect.left : cursor;
+      const top = axis === 'vertical' ? cursor : entry.rect.top;
+      if (entry.object.setPositionByOrigin) entry.object.setPositionByOrigin({ x: left, y: top }, 'left', 'top');
+      else entry.object.set({ left, top });
+      entry.object.setCoords?.();
+      cursor += entry.rect[sizeKey] + gap;
+    });
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function applySliderIconFromFile(object, file) {
+    return new Promise((resolve, reject) => {
+      if (!isSliderObject(object)) return reject(new Error('Select a slider or rating widget first.'));
+      if (!file?.type?.startsWith('image/')) return reject(new Error('Choose an image file.'));
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Slider icon could not be read.'));
+      reader.onload = () => {
+        object.sliderConfig = { ...(object.sliderConfig || {}), style: 'custom-icon', iconSrc: reader.result, iconName: file.name || 'custom icon' };
+        updateSliderObject(object, object.sliderConfig.value ?? 0, object.sliderConfig);
+        object.canvas?.requestRenderAll();
+        resolve(object);
+      };
+      reader.readAsDataURL(file);
     });
   }
 
@@ -618,14 +788,22 @@
       addBoundTextBox: (path, record, extra) => addBoundTextBox(canvas, path, record, extra),
       addProgressSlider: (record, extra) => addProgressSlider(canvas, record, extra),
       addCustomSlider: extra => addCustomSlider(canvas, extra),
+      addTextPreset: preset => addTextPreset(canvas, preset),
+      addElement: element => addElement(canvas, element),
       alignActiveObjects: alignment => alignActiveObjects(canvas, alignment),
       nudgeActiveObjects: (dx, dy) => nudgeActiveObjects(canvas, dx, dy),
       rotateActiveObjects: delta => rotateActiveObjects(canvas, delta),
+      distributeActiveObjects: axis => distributeActiveObjects(canvas, axis),
       moveLayer: action => moveLayer(canvas, action),
       toggleLockActive: () => toggleLockActive(canvas),
       cloneActiveElement: () => cloneActiveElement(canvas),
+      groupSelection: () => groupSelection(canvas),
+      ungroupSelection: () => ungroupSelection(canvas),
+      styleSnapshot: object => styleSnapshot(object || getActive(canvas)),
+      pasteStyle: snapshot => pasteStyle(canvas, snapshot),
       applyAppearancePreset: preset => applyAppearancePreset(canvas, preset),
       applyTextEffect: effect => applyTextEffect(canvas, effect),
+      applySliderIconFromFile: file => applySliderIconFromFile(getActive(canvas), file),
       applyCardPreset: (preset, record) => applyCardPreset(canvas, preset, record),
       updateActiveObject: changes => updateActiveObject(canvas, changes),
       addImageFromFile: file => addImageFromFile(canvas, file),
@@ -657,6 +835,14 @@
           <button type="button" data-fabric-add="text">Text box</button>
           <button type="button" data-fabric-add="progress-slider">Progress slider</button>
           <button type="button" data-fabric-add="custom-slider">Custom slider</button>
+          <div class="fabric-style-palette" aria-label="Text style presets">
+            <p>Text styles</p>
+            ${Object.entries(TEXT_STYLE_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-text-preset="${key}">${escapeHtml(preset.label)}</button>`).join('')}
+          </div>
+          <div class="fabric-elements-palette" aria-label="Decorative elements">
+            <p>Elements</p>
+            ${Object.entries(ELEMENT_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-element="${key}">${escapeHtml(preset.label)}</button>`).join('')}
+          </div>
           <div class="fabric-field-palette" aria-label="Book fields">
             <p>Book fields</p>
             ${Object.entries(FIELD_META).map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}
@@ -678,27 +864,33 @@
             <label>Widget label <input type="text" value="" data-fabric-slider-name></label>
             <label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label>
             <label>Maximum <input type="number" min="1" max="100" step="1" value="5" data-fabric-slider-max></label>
-            <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option></select></label>
+            <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option><option value="custom-icon">Custom icon</option></select></label>
             <label class="fabric-upload-control">Upload slider icon<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-slider-icon></label>
           </div>
           <div class="fabric-quick-actions" aria-label="Object actions">
             <button type="button" data-fabric-action="duplicate">Duplicate</button>
             <button type="button" data-fabric-action="lock">Lock</button>
+            <button type="button" data-fabric-action="copy-style">Copy style</button>
+            <button type="button" data-fabric-action="paste-style">Paste style</button>
+            <button type="button" data-fabric-action="group">Group</button>
+            <button type="button" data-fabric-action="ungroup">Ungroup</button>
             <button type="button" data-fabric-action="flip-x">Flip X</button>
             <button type="button" data-fabric-action="flip-y">Flip Y</button>
             <button type="button" data-fabric-action="front">To front</button>
             <button type="button" data-fabric-action="back">To back</button>
           </div>
           <div class="fabric-text-tools" data-fabric-text-tools aria-label="Text tools" hidden>
-            <label>Font <select data-fabric-font-family><option value="Libre Baskerville">Libre Baskerville</option><option value="Inter">Inter</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Trebuchet MS">Trebuchet</option><option value="Impact">Impact</option><option value="Brush Script MT">Brush Script</option><option value="Courier New">Courier</option></select></label>
+            <label>Font <select data-fabric-font-family>${FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('')}</select></label>
             <label>Align <select data-fabric-text-align><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></label>
-            <div class="fabric-text-effect-grid"><button type="button" data-fabric-text-effect="shadow">Shadow</button><button type="button" data-fabric-text-effect="glow">Glow</button><button type="button" data-fabric-text-effect="outline">Outline</button><button type="button" data-fabric-text-effect="clear">Clear FX</button></div>
+            <div class="fabric-text-effect-grid"><button type="button" data-fabric-text-effect="shadow">Shadow</button><button type="button" data-fabric-text-effect="glow">Glow</button><button type="button" data-fabric-text-effect="outline">Outline</button><button type="button" data-fabric-text-effect="hollow">Hollow</button><button type="button" data-fabric-text-effect="lift">Lift</button><button type="button" data-fabric-text-effect="clear">Clear FX</button></div>
           </div>
           <div class="fabric-preset-grid" aria-label="Appearance presets">
             ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
           </div>
           <div class="fabric-align-grid" aria-label="Alignment controls">
             ${['left', 'center', 'right', 'top', 'middle', 'bottom'].map(action => `<button type="button" data-fabric-align="${action}">${action}</button>`).join('')}
+            <button type="button" data-fabric-distribute="horizontal">Distribute H</button>
+            <button type="button" data-fabric-distribute="vertical">Distribute V</button>
           </div>
           <label>Font size <input type="range" min="8" max="72" value="24" data-fabric-prop="fontSize"></label>
           <label>Object width <input type="range" min="20" max="${Math.max(240, width)}" value="180" data-fabric-prop="width"></label>
@@ -865,13 +1057,29 @@
     document.querySelector('[data-fabric-add="shape"]')?.addEventListener('click', () => editor.addShapeBox());
     document.querySelector('[data-fabric-add="text"]')?.addEventListener('click', () => editor.addEditableTextBox());
     document.querySelector('[data-fabric-add="progress-slider"]')?.addEventListener('click', () => editor.addProgressSlider(book));
+    document.querySelectorAll('[data-fabric-text-preset]').forEach(button => {
+      button.addEventListener('click', () => {
+        editor.addTextPreset(button.dataset.fabricTextPreset);
+        pushHistory();
+        syncInspector();
+      });
+    });
+    document.querySelectorAll('[data-fabric-element]').forEach(button => {
+      button.addEventListener('click', () => {
+        editor.addElement(button.dataset.fabricElement);
+        pushHistory();
+        syncInspector();
+      });
+    });
     document.querySelector('[data-fabric-add="custom-slider"]')?.addEventListener('click', () => {
       const name = prompt('What should this slider track?', 'Scare level');
       if (!name) return;
-      const style = prompt('Slider style: bar, stars, hearts, fire, or dots', 'stars') || 'stars';
+      const style = prompt('Slider style: bar, stars, hearts, fire, dots, or custom-icon', 'stars') || 'stars';
       const max = clamp(prompt('Maximum value?', '5'), 1, 100);
       const value = clamp(prompt('Current value?', '0'), 0, max);
       editor.addCustomSlider({ name, style: style.toLowerCase(), max, value });
+      pushHistory();
+      syncInspector();
     });
     document.querySelectorAll('[data-fabric-field]').forEach(button => {
       button.addEventListener('click', () => editor.addBoundTextBox(button.dataset.fabricField, book, {
@@ -883,6 +1091,13 @@
     document.querySelector('[data-fabric-upload]')?.addEventListener('change', event => {
       const file = event.target.files?.[0];
       if (file) editor.addImageFromFile(file).catch(error => adapters.showToast?.(error.message || 'Image upload failed.'));
+    });
+    document.querySelector('[data-fabric-slider-icon]')?.addEventListener('change', event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      editor.applySliderIconFromFile(file)
+        .then(() => { pushHistory(); syncInspector(); adapters.showToast?.('Slider icon attached.'); })
+        .catch(error => adapters.showToast?.(error.message || 'Slider icon failed.'));
     });
     document.querySelector('[data-fabric-delete]')?.addEventListener('click', () => editor.deleteActiveElement());
     document.querySelector('[data-fabric-zoom]')?.addEventListener('input', event => {
@@ -968,14 +1183,17 @@
     document.querySelectorAll('[data-fabric-action]').forEach(button => {
       button.addEventListener('click', () => {
         const action = button.dataset.fabricAction;
+        const active = getActive(editor.canvas);
         if (action === 'duplicate') editor.cloneActiveElement();
         if (action === 'lock') editor.toggleLockActive();
+        if (action === 'copy-style') copiedStyle = editor.styleSnapshot(active);
+        if (action === 'paste-style') editor.pasteStyle(copiedStyle);
+        if (action === 'group') editor.groupSelection();
+        if (action === 'ungroup') editor.ungroupSelection();
         if (action === 'flip-x') {
-          const active = getActive(editor.canvas);
           if (active) editor.updateActiveObject({ flipX: !active.flipX });
         }
         if (action === 'flip-y') {
-          const active = getActive(editor.canvas);
           if (active) editor.updateActiveObject({ flipY: !active.flipY });
         }
         if (action === 'front') editor.moveLayer('front');
@@ -986,6 +1204,7 @@
     });
     document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => { editor.applyAppearancePreset(button.dataset.fabricAppearance); pushHistory(); syncInspector(); }));
     document.querySelectorAll('[data-fabric-align]').forEach(button => button.addEventListener('click', () => { editor.alignActiveObjects(button.dataset.fabricAlign); pushHistory(); syncInspector(); }));
+    document.querySelectorAll('[data-fabric-distribute]').forEach(button => button.addEventListener('click', () => { editor.distributeActiveObjects(button.dataset.fabricDistribute); pushHistory(); syncInspector(); }));
     document.querySelectorAll('[data-fabric-prop]').forEach(input => {
       input.addEventListener('input', event => {
         const prop = event.target.dataset.fabricProp;
@@ -997,7 +1216,7 @@
         syncInspector();
       });
     });
-    let copiedObject = null;
+    let copiedObject = null, copiedStyle = null;
     const saveEditor = () => {
       const saved = adapters.save?.(serializeCanvas(editor.canvas), { width, height, name: title, sourceTemplate: template });
       adapters.showToast?.(saved ? 'Canvas card saved.' : 'Canvas card could not be saved.');
@@ -1059,12 +1278,25 @@
         event.preventDefault();
         editor.cloneActiveElement();
       }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'g') {
+        event.preventDefault();
+        if (event.shiftKey) editor.ungroupSelection();
+        else editor.groupSelection();
+      }
       if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'c') {
         event.preventDefault();
+        if (event.shiftKey) {
+          copiedStyle = editor.styleSnapshot(active);
+          return;
+        }
         active?.clone?.(SERIALIZE_PROPS).then(clone => { copiedObject = clone; });
       }
-      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'v' && copiedObject) {
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'v' && (copiedObject || (event.shiftKey && copiedStyle))) {
         event.preventDefault();
+        if (event.shiftKey && copiedStyle) {
+          editor.pasteStyle(copiedStyle);
+          return;
+        }
         copiedObject.clone(SERIALIZE_PROPS).then(clone => {
           clone.set({ left: number(clone.left, 0) + 18, top: number(clone.top, 0) + 18, evented: true });
           editor.canvas.add(clone);
@@ -1096,6 +1328,14 @@
       if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'l') {
         event.preventDefault();
         editor.toggleLockActive();
+      }
+      if (key.toLowerCase() === 'h' && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        editor.updateActiveObject({ flipX: !active.flipX });
+      }
+      if (key.toLowerCase() === 'v' && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        editor.updateActiveObject({ flipY: !active.flipY });
       }
     };
     document.addEventListener('keydown', keyHandler, true);
@@ -1139,15 +1379,24 @@
     addBoundTextBox,
     addProgressSlider,
     addCustomSlider,
+    addTextPreset,
+    addElement,
     alignActiveObjects,
     nudgeActiveObjects,
     rotateActiveObjects,
+    distributeActiveObjects,
     moveLayer,
     toggleLockActive,
     cloneActiveElement,
+    groupSelection,
+    ungroupSelection,
+    styleSnapshot,
+    pasteStyle,
     applyAppearancePreset,
+    applyTextEffect,
     applyCardPreset,
     updateActiveObject,
+    applySliderIconFromFile,
     addImageFromFile,
     deleteActiveElement,
     baseScene,

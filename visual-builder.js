@@ -2,7 +2,7 @@
   'use strict';
 
   const BUILDER_SCHEMA_VERSION=5;
-  const VISUAL_ASSET_VERSION='20260801-22';
+  const VISUAL_ASSET_VERSION='20260801-23';
   const debugVisual=(event,details={})=>{if(globalThis.__VISUAL_DEBUG__)console.debug('[VisualBuilder]',event,{cacheVersion:VISUAL_ASSET_VERSION,...details});};
   const MODULE_TYPES=['text','image','title','metadata','button','rating','slider','progress','stars','icons','counter','linked-record','linked-dossier','linked-theory','relationship-count','quote','notes','tags','custom'];
   const TRACKER_TYPES=['rating','slider','progress','stars','icons','counter'];
@@ -108,6 +108,10 @@
   function open(templateId='',context=null){if(context)builderContext={...builderContext,...context};ensureState();let template=state.visualTemplates.find(item=>item.id===templateId)||state.visualTemplates[0],draftOptions=context?.draftOptions||{};if(!template){template=createTemplate({name:'My Visual Template'});draftOptions={asNew:true,name:template.name};}beginDraft(template,draftOptions);if(modal('<section id="visualBuilderRoot" class="visual-builder" aria-label="Universal Visual Builder"></section>')===false){discardDraft();return false;}const host=document.getElementById('formModal');if(!host){discardDraft();return false;}host.classList.add('visual-builder-backdrop');render();return true;}
   function openForBook(bookId){const book=state.books.find(item=>item.id===bookId);if(!book)return false;const fallback=ensureDefaultBookTemplate();let template=state.visualTemplates.find(item=>item.id===book.visualTemplateId),draftOptions={};if(!template||template.id===DEFAULT_BOOK_TEMPLATE_ID||template.id===LEGACY_DEFAULT_TEMPLATE_ID){template=fallback.template;draftOptions={asNew:true,name:`${book.title} Custom Card`};}return open(template.id,{recordType:'book',recordId:book.id,draftOptions});}
 
+  // Select on pointer-down so the editor's pointer-up redraw cannot swallow selection.
+  function selectBuilderModuleFromPointer(event){const root=document.getElementById('visualBuilderRoot'),element=event.target.closest?.('[data-builder-module]');if(!root||!element||!root.contains(element)||event.target.closest?.('[data-builder-resize]'))return;const id=element.dataset.builderModule,module=moduleById(editorDraft,id);if(!id||!module)return;selectedModuleIds=event.shiftKey?new Set([...selectedModuleIds,id]):new Set([id]);root.querySelectorAll('[data-builder-module]').forEach(item=>{const active=selectedModuleIds.has(item.dataset.builderModule);item.classList.toggle('is-selected',active);item.setAttribute('aria-selected',String(active));});debugModuleSelection(element,module);if(module.locked)queueMicrotask(render);}
+
   if(!globalThis.__ABILITY_TEST__&&typeof state!=='undefined'){const seeded=ensureDefaultBookTemplate();if(seeded.created)persist();}
+  if(!globalThis.__ABILITY_TEST__&&typeof document!=='undefined'&&typeof document.addEventListener==='function')document.addEventListener('pointerdown',selectBuilderModuleFromPointer,true);
   globalThis.VisualBuilder={BUILDER_SCHEMA_VERSION,VISUAL_ASSET_VERSION,MODULE_TYPES,TRACKER_TYPES,CARD_SIZES,DEFAULT_BOOK_TEMPLATE_ID,normalizeModule,normalizeTemplate,normalizeTemplates,createTemplate,createModule,moveModule,resizeModule,deleteModule,duplicateModule,lockModule,updateModuleStyle,groupModules,orderedRegions,updateRegion,moveRegion,createRegion,assignModuleToRegion,convertModuleMode,ungroupModule,layerModule,alignModules,scaleTemplate,setCanvasPreset,groupBounds,setModuleAnchor,applyAnchors,fitTextSize,beginDraft,discardDraft,commitDraft,undo,redo,standardBookTemplate,defaultBookTemplate,ensureDefaultBookTemplate,templateForBook,renderBookModule,renderTemplateCanvas,renderBookCard,trackerConfig,trackerDisplay,renderTrackerControls,updateTrackerValue,openForBook,open};
 })();

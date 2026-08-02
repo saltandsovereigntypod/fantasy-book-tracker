@@ -121,3 +121,24 @@
 .book-collection[data-card-size="small"] .visual-card-viewport{max-height:320px}
 .book-collection[data-card-size="medium"] .visual-card-viewport{max-height:380px}
 .book-collection[data-card-size="large"] .visual-card-viewport{max-height:520px}
+
+/* Fabric canvas editor: new unrestricted Canva-style card engine. */
+.fabric-editor-backdrop>.modal{width:min(96vw,1280px);max-width:1280px;height:min(92dvh,900px);padding:0;overflow:hidden;background:var(--ui-surface,var(--panel));border:1px solid var(--ui-border,var(--border));box-shadow:var(--shadow)}
+.fabric-card-editor{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%;min-height:0;color:var(--ui-text,var(--text))}
+.fabric-editor-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;border-bottom:1px solid var(--ui-border,var(--border));background:linear-gradient(135deg,var(--ui-surface-raised,var(--panel-2)),var(--ui-surface,var(--panel)))}
+.fabric-editor-header h2{margin:0}.fabric-editor-header p{margin:.2rem 0 0;color:var(--ui-text-muted,var(--muted))}
+.fabric-editor-actions{display:flex;align-items:center;gap:10px}.fabric-editor-actions button{min-height:44px}
+.fabric-editor-layout{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);min-height:0}
+.fabric-editor-sidebar{display:grid;align-content:start;gap:12px;min-height:0;padding:18px;border-right:1px solid var(--ui-border,var(--border));overflow:auto;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 88%,black)}
+.fabric-editor-sidebar button,.fabric-upload-control{display:grid;place-items:center;min-height:48px;padding:10px 12px;border:1px solid var(--ui-border,var(--border));border-radius:16px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text));font:inherit;font-weight:800;box-shadow:var(--shadow);cursor:pointer}
+.fabric-editor-sidebar button:hover,.fabric-upload-control:hover{border-color:var(--ui-accent,var(--accent));transform:translateY(-1px)}
+.fabric-upload-control input{position:absolute;inline-size:1px;block-size:1px;opacity:0;pointer-events:none}
+.fabric-editor-sidebar label:not(.fabric-upload-control){display:grid;gap:8px;color:var(--ui-text-muted,var(--muted));font-weight:800}
+.fabric-editor-sidebar input[type=range]{accent-color:var(--ui-accent,var(--accent))}
+.fabric-color-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fabric-color-row input{width:100%;min-height:44px;padding:4px;border:1px solid var(--ui-border,var(--border));border-radius:12px;background:var(--ui-surface-raised,var(--panel-2))}
+.fabric-editor-hint{margin:8px 0 0;padding:12px;border:1px dashed var(--ui-border,var(--border));border-radius:16px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text-muted,var(--muted))}
+.fabric-canvas-workspace{display:grid;place-items:center;min-height:0;padding:24px;overflow:auto;background:radial-gradient(circle at top,var(--ui-surface-raised,var(--panel-2)),transparent 42%),var(--ui-surface,var(--panel))}
+.fabric-canvas-frame{padding:18px;border:1px solid var(--ui-border,var(--border));border-radius:28px;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 72%,transparent);box-shadow:var(--shadow)}
+.fabric-canvas-frame canvas,.fabric-card-canvas{display:block;max-width:100%;border-radius:22px}
+.fabric-card-viewport{display:grid;place-items:stretch;overflow:hidden;background:transparent}.fabric-card-viewport canvas{inline-size:100%;block-size:100%}
+@media(max-width:760px){.fabric-editor-backdrop>.modal{height:94dvh}.fabric-editor-layout{grid-template-columns:1fr}.fabric-editor-sidebar{grid-template-columns:repeat(2,minmax(0,1fr));border-right:0;border-bottom:1px solid var(--ui-border,var(--border));max-height:38dvh}.fabric-editor-hint,.fabric-color-row{grid-column:1/-1}.fabric-canvas-workspace{padding:12px}}

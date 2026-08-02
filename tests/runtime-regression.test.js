@@ -15,6 +15,7 @@ assert.match(wall,/if\(app\)app\.inert=true/,'modal opening makes wall inert def
 assert.match(wall,/document\.body\?\.classList\?\.remove\('modal-open'\)/,'modal closing unlocks body state defensively');
 assert.match(wall,/backdrop\.dataset\.path=pathKey/,'active theme is copied to the modal host');
 assert.equal((html.match(/id="formModal"/g)||[]).length,1,'one shared form modal root exists');
+assert.match(app,/host\.classList\.remove\('visual-builder-backdrop','book-profile-backdrop'\)/,'shared modal resets specialized layouts before ordinary cards and forms open');
 assert.match(experience,/selectedLabels=new Set\(initial\.detailKeys\.map/,'Card View resolves stored fact IDs to labels');
 assert.doesNotMatch(experience,/id="cvDetails" value="\$\{esc\(initial\.detailKeys\.join/,'Card View does not expose raw IDs');
 assert.match(experience,/class="secondary-button" id="cancelCardView"/,'Card View cancel is themed');

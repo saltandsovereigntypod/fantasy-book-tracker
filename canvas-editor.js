@@ -3,7 +3,7 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked'];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
   const FIELD_META = {
     title: { label: 'Title', role: 'title' },
@@ -93,6 +93,16 @@
     return `${'★'.repeat(filled)}${'☆'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
   }
 
+  function sliderDisplay(config = {}, path = '') {
+    const style = config.style || sliderStyleForPath(path);
+    const max = sliderMaxForPath(path, number(config.max, path === 'progress' ? 100 : 5));
+    const value = clamp(config.value ?? 0, 0, max);
+    const name = config.name || FIELD_META[path]?.label || 'Custom Tracker';
+    if (path === 'progress') return `${displayNumber(value)}%`;
+    if (['rating', 'spice', 'impact'].includes(path)) return ratingDisplay(path, value, max);
+    return `${name}\n${sliderGlyphs(style, value, max)}\n${displayNumber(value)} of ${max}`;
+  }
+
   function baseScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
     return {
       version: FABRIC_VERSION,
@@ -126,12 +136,12 @@
         object.sliderConfig = { ...(object.sliderConfig || {}), path, value: clamp(value ?? 0, 0, 100), max: 100, style: 'bar' };
       } else if (path === 'progress') {
         const progressValue = clamp(value ?? 0, 0, 100);
-        object.text = `${displayNumber(progressValue)}%`;
         object.sliderConfig = { ...(object.sliderConfig || {}), path, name: 'Progress', style: 'bar', value: progressValue, max: 100 };
+        object.text = sliderDisplay(object.sliderConfig, path);
       }
       else if (['rating', 'spice', 'impact'].includes(path)) {
-        object.text = ratingDisplay(path, value);
         object.sliderConfig = { ...(object.sliderConfig || {}), path, name: FIELD_META[path]?.label || path, style: sliderStyleForPath(path), value: clamp(value ?? 0, 0, 5), max: 5 };
+        object.text = sliderDisplay(object.sliderConfig, path);
       }
       else object.text = String(value ?? object.text ?? '');
     });
@@ -247,10 +257,13 @@
   function addProgressSlider(canvas, record = {}, options = {}) {
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
     const left = options.left || 64, top = options.top || 120, trackWidth = options.width || Math.min(260, width * .62);
-    const track = new fabric.Rect({ left, top, width: trackWidth, height: 8, rx: 8, ry: 8, fill: options.fill || theme.border, opacity: .8, id: makeObjectId('progress-track'), name: 'Progress track', cardRole: 'progress' });
+    const sliderId = makeObjectId('progress-slider');
+    const baseConfig = { sliderId, path: 'progress', name: 'Progress', style: 'bar', value: 0, max: 100, trackWidth };
+    const track = new fabric.Rect({ left, top, width: trackWidth, height: 8, rx: 8, ry: 8, fill: options.fill || theme.border, opacity: .8, id: makeObjectId('progress-track'), name: 'Progress track', cardRole: 'progress', sliderConfig: { ...baseConfig, role: 'track' } });
     const progress = clamp(recordValue(record, 'progress') ?? 0, 0, 100);
-    const fill = new fabric.Rect({ left, top, width: trackWidth * progress / 100, height: 8, rx: 8, ry: 8, fill: options.accent || theme.accent, id: makeObjectId('progress-fill'), name: 'Progress fill', cardRole: 'progress', dataBinding: { path: 'progress' }, sliderConfig: { style: 'bar', value: progress, max: 100, trackWidth } });
-    const label = new fabric.Textbox(`${displayNumber(progress)}%`, { left, top: top + 14, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, id: makeObjectId('progress-label'), name: 'Progress label', cardRole: 'progress', dataBinding: { path: 'progress' } });
+    const liveConfig = { ...baseConfig, value: progress };
+    const fill = new fabric.Rect({ left, top, width: trackWidth * progress / 100, height: 8, rx: 8, ry: 8, fill: options.accent || theme.accent, id: makeObjectId('progress-fill'), name: 'Progress fill', cardRole: 'progress', dataBinding: { path: 'progress' }, sliderConfig: { ...liveConfig, role: 'fill' } });
+    const label = new fabric.Textbox(`${displayNumber(progress)}%`, { left, top: top + 14, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, id: makeObjectId('progress-label'), name: 'Progress label', cardRole: 'progress', dataBinding: { path: 'progress' }, sliderConfig: { ...liveConfig, role: 'value' } });
     canvas.add(track, fill, label);
     canvas.setActiveObject(label);
     canvas.requestRenderAll();
@@ -258,6 +271,11 @@
   }
 
   function sliderGlyphs(style, value, max) {
+    if (style === 'bar') {
+      const cells = 10;
+      const filled = clamp(Math.round((number(value, 0) / Math.max(1, number(max, 1))) * cells), 0, cells);
+      return `${'█'.repeat(filled)}${'░'.repeat(cells - filled)}`;
+    }
     const glyph = { stars: '★', hearts: '♥', fire: '🔥', dots: '●' }[style] || '★';
     const empty = { stars: '☆', hearts: '♡', fire: '·', dots: '○' }[style] || '☆';
     const filled = clamp(Math.round(value), 0, max);
@@ -296,6 +314,12 @@
     record.updatedAt = Date.now();
   }
 
+  function sliderObjects(canvas, object) {
+    const sliderId = object?.sliderConfig?.sliderId;
+    if (!sliderId || !canvas?.getObjects) return object ? [object] : [];
+    return canvas.getObjects().filter(item => item.sliderConfig?.sliderId === sliderId);
+  }
+
   function updateSliderObject(object, value, extra = {}) {
     if (!object) return false;
     const path = bindingPath(object);
@@ -303,15 +327,15 @@
     const max = sliderMaxForPath(path, number(extra.max ?? config.max, path === 'progress' ? 100 : 5));
     const style = extra.style || config.style || sliderStyleForPath(path);
     const numeric = clamp(value, 0, max);
-    object.sliderConfig = { ...config, path: path || config.path, style, value: numeric, max };
-    if (path === 'progress') object.set?.('text', `${displayNumber(numeric)}%`);
-    else if (['rating', 'spice', 'impact'].includes(path)) object.set?.('text', ratingDisplay(path, numeric, max));
-    else if (object.cardRole === 'custom-slider' || config.name) {
-      const name = String(extra.name || config.name || object.name || 'Custom Tracker');
-      object.sliderConfig.name = name;
-      if (style === 'bar') object.set?.('text', `${name}\n${displayNumber(numeric)} of ${max}`);
-      else object.set?.('text', `${name}\n${sliderGlyphs(style, numeric, max)}\n${displayNumber(numeric)} of ${max}`);
-    }
+    const nextConfig = { ...config, path: path || config.path, style, value: numeric, max };
+    if (extra.name !== undefined) nextConfig.name = String(extra.name || config.name || object.name || 'Custom Tracker');
+    sliderObjects(object.canvas, object).forEach(item => {
+      item.sliderConfig = { ...(item.sliderConfig || {}), ...nextConfig };
+      if (item.sliderConfig.role === 'fill' && item.sliderConfig.trackWidth) item.set?.('width', item.sliderConfig.trackWidth * numeric / Math.max(1, max));
+      if (isTextObject(item) && item.sliderConfig.role === 'label') item.set?.('text', item.sliderConfig.name || nextConfig.name || item.text);
+      else if (isTextObject(item)) item.set?.('text', sliderDisplay(item.sliderConfig, path));
+      item.setCoords?.();
+    });
     object.setCoords?.();
     return true;
   }
@@ -322,11 +346,13 @@
     const style = ['bar', 'stars', 'hearts', 'fire', 'dots'].includes(options.style) ? options.style : 'bar';
     const max = clamp(options.max ?? 5, 1, 100), value = clamp(options.value ?? 0, 0, max);
     const left = options.left || 64, top = options.top || 150, trackWidth = options.width || Math.min(280, width * .66);
+    const sliderId = makeObjectId('custom-slider');
     if (style === 'bar') {
-      const label = new fabric.Textbox(name, { left, top, width: trackWidth, fontSize: 13, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, name: `${name} label`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
-      const track = new fabric.Rect({ left, top: top + 22, width: trackWidth, height: 10, rx: 999, ry: 999, fill: theme.border, opacity: .75, name: `${name} track`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
-      const fill = new fabric.Rect({ left, top: top + 22, width: trackWidth * value / max, height: 10, rx: 999, ry: 999, fill: options.accent || theme.accent, name: `${name} fill`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
-      const valueText = new fabric.Textbox(`${value} of ${max}`, { left, top: top + 38, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, name: `${name} value`, cardRole: 'custom-slider', sliderConfig: { name, style, value, max } });
+      const baseConfig = { sliderId, name, style, value, max, trackWidth };
+      const label = new fabric.Textbox(name, { left, top, width: trackWidth, fontSize: 13, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, name: `${name} label`, cardRole: 'custom-slider', sliderConfig: { ...baseConfig, role: 'label' } });
+      const track = new fabric.Rect({ left, top: top + 22, width: trackWidth, height: 10, rx: 999, ry: 999, fill: theme.border, opacity: .75, name: `${name} track`, cardRole: 'custom-slider', sliderConfig: { ...baseConfig, role: 'track' } });
+      const fill = new fabric.Rect({ left, top: top + 22, width: trackWidth * value / max, height: 10, rx: 999, ry: 999, fill: options.accent || theme.accent, name: `${name} fill`, cardRole: 'custom-slider', sliderConfig: { ...baseConfig, role: 'fill' } });
+      const valueText = new fabric.Textbox(`${displayNumber(value)} of ${max}`, { left, top: top + 38, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, name: `${name} value`, cardRole: 'custom-slider', sliderConfig: { ...baseConfig, role: 'value' } });
       canvas.add(label, track, fill, valueText);
       canvas.setActiveObject(valueText);
       canvas.requestRenderAll();
@@ -342,7 +368,7 @@
       fill: options.fill || theme.accent,
       name,
       cardRole: 'custom-slider',
-      sliderConfig: { name, style, value, max }
+      sliderConfig: { sliderId, role: 'value', name, style, value, max }
     });
     canvas.add(tracker);
     canvas.setActiveObject(tracker);
@@ -429,6 +455,25 @@
     return true;
   }
 
+  function cloneActiveElement(canvas) {
+    const active = getActive(canvas);
+    if (!active || active.selectable === false) return Promise.resolve(false);
+    return active.clone(SERIALIZE_PROPS).then(clone => {
+      clone.set({ left: number(active.left, 0) + 18, top: number(active.top, 0) + 18, evented: true });
+      if (active.type === 'activeSelection') {
+        clone.canvas = canvas;
+        clone.forEachObject(object => {
+          object.set({ left: number(object.left, 0) + 18, top: number(object.top, 0) + 18, evented: true });
+          canvas.add(object);
+        });
+        clone.setCoords?.();
+      } else canvas.add(clone);
+      canvas.setActiveObject(clone);
+      canvas.requestRenderAll();
+      return clone;
+    });
+  }
+
   function selectedObjects(canvas) {
     const active = getActive(canvas);
     if (!active) return [];
@@ -451,6 +496,60 @@
     });
     canvas.requestRenderAll();
     return true;
+  }
+
+  function nudgeActiveObjects(canvas, dx = 0, dy = 0) {
+    const objects = selectedObjects(canvas).filter(object => object.selectable !== false && !object.locked);
+    if (!objects.length) return false;
+    objects.forEach(object => {
+      object.set({ left: number(object.left, 0) + dx, top: number(object.top, 0) + dy });
+      object.setCoords?.();
+    });
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function rotateActiveObjects(canvas, delta = 0) {
+    const objects = selectedObjects(canvas).filter(object => object.selectable !== false && !object.locked);
+    if (!objects.length) return false;
+    objects.forEach(object => {
+      const next = number(object.angle, 0) + delta;
+      const snapped = [0, 90, 180, -90, -180].find(angle => Math.abs(next - angle) <= 3);
+      object.set('angle', snapped ?? next);
+      object.setCoords?.();
+    });
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function moveLayer(canvas, action = 'front') {
+    selectedObjects(canvas).filter(object => object.selectable !== false).forEach(object => {
+      if (action === 'front') canvas.bringObjectToFront?.(object) || canvas.bringToFront?.(object);
+      if (action === 'back') canvas.sendObjectToBack?.(object) || canvas.sendToBack?.(object);
+      if (action === 'forward') canvas.bringObjectForward?.(object) || canvas.bringForward?.(object);
+      if (action === 'backward') canvas.sendObjectBackwards?.(object) || canvas.sendBackwards?.(object);
+    });
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function toggleLockActive(canvas) {
+    const objects = selectedObjects(canvas);
+    if (!objects.length) return false;
+    const shouldLock = !objects.every(object => object.locked);
+    objects.forEach(object => {
+      object.locked = shouldLock;
+      object.set({
+        lockMovementX: shouldLock,
+        lockMovementY: shouldLock,
+        lockScalingX: shouldLock,
+        lockScalingY: shouldLock,
+        lockRotation: shouldLock,
+        hasControls: !shouldLock
+      });
+    });
+    canvas.requestRenderAll();
+    return shouldLock;
   }
 
   function initCanvasEditor(canvasId, theme = currentTheme(), options = {}) {
@@ -481,6 +580,11 @@
       addProgressSlider: (record, extra) => addProgressSlider(canvas, record, extra),
       addCustomSlider: extra => addCustomSlider(canvas, extra),
       alignActiveObjects: alignment => alignActiveObjects(canvas, alignment),
+      nudgeActiveObjects: (dx, dy) => nudgeActiveObjects(canvas, dx, dy),
+      rotateActiveObjects: delta => rotateActiveObjects(canvas, delta),
+      moveLayer: action => moveLayer(canvas, action),
+      toggleLockActive: () => toggleLockActive(canvas),
+      cloneActiveElement: () => cloneActiveElement(canvas),
       applyAppearancePreset: preset => applyAppearancePreset(canvas, preset),
       applyCardPreset: (preset, record) => applyCardPreset(canvas, preset, record),
       updateActiveObject: changes => updateActiveObject(canvas, changes),
@@ -520,6 +624,7 @@
           <label class="fabric-upload-control">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label>
           <button type="button" data-fabric-delete>Delete selected</button>
           <label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label>
+          <label class="fabric-check-control"><input type="checkbox" checked data-fabric-snapping> Snap to edges and center</label>
           <div class="fabric-color-row"><label>Fill <input type="color" value="#bd662f" data-fabric-fill></label><label>Text <input type="color" value="#f7ead2" data-fabric-text></label></div>
           <p class="fabric-editor-hint">Drag, resize, rotate, edit text inline, or upload art. Everything saves as Fabric JSON.</p>
         </aside>
@@ -530,8 +635,18 @@
             <output data-fabric-selected-name>Nothing selected</output>
           </div>
           <div class="fabric-value-controls" data-fabric-value-controls hidden>
+            <label>Widget label <input type="text" value="" data-fabric-slider-name></label>
             <label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label>
+            <label>Maximum <input type="number" min="1" max="100" step="1" value="5" data-fabric-slider-max></label>
             <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option></select></label>
+          </div>
+          <div class="fabric-quick-actions" aria-label="Object actions">
+            <button type="button" data-fabric-action="duplicate">Duplicate</button>
+            <button type="button" data-fabric-action="lock">Lock</button>
+            <button type="button" data-fabric-action="rotate-left">↺ 15°</button>
+            <button type="button" data-fabric-action="rotate-right">↻ 15°</button>
+            <button type="button" data-fabric-action="front">To front</button>
+            <button type="button" data-fabric-action="back">To back</button>
           </div>
           <div class="fabric-preset-grid" aria-label="Appearance presets">
             ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
@@ -567,10 +682,18 @@
     host?.classList.add('fabric-editor-backdrop');
     const editor = initCanvasEditor(canvasId, currentTheme(), { width, height, record: book });
     const scene = templateJson(template) || baseScene({ width, height, theme: currentTheme(), record: book });
+    const fitCanvasToWorkspace = () => {
+      const workspace = document.querySelector('.fabric-canvas-workspace');
+      const available = Math.max(260, number(workspace?.clientWidth, width) - 42);
+      const target = globalThis.matchMedia?.('(max-width: 640px)')?.matches ? Math.min(width, available) : width;
+      const zoom = editor.setUniformScale(target);
+      const zoomInput = document.querySelector('[data-fabric-zoom]');
+      if (zoomInput) zoomInput.value = String(Math.round(zoom * 100));
+    };
     loadScene(editor.canvas, scene, book).catch(error => {
       console.error(error);
       loadScene(editor.canvas, baseScene({ width, height, theme: currentTheme(), record: book }), book);
-    });
+    }).finally(fitCanvasToWorkspace);
     const syncInspector = () => {
       const active = getActive(editor.canvas);
       const selectedName = document.querySelector('[data-fabric-selected-name]');
@@ -580,6 +703,8 @@
       const valueInput = document.querySelector('[data-fabric-value]');
       const valueOutput = document.querySelector('[data-fabric-value-output]');
       const styleSelect = document.querySelector('[data-fabric-slider-style]');
+      const nameInput = document.querySelector('[data-fabric-slider-name]');
+      const maxInput = document.querySelector('[data-fabric-slider-max]');
       const isValueObject = Boolean(active && (activePath || active.sliderConfig || active.cardRole === 'custom-slider'));
       if (valueControls) valueControls.hidden = !isValueObject;
       if (isValueObject && valueInput) {
@@ -590,6 +715,14 @@
         valueInput.value = String(value);
         if (valueOutput) valueOutput.textContent = activePath === 'progress' ? `${displayNumber(value)}%` : `${displayNumber(value)} of ${max}`;
         if (styleSelect) styleSelect.value = active.sliderConfig?.style || sliderStyleForPath(activePath);
+        if (nameInput) {
+          nameInput.value = active.sliderConfig?.name || FIELD_META[activePath]?.label || active.name || '';
+          nameInput.disabled = Boolean(activePath && FIELD_META[activePath]);
+        }
+        if (maxInput) {
+          maxInput.value = String(max);
+          maxInput.disabled = activePath === 'progress';
+        }
       }
       document.querySelectorAll('[data-fabric-prop]').forEach(input => {
         if (!active) return;
@@ -603,6 +736,23 @@
     editor.canvas.on('selection:updated', syncInspector);
     editor.canvas.on('selection:cleared', syncInspector);
     editor.canvas.on('object:modified', syncInspector);
+    editor.canvas.on('mouse:dblclick', () => {
+      const active = getActive(editor.canvas);
+      if (isTextObject(active)) active.enterEditing?.();
+    });
+    editor.canvas.on('object:moving', event => {
+      if (!document.querySelector('[data-fabric-snapping]')?.checked) return;
+      const object = event.target;
+      const guide = 8, canvasWidth = editor.canvas.__designWidth || width, canvasHeight = editor.canvas.__designHeight || height;
+      const objectWidth = object.getScaledWidth?.() || object.width || 0, objectHeight = object.getScaledHeight?.() || object.height || 0;
+      const centers = { x: number(object.left, 0) + objectWidth / 2, y: number(object.top, 0) + objectHeight / 2 };
+      if (Math.abs(number(object.left, 0)) < guide) object.set('left', 0);
+      if (Math.abs(number(object.top, 0)) < guide) object.set('top', 0);
+      if (Math.abs((number(object.left, 0) + objectWidth) - canvasWidth) < guide) object.set('left', canvasWidth - objectWidth);
+      if (Math.abs((number(object.top, 0) + objectHeight) - canvasHeight) < guide) object.set('top', canvasHeight - objectHeight);
+      if (Math.abs(centers.x - canvasWidth / 2) < guide) object.set('left', (canvasWidth - objectWidth) / 2);
+      if (Math.abs(centers.y - canvasHeight / 2) < guide) object.set('top', (canvasHeight - objectHeight) / 2);
+    });
     document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
       button.addEventListener('click', () => {
         if (!confirm('Replace this card layout with this starter look? Book details stay safe.')) return;
@@ -665,6 +815,34 @@
       editor.canvas.requestRenderAll();
       syncInspector();
     });
+    document.querySelector('[data-fabric-slider-max]')?.addEventListener('input', event => {
+      const active = getActive(editor.canvas);
+      if (!active) return;
+      const max = clamp(event.target.value, 1, 100);
+      const value = clamp(active.sliderConfig?.value ?? 0, 0, max);
+      updateSliderObject(active, value, { max, style: document.querySelector('[data-fabric-slider-style]')?.value });
+      editor.canvas.requestRenderAll();
+      syncInspector();
+    });
+    document.querySelector('[data-fabric-slider-name]')?.addEventListener('input', event => {
+      const active = getActive(editor.canvas);
+      if (!active) return;
+      updateSliderObject(active, active.sliderConfig?.value ?? 0, { name: event.target.value, style: document.querySelector('[data-fabric-slider-style]')?.value });
+      editor.canvas.requestRenderAll();
+      syncInspector();
+    });
+    document.querySelectorAll('[data-fabric-action]').forEach(button => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.fabricAction;
+        if (action === 'duplicate') editor.cloneActiveElement();
+        if (action === 'lock') editor.toggleLockActive();
+        if (action === 'rotate-left') editor.rotateActiveObjects(-15);
+        if (action === 'rotate-right') editor.rotateActiveObjects(15);
+        if (action === 'front') editor.moveLayer('front');
+        if (action === 'back') editor.moveLayer('back');
+        syncInspector();
+      });
+    });
     document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => editor.applyAppearancePreset(button.dataset.fabricAppearance)));
     document.querySelectorAll('[data-fabric-align]').forEach(button => button.addEventListener('click', () => editor.alignActiveObjects(button.dataset.fabricAlign)));
     document.querySelectorAll('[data-fabric-prop]').forEach(input => {
@@ -676,18 +854,45 @@
         else editor.updateActiveObject({ [prop]: raw });
       });
     });
+    let copiedObject = null;
+    const saveEditor = () => {
+      const saved = adapters.save?.(serializeCanvas(editor.canvas), { width, height, name: title, sourceTemplate: template });
+      adapters.showToast?.(saved ? 'Canvas card saved.' : 'Canvas card could not be saved.');
+      adapters.renderAll?.();
+      closeEditor();
+    };
     const closeEditor = () => {
       document.removeEventListener('keydown', keyHandler, true);
+      window.removeEventListener?.('resize', fitCanvasToWorkspace);
       adapters.closeModal?.();
     };
     const keyHandler = event => {
       const active = getActive(editor.canvas);
-      if (!active || active.isEditing || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return;
+      const key = event.key;
+      const targetTag = event.target?.tagName;
+      const isTypingControl = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetTag);
+      if (isTypingControl || active?.isEditing) return;
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 's') {
+        event.preventDefault();
+        saveEditor();
+        return;
+      }
+      if (!active && !((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'a')) return;
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
         editor.deleteActiveElement();
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+      if (key === 'Escape') {
+        event.preventDefault();
+        editor.canvas.discardActiveObject();
+        editor.canvas.requestRenderAll();
+      }
+      if (key === 'Enter' && isTextObject(active)) {
+        event.preventDefault();
+        active.enterEditing?.();
+        active.selectAll?.();
+      }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'a') {
         event.preventDefault();
         const objects = editor.canvas.getObjects().filter(object => object.selectable !== false);
         if (objects.length) {
@@ -697,15 +902,53 @@
           editor.canvas.requestRenderAll();
         }
       }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'd') {
+        event.preventDefault();
+        editor.cloneActiveElement();
+      }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'c') {
+        event.preventDefault();
+        active?.clone?.(SERIALIZE_PROPS).then(clone => { copiedObject = clone; });
+      }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'v' && copiedObject) {
+        event.preventDefault();
+        copiedObject.clone(SERIALIZE_PROPS).then(clone => {
+          clone.set({ left: number(clone.left, 0) + 18, top: number(clone.top, 0) + 18, evented: true });
+          editor.canvas.add(clone);
+          editor.canvas.setActiveObject(clone);
+          editor.canvas.requestRenderAll();
+          copiedObject = clone;
+        });
+      }
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
+        event.preventDefault();
+        const amount = event.shiftKey ? 10 : 1;
+        if (key === 'ArrowLeft') editor.nudgeActiveObjects(-amount, 0);
+        if (key === 'ArrowRight') editor.nudgeActiveObjects(amount, 0);
+        if (key === 'ArrowUp') editor.nudgeActiveObjects(0, -amount);
+        if (key === 'ArrowDown') editor.nudgeActiveObjects(0, amount);
+      }
+      if (key.toLowerCase() === 'r' && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        editor.rotateActiveObjects(event.shiftKey ? -15 : 15);
+      }
+      if (key === ']') {
+        event.preventDefault();
+        editor.moveLayer(event.shiftKey ? 'front' : 'forward');
+      }
+      if (key === '[') {
+        event.preventDefault();
+        editor.moveLayer(event.shiftKey ? 'back' : 'backward');
+      }
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'l') {
+        event.preventDefault();
+        editor.toggleLockActive();
+      }
     };
     document.addEventListener('keydown', keyHandler, true);
+    window.addEventListener?.('resize', fitCanvasToWorkspace);
     document.querySelector('[data-fabric-close]')?.addEventListener('click', closeEditor);
-    document.querySelector('[data-fabric-save]')?.addEventListener('click', () => {
-      const saved = adapters.save?.(serializeCanvas(editor.canvas), { width, height, name: title, sourceTemplate: template });
-      adapters.showToast?.(saved ? 'Canvas card saved.' : 'Canvas card could not be saved.');
-      adapters.renderAll?.();
-      closeEditor();
-    });
+    document.querySelector('[data-fabric-save]')?.addEventListener('click', saveEditor);
     setTimeout(syncInspector, 0);
     return editor;
   }
@@ -742,6 +985,11 @@
     addProgressSlider,
     addCustomSlider,
     alignActiveObjects,
+    nudgeActiveObjects,
+    rotateActiveObjects,
+    moveLayer,
+    toggleLockActive,
+    cloneActiveElement,
     applyAppearancePreset,
     applyCardPreset,
     updateActiveObject,

@@ -60,9 +60,9 @@ assert.match(card,/data-fabric-card-json=/);
 assert.match(card,/CanvasEditor\.renderSavedCanvas|fabric-card-canvas/);
 assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards do not render the old editor canvas');
 
-for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection','data-fabric-value','data-fabric-slider-style','setBookValue','updateSliderObject'])
+for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection','data-fabric-value','data-fabric-slider-style','data-fabric-slider-max','data-fabric-slider-name','setBookValue','updateSliderObject','cloneActiveElement','nudgeActiveObjects','rotateActiveObjects','moveLayer','toggleLockActive','ArrowLeft','Escape'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','fabric-value-controls','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','fabric-quick-actions','fabric-value-controls','fabric-check-control','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
 assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);

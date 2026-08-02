@@ -23,6 +23,7 @@ assert.match(css, /100dvh/);
 assert.match(css, /--visual-viewport-height/);
 assert.match(css, /Mobile book details editor/);
 assert.match(css, /\.book-editor-tabs\{position:static;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+assert.match(css, /\.book-profile-header-actions\{display:grid;gap:8px;padding-right:48px\}/);
 assert.match(css, /\.book-form-body\{[^}]*overflow-y:auto/);
 assert.match(css, /\.book-modal-footer\{position:sticky/);
 assert.match(css, /input\.shared-range::-webkit-slider-thumb/);

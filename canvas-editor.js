@@ -3,7 +3,18 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'selectable', 'evented'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'selectable', 'evented'];
+  const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
+  const FIELD_META = {
+    title: { label: 'Title', role: 'title' },
+    author: { label: 'Author', role: 'metadata' },
+    series: { label: 'Series', role: 'metadata' },
+    status: { label: 'Status', role: 'metadata' },
+    progress: { label: 'Progress', role: 'progress' },
+    rating: { label: 'Overall', role: 'rating' },
+    spice: { label: 'Spice', role: 'rating' },
+    impact: { label: 'Impact', role: 'rating' }
+  };
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, number(value, min)));
@@ -31,6 +42,21 @@
     return value && typeof value === 'object' && Array.isArray(value.objects) && value.objects.length ? value : null;
   }
 
+  function normalizeObjectTypes(object) {
+    if (!object || typeof object !== 'object') return object;
+    if (typeof object.type === 'string') object.type = TYPE_ALIASES[object.type] || object.type;
+    if (Array.isArray(object.objects)) object.objects.forEach(normalizeObjectTypes);
+    return object;
+  }
+
+  function normalizeScene(scene) {
+    const source = validScene(scene);
+    if (!source) return null;
+    const clone = JSON.parse(JSON.stringify(source));
+    clone.objects.forEach(normalizeObjectTypes);
+    return clone;
+  }
+
   function templateJson(template = {}) {
     return validScene(template.fabricCanvasJson)
       || validScene(template.canvasJson)
@@ -42,22 +68,24 @@
     return {
       version: FABRIC_VERSION,
       objects: [
-        { type: 'rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: 22, ry: 22, selectable: false, evented: false },
-        { type: 'textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .34, top: height * .07, width: width * .58, fontSize: Math.max(24, width * .075), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.title || 'Book Title' },
-        { type: 'textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .34, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
-        { type: 'textbox', id: 'series', name: 'Series', cardRole: 'metadata', dataBinding: { path: 'series' }, left: width * .64, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.series || 'Series' },
-        { type: 'textbox', id: 'status', name: 'Status', cardRole: 'metadata', dataBinding: { path: 'status' }, left: width * .06, top: height * .53, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'status' },
-        { type: 'textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .34, top: height * .53, width: width * .58, fontSize: Math.max(16, width * .042), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${record.progress ?? 0}%` },
-        { type: 'textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .06, top: height * .72, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `★★★★★\n${record.rating ?? 0} of 5` },
-        { type: 'textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .37, top: height * .72, width: width * .22, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `🔥🔥\n${record.spice ?? 0} of 5` },
-        { type: 'textbox', id: 'impact', name: 'Impact', cardRole: 'rating', dataBinding: { path: 'impact' }, left: width * .67, top: height * .72, width: width * .24, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `♥♥♥\n${record.impact ?? 0} of 5` }
+        { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: 22, ry: 22, selectable: false, evented: false },
+        { type: 'Rect', id: 'cover-panel', name: 'Cover panel', cardRole: 'decor', left: width * .06, top: height * .12, width: width * .25, height: height * .38, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1, rx: 14, ry: 14, opacity: .72 },
+        { type: 'Textbox', id: 'cover-title', name: 'Cover title', cardRole: 'decor', dataBinding: { path: 'title' }, left: width * .085, top: height * .26, width: width * .20, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.accent, text: record.title || 'Book Title' },
+        { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .34, top: height * .07, width: width * .58, fontSize: Math.max(24, width * .075), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.title || 'Book Title' },
+        { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .34, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
+        { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'metadata', dataBinding: { path: 'series' }, left: width * .64, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.series || 'Series' },
+        { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'metadata', dataBinding: { path: 'status' }, left: width * .06, top: height * .53, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'status' },
+        { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .34, top: height * .53, width: width * .58, fontSize: Math.max(16, width * .042), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${record.progress ?? 0}%` },
+        { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .06, top: height * .72, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `★★★★★\n${record.rating ?? 0} of 5` },
+        { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .37, top: height * .72, width: width * .22, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `🔥🔥\n${record.spice ?? 0} of 5` },
+        { type: 'Textbox', id: 'impact', name: 'Impact', cardRole: 'rating', dataBinding: { path: 'impact' }, left: width * .67, top: height * .72, width: width * .24, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `♥♥♥\n${record.impact ?? 0} of 5` }
       ],
       background: theme.surfaceSoft
     };
   }
 
-  function bindRecord(scene, record = {}) {
-    const clone = JSON.parse(JSON.stringify(validScene(scene) || baseScene({ record })));
+  function bindRecord(scene, record = {}, options = {}) {
+    const clone = normalizeScene(scene) || baseScene({ width: options.width, height: options.height, theme: options.theme || currentTheme(), record });
     (clone.objects || []).forEach(object => {
       const path = object.dataBinding?.path;
       if (!path) return;
@@ -70,10 +98,76 @@
   }
 
   async function loadScene(canvas, scene, record) {
-    const json = bindRecord(scene, record);
+    const json = bindRecord(scene, record, { width: canvas.__designWidth, height: canvas.__designHeight });
     await canvas.loadFromJSON(json);
+    if (!canvas.getObjects().length) {
+      await canvas.loadFromJSON(baseScene({ width: canvas.__designWidth, height: canvas.__designHeight, record }));
+    }
     canvas.renderAll();
     return canvas;
+  }
+
+  function getActive(canvas) {
+    return canvas.getActiveObject?.() || null;
+  }
+
+  function isTextObject(object) {
+    return Boolean(object && (object.type === 'Textbox' || object.type === 'textbox' || object.type === 'Text' || object.type === 'IText' || object.isType?.('textbox') || object.isType?.('text')));
+  }
+
+  function updateActiveObject(canvas, changes = {}) {
+    const active = getActive(canvas);
+    if (!active) return false;
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') active.set(key, value);
+    });
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function applyAppearancePreset(canvas, preset = 'plain') {
+    const active = getActive(canvas);
+    if (!active) return false;
+    const theme = currentTheme();
+    const presets = {
+      plain: { fill: 'transparent', stroke: 'transparent', strokeWidth: 0, shadow: null, rx: 0, ry: 0 },
+      pill: { fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1.5, rx: 999, ry: 999, shadow: '0 10px 22px rgba(0,0,0,.22)' },
+      badge: { fill: theme.surface, stroke: theme.accent, strokeWidth: 2, rx: 14, ry: 14, shadow: '0 16px 34px rgba(0,0,0,.34)' },
+      raised: { fill: theme.surface, stroke: theme.border, strokeWidth: 1, rx: 18, ry: 18, shadow: '0 18px 40px rgba(0,0,0,.42)' },
+      glass: { fill: 'rgba(255,255,255,.08)', stroke: 'rgba(255,255,255,.26)', strokeWidth: 1, rx: 20, ry: 20, shadow: '0 18px 44px rgba(0,0,0,.32)' },
+      accent: { fill: theme.accent, stroke: theme.accent, strokeWidth: 1, rx: 18, ry: 18, shadow: '0 16px 34px rgba(0,0,0,.36)' },
+      outline: { fill: 'transparent', stroke: theme.accent, strokeWidth: 2, rx: 18, ry: 18, shadow: null }
+    };
+    active.appearancePreset = preset;
+    active.set(presets[preset] || presets.plain);
+    if (isTextObject(active) && preset === 'accent') active.set('fill', theme.surfaceSoft);
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function applyCardPreset(canvas, preset = 'classic', record = {}) {
+    const theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width, height = canvas.__designHeight || DEFAULT_SIZE.height;
+    const scenes = {
+      classic: baseScene({ width, height, theme, record }),
+      poster: {
+        ...baseScene({ width, height, theme, record }),
+        objects: [
+          { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: 26, ry: 26, selectable: false, evented: false },
+          { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .08, top: height * .10, width: width * .84, fontSize: Math.max(34, width * .095), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: record.title || 'Book Title' },
+          { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .12, top: height * .32, width: width * .76, fontSize: Math.max(17, width * .045), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.muted, text: record.author || 'Author' },
+          { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .16, top: height * .60, width: width * .30, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: `★★★★★\n${record.rating ?? 0} of 5` },
+          { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .55, top: height * .60, width: width * .28, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `🔥🔥\n${record.spice ?? 0} of 5` },
+          { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .20, top: height * .80, width: width * .60, fontSize: Math.max(16, width * .04), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: `${record.progress ?? 0}%` }
+        ]
+      },
+      dashboard: {
+        ...baseScene({ width, height, theme, record }),
+        objects: baseScene({ width, height, theme, record }).objects.map(object => object.id === 'card-bg' ? { ...object, rx: 14, ry: 14 } : object)
+      }
+    };
+    return loadScene(canvas, scenes[preset] || scenes.classic, record);
   }
 
   function serializeCanvas(canvas) {
@@ -109,6 +203,22 @@
     return rect;
   }
 
+  function addProgressSlider(canvas, record = {}, options = {}) {
+    const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
+    const left = options.left || 64, top = options.top || 120, trackWidth = options.width || Math.min(260, width * .62);
+    const track = new fabric.Rect({ left, top, width: trackWidth, height: 8, rx: 8, ry: 8, fill: options.fill || theme.border, opacity: .8, id: makeObjectId('progress-track'), name: 'Progress track', cardRole: 'progress' });
+    const fill = new fabric.Rect({ left, top, width: trackWidth * clamp(record.progress ?? 0, 0, 100) / 100, height: 8, rx: 8, ry: 8, fill: options.accent || theme.accent, id: makeObjectId('progress-fill'), name: 'Progress fill', cardRole: 'progress', dataBinding: { path: 'progress' } });
+    const label = new fabric.Textbox(`${record.progress ?? 0}%`, { left, top: top + 14, width: trackWidth, fontSize: 18, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, id: makeObjectId('progress-label'), name: 'Progress label', cardRole: 'progress', dataBinding: { path: 'progress' } });
+    canvas.add(track, fill, label);
+    canvas.setActiveObject(label);
+    canvas.requestRenderAll();
+    return label;
+  }
+
+  function makeObjectId(prefix) {
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+
   function addEditableTextBox(canvas, text = 'Type something beautiful…', options = {}) {
     const fabric = requireFabric(), theme = currentTheme();
     const textbox = new fabric.Textbox(text, {
@@ -138,12 +248,13 @@
   }
 
   function addBoundTextBox(canvas, path, record = {}, options = {}) {
+    const meta = FIELD_META[path] || { label: path, role: 'metadata' };
     const object = addEditableTextBox(canvas, fieldText(path, record), options);
     object.set({
       id: options.id || path,
-      name: options.name || path.charAt(0).toUpperCase() + path.slice(1),
+      name: options.name || meta.label,
       dataBinding: { path },
-      cardRole: options.cardRole || 'metadata'
+      cardRole: options.cardRole || meta.role
     });
     object.exitEditing?.();
     canvas.requestRenderAll();
@@ -208,6 +319,10 @@
       addEditableTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
       addTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
       addBoundTextBox: (path, record, extra) => addBoundTextBox(canvas, path, record, extra),
+      addProgressSlider: (record, extra) => addProgressSlider(canvas, record, extra),
+      applyAppearancePreset: preset => applyAppearancePreset(canvas, preset),
+      applyCardPreset: (preset, record) => applyCardPreset(canvas, preset, record),
+      updateActiveObject: changes => updateActiveObject(canvas, changes),
       addImageFromFile: file => addImageFromFile(canvas, file),
       handleImageUpload: file => addImageFromFile(canvas, file),
       deleteActiveElement: () => deleteActiveElement(canvas),
@@ -227,18 +342,18 @@
       </header>
       <div class="fabric-editor-layout">
         <aside class="fabric-editor-sidebar" aria-label="Canvas tools">
+          <div class="fabric-tool-section">
+            <p>Starter looks</p>
+            <button type="button" data-fabric-card-preset="classic">Classic card</button>
+            <button type="button" data-fabric-card-preset="poster">Poster card</button>
+            <button type="button" data-fabric-card-preset="dashboard">Dashboard card</button>
+          </div>
           <button type="button" data-fabric-add="shape">Shape box</button>
           <button type="button" data-fabric-add="text">Text box</button>
+          <button type="button" data-fabric-add="progress-slider">Progress slider</button>
           <div class="fabric-field-palette" aria-label="Book fields">
             <p>Book fields</p>
-            <button type="button" data-fabric-field="title">Title</button>
-            <button type="button" data-fabric-field="author">Author</button>
-            <button type="button" data-fabric-field="series">Series</button>
-            <button type="button" data-fabric-field="status">Status</button>
-            <button type="button" data-fabric-field="progress">Progress</button>
-            <button type="button" data-fabric-field="rating">Overall</button>
-            <button type="button" data-fabric-field="spice">Spice</button>
-            <button type="button" data-fabric-field="impact">Impact</button>
+            ${Object.entries(FIELD_META).map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}
           </div>
           <label class="fabric-upload-control">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label>
           <button type="button" data-fabric-delete>Delete selected</button>
@@ -247,6 +362,24 @@
           <p class="fabric-editor-hint">Drag, resize, rotate, edit text inline, or upload art. Everything saves as Fabric JSON.</p>
         </aside>
         <main class="fabric-canvas-workspace"><div class="fabric-canvas-frame"><canvas id="${canvasId}" width="${width}" height="${height}"></canvas></div></main>
+        <aside class="fabric-editor-inspector" aria-label="Selected object controls">
+          <div class="fabric-tool-section">
+            <p>Selected piece</p>
+            <output data-fabric-selected-name>Nothing selected</output>
+          </div>
+          <div class="fabric-preset-grid" aria-label="Appearance presets">
+            ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
+          </div>
+          <label>Font size <input type="range" min="8" max="72" value="24" data-fabric-prop="fontSize"></label>
+          <label>Object width <input type="range" min="20" max="${Math.max(240, width)}" value="180" data-fabric-prop="width"></label>
+          <label>Object height <input type="range" min="8" max="${Math.max(240, height)}" value="80" data-fabric-prop="height"></label>
+          <label>Rotation <input type="range" min="-180" max="180" value="0" data-fabric-prop="angle"></label>
+          <label>Opacity <input type="range" min="0" max="100" value="100" data-fabric-prop="opacity"></label>
+          <label>Corner radius <input type="range" min="0" max="80" value="16" data-fabric-prop="cornerRadius"></label>
+          <label>Border <input type="range" min="0" max="12" value="1" data-fabric-prop="strokeWidth"></label>
+          <div class="fabric-color-row"><label>Border <input type="color" value="#75451f" data-fabric-stroke></label><label>Shadow <input type="checkbox" data-fabric-shadow></label></div>
+          <p class="fabric-editor-hint">Select a title, rating, pill, shape, or uploaded image, then use these controls to style it.</p>
+        </aside>
       </div>
     </section>`;
   }
@@ -269,8 +402,31 @@
       console.error(error);
       loadScene(editor.canvas, baseScene({ width, height, theme: currentTheme(), record: book }), book);
     });
+    const syncInspector = () => {
+      const active = getActive(editor.canvas);
+      const selectedName = document.querySelector('[data-fabric-selected-name]');
+      if (selectedName) selectedName.textContent = active ? (active.name || active.id || active.type || 'Selected piece') : 'Nothing selected';
+      document.querySelectorAll('[data-fabric-prop]').forEach(input => {
+        if (!active) return;
+        const prop = input.dataset.fabricProp;
+        if (prop === 'opacity') input.value = Math.round(number(active.opacity, 1) * 100);
+        else if (prop === 'cornerRadius') input.value = number(active.rx ?? active.ry, 0);
+        else input.value = number(active[prop], number(input.value, 0));
+      });
+    };
+    editor.canvas.on('selection:created', syncInspector);
+    editor.canvas.on('selection:updated', syncInspector);
+    editor.canvas.on('selection:cleared', syncInspector);
+    editor.canvas.on('object:modified', syncInspector);
+    document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
+      button.addEventListener('click', () => {
+        if (!confirm('Replace this card layout with this starter look? Book details stay safe.')) return;
+        editor.applyCardPreset(button.dataset.fabricCardPreset, book);
+      });
+    });
     document.querySelector('[data-fabric-add="shape"]')?.addEventListener('click', () => editor.addShapeBox());
     document.querySelector('[data-fabric-add="text"]')?.addEventListener('click', () => editor.addEditableTextBox());
+    document.querySelector('[data-fabric-add="progress-slider"]')?.addEventListener('click', () => editor.addProgressSlider(book));
     document.querySelectorAll('[data-fabric-field]').forEach(button => {
       button.addEventListener('click', () => editor.addBoundTextBox(button.dataset.fabricField, book, {
         width: Math.max(140, width * .4),
@@ -294,8 +450,20 @@
     });
     document.querySelector('[data-fabric-text]')?.addEventListener('input', event => {
       const active = editor.canvas.getActiveObject();
-      if (active?.isType?.('textbox') || active?.type === 'textbox') active.set('fill', event.target.value);
+      if (isTextObject(active)) active.set('fill', event.target.value);
       editor.canvas.requestRenderAll();
+    });
+    document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => editor.updateActiveObject({ stroke: event.target.value }));
+    document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }));
+    document.querySelectorAll('[data-fabric-appearance]').forEach(button => button.addEventListener('click', () => editor.applyAppearancePreset(button.dataset.fabricAppearance)));
+    document.querySelectorAll('[data-fabric-prop]').forEach(input => {
+      input.addEventListener('input', event => {
+        const prop = event.target.dataset.fabricProp;
+        const raw = number(event.target.value, 0);
+        if (prop === 'opacity') editor.updateActiveObject({ opacity: raw / 100 });
+        else if (prop === 'cornerRadius') editor.updateActiveObject({ rx: raw, ry: raw });
+        else editor.updateActiveObject({ [prop]: raw });
+      });
     });
     document.querySelector('[data-fabric-close]')?.addEventListener('click', () => adapters.closeModal?.());
     document.querySelector('[data-fabric-save]')?.addEventListener('click', () => {
@@ -304,6 +472,7 @@
       adapters.renderAll?.();
       adapters.closeModal?.();
     });
+    setTimeout(syncInspector, 0);
     return editor;
   }
 
@@ -336,11 +505,16 @@
     addShapeBox,
     addEditableTextBox,
     addBoundTextBox,
+    addProgressSlider,
+    applyAppearancePreset,
+    applyCardPreset,
+    updateActiveObject,
     addImageFromFile,
     deleteActiveElement,
     baseScene,
     bindRecord,
     validScene,
+    normalizeScene,
     renderSavedCanvas,
     renderSavedCanvases
   };

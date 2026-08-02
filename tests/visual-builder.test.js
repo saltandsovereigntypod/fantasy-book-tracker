@@ -7,7 +7,7 @@ const css=fs.readFileSync('visual-builder.css','utf8');
 const context={globalThis:null,console,Date,Math,Number,String,Boolean,Array,Set,Map};context.globalThis=context;
 vm.runInNewContext(source,context,{filename:'visual-builder.js'});
 const B=context.VisualBuilder;
-assert.equal(B.BUILDER_SCHEMA_VERSION,2);
+assert.equal(B.BUILDER_SCHEMA_VERSION,3);
 for(const type of ['text','image','title','metadata','rating','slider','progress','stars','icons','counter','linked-record','linked-dossier','linked-theory','relationship-count','quote','notes','tags','custom'])assert.ok(B.MODULE_TYPES.includes(type),type);
 const template=B.createTemplate({id:'template-1',name:'Generic Archive Layout',type:'generic',canvas:{width:700,height:500,grid:10}});
 assert.equal(template.id,'template-1');assert.equal(template.theme.mode,'inherit');assert.equal(template.modules.length,0);

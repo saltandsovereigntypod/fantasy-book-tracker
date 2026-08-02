@@ -115,3 +115,9 @@
 .builder-context-menu button{display:flex;justify-content:space-between;min-height:36px;border:0;border-radius:10px;background:transparent;color:var(--ui-text,var(--text));font:inherit;font-weight:800;text-align:left}
 .builder-context-menu button:hover,.builder-context-menu button:focus-visible{background:var(--ui-surface,var(--panel));outline:2px solid var(--ui-focus,var(--focus-ring,var(--accent)))}
 .builder-context-menu button:disabled{opacity:.45;cursor:not-allowed}
+
+/* Production card guardrails: saved editor canvases must not turn the library into poster-sized cards. */
+.book-collection .visual-card-viewport{overflow:hidden}
+.book-collection[data-card-size="small"] .visual-card-viewport{max-height:320px}
+.book-collection[data-card-size="medium"] .visual-card-viewport{max-height:380px}
+.book-collection[data-card-size="large"] .visual-card-viewport{max-height:520px}

@@ -8,7 +8,9 @@
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, number(value, min)));
   const fabricApi = () => globalThis.fabric?.Canvas ? globalThis.fabric : globalThis.fabric?.fabric?.Canvas ? globalThis.fabric.fabric : null;
-  const themeValue = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const themeValue = (name, fallback) => typeof document !== 'undefined' && typeof getComputedStyle === 'function'
+    ? getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    : fallback;
   const currentTheme = () => ({
     surface: themeValue('--ui-surface-raised', themeValue('--panel-2', '#2b160d')),
     surfaceSoft: themeValue('--ui-surface', themeValue('--panel', '#1b100a')),
@@ -25,8 +27,15 @@
     return fabric;
   }
 
+  function validScene(value) {
+    return value && typeof value === 'object' && Array.isArray(value.objects) && value.objects.length ? value : null;
+  }
+
   function templateJson(template = {}) {
-    return template.fabricCanvasJson || template.canvasJson || template.fabricJson || template.canvas?.fabricJson || null;
+    return validScene(template.fabricCanvasJson)
+      || validScene(template.canvasJson)
+      || validScene(template.fabricJson)
+      || validScene(template.canvas?.fabricJson);
   }
 
   function baseScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
@@ -48,7 +57,7 @@
   }
 
   function bindRecord(scene, record = {}) {
-    const clone = JSON.parse(JSON.stringify(scene || baseScene({ record })));
+    const clone = JSON.parse(JSON.stringify(validScene(scene) || baseScene({ record })));
     (clone.objects || []).forEach(object => {
       const path = object.dataBinding?.path;
       if (!path) return;
@@ -119,6 +128,28 @@
     return textbox;
   }
 
+  function fieldText(path, record = {}) {
+    const value = path.split('.').reduce((current, key) => current?.[key], record);
+    if (path === 'progress') return `${value ?? 0}%`;
+    if (path === 'rating') return `★★★★★\n${value ?? 0} of 5`;
+    if (path === 'spice') return `🔥🔥\n${value ?? 0} of 5`;
+    if (path === 'impact') return `♥♥♥\n${value ?? 0} of 5`;
+    return String(value ?? path);
+  }
+
+  function addBoundTextBox(canvas, path, record = {}, options = {}) {
+    const object = addEditableTextBox(canvas, fieldText(path, record), options);
+    object.set({
+      id: options.id || path,
+      name: options.name || path.charAt(0).toUpperCase() + path.slice(1),
+      dataBinding: { path },
+      cardRole: options.cardRole || 'metadata'
+    });
+    object.exitEditing?.();
+    canvas.requestRenderAll();
+    return object;
+  }
+
   function addImageFromFile(canvas, file) {
     const fabric = requireFabric();
     return new Promise((resolve, reject) => {
@@ -176,6 +207,7 @@
       addRectangle: extra => addShapeBox(canvas, extra),
       addEditableTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
       addTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
+      addBoundTextBox: (path, record, extra) => addBoundTextBox(canvas, path, record, extra),
       addImageFromFile: file => addImageFromFile(canvas, file),
       handleImageUpload: file => addImageFromFile(canvas, file),
       deleteActiveElement: () => deleteActiveElement(canvas),
@@ -197,6 +229,17 @@
         <aside class="fabric-editor-sidebar" aria-label="Canvas tools">
           <button type="button" data-fabric-add="shape">Shape box</button>
           <button type="button" data-fabric-add="text">Text box</button>
+          <div class="fabric-field-palette" aria-label="Book fields">
+            <p>Book fields</p>
+            <button type="button" data-fabric-field="title">Title</button>
+            <button type="button" data-fabric-field="author">Author</button>
+            <button type="button" data-fabric-field="series">Series</button>
+            <button type="button" data-fabric-field="status">Status</button>
+            <button type="button" data-fabric-field="progress">Progress</button>
+            <button type="button" data-fabric-field="rating">Overall</button>
+            <button type="button" data-fabric-field="spice">Spice</button>
+            <button type="button" data-fabric-field="impact">Impact</button>
+          </div>
           <label class="fabric-upload-control">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label>
           <button type="button" data-fabric-delete>Delete selected</button>
           <label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label>
@@ -228,6 +271,13 @@
     });
     document.querySelector('[data-fabric-add="shape"]')?.addEventListener('click', () => editor.addShapeBox());
     document.querySelector('[data-fabric-add="text"]')?.addEventListener('click', () => editor.addEditableTextBox());
+    document.querySelectorAll('[data-fabric-field]').forEach(button => {
+      button.addEventListener('click', () => editor.addBoundTextBox(button.dataset.fabricField, book, {
+        width: Math.max(140, width * .4),
+        fontSize: Math.max(18, width * .045),
+        cardRole: ['rating', 'spice', 'impact'].includes(button.dataset.fabricField) ? 'rating' : 'metadata'
+      }));
+    });
     document.querySelector('[data-fabric-upload]')?.addEventListener('change', event => {
       const file = event.target.files?.[0];
       if (file) editor.addImageFromFile(file).catch(error => adapters.showToast?.(error.message || 'Image upload failed.'));
@@ -285,10 +335,12 @@
     setUniformScale,
     addShapeBox,
     addEditableTextBox,
+    addBoundTextBox,
     addImageFromFile,
     deleteActiveElement,
     baseScene,
     bindRecord,
+    validScene,
     renderSavedCanvas,
     renderSavedCanvases
   };

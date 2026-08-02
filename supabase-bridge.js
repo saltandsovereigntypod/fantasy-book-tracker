@@ -13,7 +13,7 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260802-26';
+  const ASSET_VERSION = '20260801-22';
   const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-builder.js'];
 
   const $ = id => document.getElementById(id);
@@ -58,6 +58,22 @@
     }
     setSync('Cloud saved');
   }
+
+  async function uploadVisualAsset(file) {
+    if (!supabase || !user) throw new Error('Sign in before uploading visual assets.');
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
+    if (!allowed.has(file?.type)) throw new Error('Choose a PNG, JPG, or WebP image.');
+    if (file.size > 8 * 1024 * 1024) throw new Error('Choose an image smaller than 8 MB.');
+    const extension = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+    const id = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const path = `${user.id}/${id}`;
+    const { error } = await supabase.storage.from('visual-assets').upload(path, file, { contentType: file.type, upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from('visual-assets').getPublicUrl(path);
+    return { id: path, url: data.publicUrl };
+  }
+
+  window.uploadVisualAsset = uploadVisualAsset;
 
   function queueSave(raw) {
     if (!cloudReady) return;

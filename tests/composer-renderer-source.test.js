@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('visual-builder.js','utf8'),css=fs.readFileSync('visual-builder.css','utf8');
+const book={id:'book',title:'A Very Long Archive Title That Must Remain Readable Across Every Composer Density',author:'Archive Author',series:'Archive Series',status:'reading',progress:52,rating:4.5,spice:3,impact:4,trackerValues:{}};
+const state={books:[book],sessions:[],visualTemplates:[]},context={globalThis:null,state,console,Date,Math,Number,String,Boolean,Array,Set,Map,saveState(){},renderAll(){},bookCardStats(){return{notesCount:0,theoryCount:0,dossierCount:0,wallCount:0}}};context.globalThis=context;vm.runInNewContext(source,context);const B=context.VisualBuilder;
+const template=B.standardBookTemplate();
+for(const size of ['small','medium','large']){const html=B.renderTemplateCanvas(template,book,{size});assert.match(html,/data-layout-mode="responsive"/);assert.match(html,/data-container-role="header"/);assert.doesNotMatch(html.match(/data-render-mode="responsive"[^>]+style="([^"]*)"/)[1],/--module-(x|y|width|height):/,'Composer modules ignore coordinates');}
+const small=B.renderTemplateCanvas(template,book,{size:'small'}),medium=B.renderTemplateCanvas(template,book,{size:'medium'}),large=B.renderTemplateCanvas(template,book,{size:'large'});assert.match(small,/standard-rating/);assert.doesNotMatch(small,/standard-spice|standard-impact/);assert.match(medium,/standard-spice/);assert.match(large,/standard-summary/);
+const order=['header','progress','ratings','content','actions'].map(role=>large.indexOf(`data-container-role="${role}"`));assert.deepEqual([...order].sort((a,b)=>a-b),order,'region order controls output');
+const list=B.renderTemplateCanvas(template,book,{size:'medium',presentation:'list'});assert.match(list,/data-presentation="list"/);assert.match(list,/data-container-role="actions"/);
+const expert=B.normalizeTemplate({id:'expert',composer:{enabled:false},canvas:{width:420,height:380},modules:[{id:'exact',type:'title',x:111,y:47,width:205,height:72}]});const expertHtml=B.renderTemplateCanvas(expert,book);assert.match(expertHtml,/data-layout-mode="absolute"/);assert.match(expertHtml,/--module-x:26\.428/);
+const preview=B.renderTemplateCanvas(template,book,{size:'medium'});template.id='production';book.visualTemplateId=template.id;state.visualTemplates.push(template);const production=B.renderBookCard(book,{size:'medium'});assert.ok(production.includes(preview));
+for(const rule of ['font-size:max(14px,var(--card-title-size))','font-size:max(18px,var(--card-title-size))','font-size:max(24px,var(--card-title-size))','data-presentation=list][data-layout-mode=responsive]','builder-card-canvas[data-layout-mode=responsive]'])assert.ok(css.includes(rule),rule);
+assert.match(source,/template\.composer\.enabled===true/);assert.doesNotMatch(css.slice(css.lastIndexOf('Composer rendering is region-driven')),/(#[0-9a-f]{3,8}|rgba?\()/i);
+console.log('Composer region rendering, density composition, readable typography, shared production preview, list layout, and Expert isolation assertions passed');

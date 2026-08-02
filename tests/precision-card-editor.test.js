@@ -27,17 +27,22 @@ B.autoArrangeBookTemplate(broken);
 assert.ok(broken.modules.every(module=>module.sizingMode==='custom'&&module.customWidth===module.width&&module.customHeight===module.height));
 assert.ok(broken.modules.every(module=>module.x>=0&&module.y>=0&&module.x+module.width<=broken.canvas.width&&module.y+module.height<=broken.canvas.height),'arrange neatly repairs malformed saved geometry into fixed canvas boxes');
 
+const portrait=B.createTemplate({type:'book-card',canvas:{width:640,height:900,size:'custom'},modules:[B.createModule('title',{id:'portrait-title',x:280,y:40,customWidth:328,customHeight:100,dataBinding:{path:'title'}})]});
+B.normalizeBookCardCanvas(portrait,'medium');
+assert.deepEqual([portrait.canvas.width,portrait.canvas.height,portrait.canvas.size],[420,380,'medium'],'book cards normalize away from accidental portrait editor canvases');
+assert.ok(portrait.modules[0].x+portrait.modules[0].width<=portrait.canvas.width&&portrait.modules[0].y+portrait.modules[0].height<=portrait.canvas.height,'normalization keeps saved objects inside the card');
+
 const styled=B.createModule('metadata',{id:'styled',style:{preset:'glass',fill:'var(--ui-accent-soft, var(--panel))',showLabel:false},dataBinding:{path:'author'}});
 const html=B.renderTemplateCanvas(B.createTemplate({modules:[styled]}),{id:'book',author:'Rebecca Yarros'});
 assert.match(html,/data-style-preset="glass"/,'existing modules render their selected appearance preset');
 assert.match(html,/data-sizing-mode="custom"/,'live cards use fixed saved boxes instead of content-hugging auto boxes');
 assert.match(html,/data-saved-sizing-mode="custom"/,'the renderer preserves the original saved sizing mode for auditing');
 
-for(const hook of ['renderCard','data-editor-view','data-builder-zoom="fit"','data-builder-zoom="100"','data-upload-asset','data-template-preset','autoArrangeBookTemplate','data-action="view-book"','data-saved-sizing-mode','const action=button.dataset.builderZoom','data-style-preset-quick','data-style-swatch','type="color"','builder-side-rail','builder-floating-toolbar','data-floating-action="duplicate"','data-floating-action="delete"','data-floating-action="rotate-left"','rotationSnap','applyEditorAction','editorContextMenuHtml','data-context-action','editorClipboard','oncontextmenu','root.onkeydown'])
+for(const hook of ['renderCard','data-editor-view','data-builder-zoom="fit"','data-builder-zoom="100"','data-upload-asset','data-template-preset','autoArrangeBookTemplate','normalizeBookCardCanvas','data-action="view-book"','data-saved-sizing-mode','const action=button.dataset.builderZoom','data-style-preset-quick','data-style-swatch','type="color"','builder-side-rail','builder-floating-toolbar','data-floating-action="duplicate"','data-floating-action="delete"','data-floating-action="rotate-left"','rotationSnap','applyEditorAction','editorContextMenuHtml','data-context-action','editorClipboard','stage.oncontextmenu','root.onkeydown'])
   assert.ok(source.includes(hook),hook);
 assert.doesNotMatch(source,/querySelector\('\[data-builder-zoom-fit\]'\)\.onclick/,'zoom controls do not bind to missing selectors');
 
-for(const style of ['Canvas parity repair','Canva workspace foundation','Canvas command menu','visual-card-viewport','data-style-preset=glass','data-style-preset=raised-panel','data-style-preset=pill','visual-book-actions button:after','builder-color-control','builder-color-swatches','builder-style-gallery','style-tile','builder-layers','builder-side-rail','builder-floating-toolbar','builder-context-menu','font-size:var(--module-font-size)','scrollbar-gutter:stable','visual-builder-backdrop>.modal'])
+for(const style of ['Canvas parity repair','Canva workspace foundation','Canvas command menu','Production card guardrails','visual-card-viewport','data-style-preset=glass','data-style-preset=raised-panel','data-style-preset=pill','visual-book-actions button:after','builder-color-control','builder-color-swatches','builder-style-gallery','style-tile','builder-layers','builder-side-rail','builder-floating-toolbar','builder-context-menu','font-size:var(--module-font-size)','scrollbar-gutter:stable','visual-builder-backdrop>.modal'])
   assert.ok(css.includes(style),style);
 assert.doesNotMatch(css,/font-size:max\(14px/,'small cards do not force desktop title text');
 assert.doesNotMatch(css,/\.visual-book-module\{[^}]*container-type:size/,'modules do not create isolated size containers that make text measure against tiny boxes');

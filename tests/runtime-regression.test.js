@@ -4,7 +4,8 @@ const fs=require('node:fs');
 const read=file=>fs.readFileSync(file,'utf8');
 const html=read('index.html'),bridge=read('supabase-bridge.js'),app=read('app.js'),wall=read('infinite-wall.js'),experience=read('dossier-experience.js'),css=read('dossier-experience.css');
 
-assert.ok(['app.js','hotfix.js','runtime-patches.js','investigation-features.js','infinite-wall.js','mind-map.js','dossier-experience.js','visual-fields.js','visual-assets.js','visual-fonts.js','visual-builder.js'].every((file,index,array)=>index===0||bridge.indexOf(array[index-1])<bridge.indexOf(file)),'runtime order is deterministic');
+assert.match(bridge,/\['app\.js', 'hotfix\.js', 'runtime-patches\.js', 'investigation-features\.js', 'infinite-wall\.js', 'mind-map\.js', 'dossier-experience\.js', 'visual-fields\.js', 'visual-assets\.js', 'visual-fonts\.js', 'canvas-editor\.js', 'visual-builder\.js'\]/,'runtime order is deterministic and loads the field registry before the Fabric canvas engine and VisualBuilder bridge');
+assert.match(html,/fabric@6\/dist\/index\.min\.js/,'Fabric.js v6 is loaded before the app runtime bridge');
 assert.match(wall,/wallRoot\.onclick=.*\[data-action\]/,'rerender-safe wall action delegate exists');
 for(const action of ["'new-wall'","'edit-wall'","'create-link'"])assert.ok(app.includes(action),`${action} resolves in the base action router`);
 assert.match(wall,/return originalHandleAction\(a,id\)/,'unknown actions forward to the previous router');

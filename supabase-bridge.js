@@ -13,8 +13,8 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260801-25';
-  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'visual-assets.js', 'visual-fonts.js', 'visual-builder.js'];
+  const ASSET_VERSION = '20260802-37';
+  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'visual-assets.js', 'visual-fonts.js', 'canvas-editor.js', 'visual-builder.js'];
 
   const $ = id => document.getElementById(id);
   const setMessage = text => { if ($('authMessage')) $('authMessage').textContent = text; };
@@ -59,28 +59,61 @@
     setSync('Cloud saved');
   }
 
-  const safeFilename = name => String(name || 'upload').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || 'upload';
-  const requireUser = () => { if (!supabase || !user) throw new Error('Sign in to use your upload library.'); return user; };
-  async function listLibrary(table) { requireUser(); const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false }); if (error) throw error; return data || []; }
-  async function signedUrl(bucket, path) { requireUser(); const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600); if (error) throw error; return data.signedUrl; }
-  async function uploadLibraryFile({ table, bucket, file, id = crypto.randomUUID(), name, record }) {
-    const account = requireUser(), path = `${account.id}/${id}/${safeFilename(file.name)}`;
+  const safeFilename = name => String(name || 'upload').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-120) || 'upload';
+  const requireUser = () => { if (!supabase || !user) throw new Error('Sign in to use your private visual library.'); return user; };
+  async function listLibrary(table) {
+    const account = requireUser();
+    const { data, error } = await supabase.from(table).select('*').eq('user_id', account.id).order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+  async function signedUrl(bucket, path) {
+    requireUser();
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+    if (error) throw error;
+    return data?.signedUrl || '';
+  }
+  async function uploadLibraryFile({ table, bucket, file, id = crypto.randomUUID(), name, record = {} }) {
+    const account = requireUser();
+    const path = `${account.id}/${id}/${safeFilename(file.name)}`;
     const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
     if (uploadError) throw uploadError;
-    const row = { id, user_id: account.id, storage_path: path, ...(table === 'visual_assets' ? { name } : { display_name: name }), ...record };
+    const row = { id, user_id: account.id, name, storage_path: path, ...record };
+    if (table === 'custom_fonts') { row.display_name = row.display_name || row.name; delete row.name; }
     const { data, error } = await supabase.from(table).insert(row).select().single();
     if (error) { await supabase.storage.from(bucket).remove([path]); throw error; }
     return data;
   }
-  async function renameLibraryRecord(table, id, name, column) { requireUser(); const { data, error } = await supabase.from(table).update({ [column]: name, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) throw error; return data; }
+  async function renameLibraryRecord(table, id, value, column = 'name') {
+    const account = requireUser();
+    const { data, error } = await supabase.from(table).update({ [column]: value, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', account.id).select().single();
+    if (error) throw error;
+    return data;
+  }
   async function deleteLibraryRecord(table, bucket, id) {
-    requireUser(); const { data: row, error: readError } = await supabase.from(table).select('id,storage_path').eq('id', id).single(); if (readError) throw readError;
-    const { error: storageError } = await supabase.storage.from(bucket).remove([row.storage_path]); if (storageError) throw storageError;
-    const { error: rowError } = await supabase.from(table).delete().eq('id', id); if (rowError) throw new Error(`File removed, but its library record could not be deleted: ${rowError.message}`);
+    const account = requireUser();
+    const { data: row, error: readError } = await supabase.from(table).select('storage_path').eq('id', id).eq('user_id', account.id).single();
+    if (readError) throw readError;
+    const { error: storageError } = await supabase.storage.from(bucket).remove([row.storage_path]);
+    if (storageError) throw new Error(`The file could not be removed; its library record was kept. ${storageError.message}`);
+    const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', account.id);
+    if (error) throw error;
     return true;
   }
-  window.VisualCloud = { isSignedIn: () => Boolean(supabase && user), userId: () => user?.id || '', list: listLibrary, signedUrl, uploadLibraryFile, renameLibraryRecord, deleteLibraryRecord };
-  async function uploadVisualAsset(file) { const row = await globalThis.VisualAssets.uploadAsset(file); return { id: row.id, storagePath: row.storage_path, url: await globalThis.VisualAssets.getAssetUrl(row) }; }
+  window.VisualCloud = {
+    isSignedIn: () => Boolean(user),
+    list: listLibrary,
+    signedUrl,
+    uploadLibraryFile,
+    renameLibraryRecord,
+    deleteLibraryRecord
+  };
+
+  async function uploadVisualAsset(file) {
+    const row = await window.VisualAssets.uploadAsset(file);
+    return { ...row, url: await window.VisualAssets.getAssetUrl(row) };
+  }
+
   window.uploadVisualAsset = uploadVisualAsset;
 
   function queueSave(raw) {
@@ -143,8 +176,8 @@
       // environment. Awaiting each load prevents patches from racing app boot
       // or overriding one another in a stale order.
       for (const file of APP_SCRIPTS) await loadScript(file);
-      if (window.__VISUAL_DEBUG__) console.debug('[VisualBuilder] runtime-ready', { activeRenderer: window.VisualBuilder?.renderBookCard ? 'VisualBuilder.renderBookCard' : 'app.bookCard fallback', cacheVersion: ASSET_VERSION, scriptOrder: [...APP_SCRIPTS], visualBuilderVersion: window.VisualBuilder?.VISUAL_ASSET_VERSION || 'missing' });
       await Promise.allSettled([window.VisualAssets?.refreshAssetLibrary?.(), window.VisualFonts?.loadAllUserFonts?.()]);
+      if (window.__VISUAL_DEBUG__) console.debug('[VisualBuilder] runtime-ready', { activeRenderer: window.VisualBuilder?.renderBookCard ? 'VisualBuilder.renderBookCard' : 'app.bookCard fallback', cacheVersion: ASSET_VERSION, scriptOrder: [...APP_SCRIPTS], visualBuilderVersion: window.VisualBuilder?.VISUAL_ASSET_VERSION || 'missing' });
       renderAll();
       bindAppControls();
       closeAuth();
@@ -152,6 +185,7 @@
       finishHydration();
     } catch (error) {
       console.error('Production runtime failed to load:', error);
+      appLoaded = false;
       setMessage('The tracker could not load its latest runtime. Refresh the page.');
       finishHydration();
       openAuth();

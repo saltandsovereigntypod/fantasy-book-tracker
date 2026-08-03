@@ -21,5 +21,5 @@ const genresModule=context.VisualBuilder.createBoundModule('genres');
 assert.equal(genresModule.type,'tags');
 const rebound=context.CanvasEditor.bindRecord({version:'6',objects:[{type:'Image',id:'cover',cardRole:'image',dataBinding:{path:'coverUrl'},src:'old.jpg'}]},book);
 assert.equal(rebound.objects[0].src,'cover.jpg');
-assert.match(bridge,/visual-fields\.js', 'canvas-editor\.js', 'visual-builder\.js/);
+assert.match(bridge,/visual-fields\.js', 'visual-assets\.js', 'visual-fonts\.js', 'canvas-editor\.js', 'visual-builder\.js/);
 console.log('visual field registry, bound modules, and image rebinding assertions passed');

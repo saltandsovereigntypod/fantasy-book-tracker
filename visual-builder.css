@@ -144,7 +144,6 @@
 .fabric-editor-sidebar{border-right:1px solid var(--ui-border,var(--border))}
 .fabric-editor-inspector{border-left:1px solid var(--ui-border,var(--border))}
 .fabric-editor-sidebar button,.fabric-editor-inspector button,.fabric-upload-control{display:grid;place-items:center;min-height:48px;padding:10px 12px;border:1px solid var(--ui-border,var(--border));border-radius:16px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text));font:inherit;font-weight:800;box-shadow:var(--shadow);cursor:pointer}
-.fabric-editor-sidebar button:disabled,.fabric-editor-inspector button:disabled{cursor:not-allowed;opacity:.48;transform:none}
 .fabric-editor-sidebar button:hover,.fabric-editor-inspector button:hover,.fabric-upload-control:hover{border-color:var(--ui-accent,var(--accent));transform:translateY(-1px)}
 .fabric-upload-control input{position:absolute;inline-size:1px;block-size:1px;opacity:0;pointer-events:none}
 .fabric-editor-sidebar label:not(.fabric-upload-control),.fabric-editor-inspector label{display:grid;gap:8px;color:var(--ui-text-muted,var(--muted));font-weight:800}
@@ -170,7 +169,6 @@
 .fabric-panel-tabs{position:sticky;top:0;z-index:3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px;border:1px solid var(--ui-border,var(--border));border-radius:18px;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 94%,black)}
 .fabric-panel-tabs a{display:grid;place-items:center;min-height:38px;padding:6px 8px;border:1px solid var(--ui-border,var(--border));border-radius:999px;background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text));font-weight:900;text-decoration:none}
 .fabric-panel-tabs a:hover,.fabric-panel-tabs a:focus-visible{border-color:var(--ui-accent,var(--accent));outline:2px solid color-mix(in srgb,var(--ui-accent,var(--accent)) 45%,transparent)}
-.fabric-mobile-more{display:none}
 .fabric-panel{scroll-margin-top:82px}
 .fabric-style-palette button{gap:4px;text-align:center}
 .fabric-style-palette button span{font-weight:900}.fabric-style-palette button em{font-family:Georgia,serif;font-size:.84em;color:var(--ui-text-muted,var(--muted));font-style:normal}
@@ -179,7 +177,7 @@
 .fabric-image-controls{display:grid;gap:12px;padding:14px;border:1px solid var(--ui-border,var(--border));border-radius:18px;background:linear-gradient(160deg,color-mix(in srgb,var(--ui-surface-raised,var(--panel-2)) 90%,var(--ui-accent,var(--accent))),var(--ui-surface-raised,var(--panel-2)))}
 .fabric-image-controls[hidden]{display:none!important}.fabric-image-controls p{margin:0;color:var(--ui-text-muted,var(--muted));font-weight:900;text-transform:uppercase;letter-spacing:.04em}
 .fabric-layer-list{display:grid;gap:6px;max-height:190px;overflow:auto;padding:6px;border:1px solid var(--ui-border,var(--border));border-radius:14px;background:var(--ui-surface,var(--panel));scrollbar-color:var(--ui-accent,var(--accent)) transparent}
-.fabric-library-manager{display:grid;gap:8px;min-width:0;padding-top:10px;border-top:1px solid var(--ui-border,var(--border))}.fabric-upload-filename{display:block;min-height:1.5em;padding:6px 8px;border:1px dashed var(--ui-border,var(--border));border-radius:10px;color:var(--ui-text-muted,var(--muted));font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fabric-library-status{display:block;min-height:1.4em;color:var(--ui-text-muted,var(--muted));font-size:.82rem}.fabric-library-status button{display:inline-grid;min-height:30px;margin-top:5px;padding:4px 8px;border-radius:999px;font-size:.78rem}.fabric-library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fabric-library-card,.fabric-library-row{display:grid;gap:5px;min-width:0;padding:6px;border:1px solid var(--ui-border,var(--border));border-radius:12px}.fabric-library-card img{width:100%;height:82px;object-fit:contain;border-radius:8px;background:repeating-conic-gradient(var(--ui-surface-soft,var(--panel-2)) 0 25%,var(--ui-surface,var(--panel)) 0 50%) 50%/16px 16px}.fabric-library-card button,.fabric-library-row button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fabric-library-meta,.fabric-font-preview{min-width:0;color:var(--ui-text,var(--text));font-size:.78rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fabric-library-row{grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center}.fabric-library-row button{min-height:40px;padding:6px}
+.fabric-library-manager{display:grid;gap:8px;min-width:0;padding-top:10px;border-top:1px solid var(--ui-border,var(--border))}.fabric-library-status{min-height:1.4em;color:var(--ui-text-muted,var(--muted));font-size:.82rem}.fabric-library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fabric-library-card,.fabric-library-row{display:grid;gap:5px;min-width:0;padding:6px;border:1px solid var(--ui-border,var(--border));border-radius:12px}.fabric-library-card img{width:100%;height:82px;object-fit:contain;border-radius:8px;background:repeating-conic-gradient(var(--ui-surface-soft,var(--panel-2)) 0 25%,var(--ui-surface,var(--panel)) 0 50%) 50%/16px 16px}.fabric-library-card button,.fabric-library-row button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fabric-library-row{grid-template-columns:minmax(0,1fr) auto auto}.fabric-library-row button{min-height:40px;padding:6px}
 .fabric-layer-list button{display:flex;justify-content:space-between;min-height:34px;padding:7px 9px;border-radius:10px;box-shadow:none;text-align:left}.fabric-layer-list button.is-active{border-color:var(--ui-accent,var(--accent));background:color-mix(in srgb,var(--ui-accent,var(--accent)) 22%,var(--ui-surface-raised,var(--panel-2)))}
 @media(max-width:980px){.fabric-editor-layout{grid-template-columns:minmax(220px,280px) minmax(0,1fr)}.fabric-editor-inspector{grid-column:1/-1;border-left:0;border-top:1px solid var(--ui-border,var(--border));grid-template-columns:repeat(2,minmax(0,1fr));max-height:32dvh}.fabric-editor-inspector .fabric-editor-hint,.fabric-preset-grid{grid-column:1/-1}}
 @media(max-width:760px){.fabric-editor-backdrop>.modal{height:94dvh}.fabric-editor-layout{grid-template-columns:1fr}.fabric-editor-sidebar{grid-template-columns:repeat(2,minmax(0,1fr));border-right:0;border-bottom:1px solid var(--ui-border,var(--border));max-height:38dvh}.fabric-editor-hint,.fabric-color-row,.fabric-field-palette,.fabric-style-palette,.fabric-elements-palette,.fabric-tool-section{grid-column:1/-1}.fabric-canvas-workspace{padding:12px}}
@@ -187,36 +185,25 @@
 /* Phone-first Fabric editor: make the Canva-like canvas usable instead of squeezing desktop columns. */
 @media(max-width:640px){
   .fabric-editor-backdrop{padding:0!important;overflow:hidden}
-  .fabric-editor-backdrop>.modal{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;overflow:hidden}
+  .fabric-editor-backdrop>.modal{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0}
   .fabric-editor-backdrop>.modal #formModalContent{height:100%;overflow:hidden}
-  .fabric-card-editor{grid-template-rows:auto minmax(0,1fr);height:100dvh;overflow:hidden}
+  .fabric-card-editor{grid-template-rows:auto minmax(0,1fr)}
   .fabric-editor-header{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:10px max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));position:sticky;top:0;z-index:20}
   .fabric-editor-header .eyebrow{font-size:10px;letter-spacing:.14em}
   .fabric-editor-header h2{font-size:clamp(18px,5.5vw,24px);line-height:1.08;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .fabric-editor-header p{font-size:clamp(12px,3.6vw,15px)}
   .fabric-editor-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .fabric-editor-actions button{min-height:46px;border-radius:18px}
-  .fabric-editor-layout{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(260px,44dvh) minmax(150px,18dvh) minmax(220px,1fr);height:100%;overflow:hidden}
-  .fabric-editor-layout.is-tools-expanded{grid-template-rows:minmax(220px,34dvh) minmax(260px,34dvh) minmax(220px,1fr)}
-  .fabric-editor-sidebar{order:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));height:auto;max-height:none;overflow-y:auto;overflow-x:hidden;border-right:0;border-block:1px solid var(--ui-border,var(--border));padding:12px max(12px,env(safe-area-inset-right)) 14px max(12px,env(safe-area-inset-left));touch-action:pan-y}
+  .fabric-editor-layout{display:flex;flex-direction:column;height:100%;overflow:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .fabric-editor-sidebar{order:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));height:auto;max-height:44dvh;overflow-y:auto;overflow-x:hidden;border-right:0;border-block:1px solid var(--ui-border,var(--border));padding:12px max(12px,env(safe-area-inset-right)) 14px max(12px,env(safe-area-inset-left))}
   .fabric-editor-sidebar button,.fabric-editor-inspector button,.fabric-upload-control{min-height:44px;border-radius:18px}
-  .fabric-mobile-more{display:grid;grid-column:1/-1;position:sticky;top:0;z-index:4;background:linear-gradient(135deg,var(--ui-accent,var(--accent)),color-mix(in srgb,var(--ui-accent,var(--accent)) 72%,var(--ui-surface-raised,var(--panel-2))))!important;color:var(--accent-contrast,var(--ui-text,var(--text)))!important}
-  .fabric-editor-sidebar:not(.is-expanded) .fabric-panel:not(#fabric-panel-elements):not(#fabric-panel-fields){display:none}
-  .fabric-editor-sidebar:not(.is-expanded) #fabric-panel-elements .fabric-elements-palette,
-  .fabric-editor-sidebar:not(.is-expanded) #fabric-panel-fields .fabric-field-palette,
-  .fabric-editor-sidebar:not(.is-expanded) .fabric-library-manager,
-  .fabric-editor-sidebar:not(.is-expanded) .fabric-editor-hint{display:none}
-  .fabric-editor-sidebar:not(.is-expanded) #fabric-panel-elements,
-  .fabric-editor-sidebar:not(.is-expanded) #fabric-panel-fields{grid-column:auto;padding:10px}
-  .fabric-editor-sidebar:not(.is-expanded) #fabric-panel-elements p,
-  .fabric-editor-sidebar:not(.is-expanded) #fabric-panel-fields p{font-size:.78rem}
   .fabric-tool-section,.fabric-field-palette,.fabric-style-palette,.fabric-elements-palette,.fabric-color-row,.fabric-editor-hint{grid-column:1/-1}
   .fabric-tool-section{display:grid;grid-template-columns:1fr;gap:10px}
   .fabric-field-palette,.fabric-style-palette,.fabric-elements-palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .fabric-field-palette p,.fabric-style-palette p,.fabric-elements-palette p{grid-column:1/-1}
-  .fabric-canvas-workspace{order:1;display:block;min-height:0;padding:10px max(10px,env(safe-area-inset-right)) 14px max(10px,env(safe-area-inset-left));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .fabric-canvas-workspace{order:1;display:block;min-height:42dvh;padding:10px max(10px,env(safe-area-inset-right)) 14px max(10px,env(safe-area-inset-left));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .fabric-canvas-frame{width:max-content;margin:0 auto}
-  .fabric-editor-inspector{order:3;display:grid;grid-template-columns:1fr 1fr;height:auto;max-height:none;overflow-y:auto;overflow-x:hidden;border-left:0;border-top:1px solid var(--ui-border,var(--border));padding:16px max(14px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+  .fabric-editor-inspector{order:3;display:grid;grid-template-columns:1fr 1fr;height:auto;max-height:48dvh;overflow-y:auto;overflow-x:hidden;border-left:0;border-top:1px solid var(--ui-border,var(--border));padding:16px max(14px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
   .fabric-editor-inspector label,.fabric-editor-inspector .fabric-tool-section,.fabric-editor-inspector .fabric-value-controls,.fabric-editor-inspector .fabric-text-tools,.fabric-editor-inspector .fabric-quick-actions,.fabric-editor-inspector .fabric-preset-grid,.fabric-editor-inspector .fabric-align-grid,.fabric-editor-inspector .fabric-editor-hint{grid-column:1/-1}
   .fabric-preset-grid,.fabric-align-grid,.fabric-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 }

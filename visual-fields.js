@@ -26,7 +26,6 @@
     { id: 'linkedWallIds', label: 'Walls count', category: 'Connections', path: 'linkedWallIds', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 130, defaultHeight: 48 },
     { id: 'bookConnections', label: 'Relationships count', category: 'Connections', path: 'bookConnections', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 160, defaultHeight: 48 },
     { id: '$actions', label: 'Action buttons', category: 'Actions', path: '$actions', type: 'actions', role: 'actions', moduleType: 'actions', defaultWidth: 260, defaultHeight: 62 },
-    { id: 'trackerValues', label: 'Tracker values', category: 'Custom', path: 'trackerValues', type: 'custom', role: 'custom-slider', moduleType: 'custom-slider', defaultWidth: 190, defaultHeight: 72 },
     { id: 'customTracker', label: 'Custom tracker', category: 'Custom', path: 'customTracker', type: 'custom', role: 'custom-slider', moduleType: 'custom-slider', defaultWidth: 190, defaultHeight: 72 }
   ];
 
@@ -56,7 +55,7 @@
     if (id === 'coverUrl') return imageUrl(record.coverUrl || record.coverImage || record.cover || record.images);
     if (id === 'images') return imageUrl(record.images || record.additionalImages);
     if (id === 'bookConnections') return relationshipCount(record);
-    if (id === 'customTracker' || id === 'trackerValues') {
+    if (id === 'customTracker') {
       const trackers = record.customTrackers || record.trackers || [];
       const values = record.trackerValues || {};
       const first = Array.isArray(trackers) ? trackers[0] : null;
@@ -93,7 +92,6 @@
   globalThis.VisualFields = {
     schemaVersion: 1,
     fields: () => FIELD_DEFINITIONS.map(field => ({ ...field })),
-    list: () => FIELD_DEFINITIONS.map(field => ({ ...field })),
     byId: id => fieldById(id),
     categories,
     resolve,

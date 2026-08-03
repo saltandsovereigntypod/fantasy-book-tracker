@@ -274,65 +274,43 @@
     return Boolean(object && (object.type === 'Textbox' || object.type === 'textbox' || object.type === 'Text' || object.type === 'IText' || object.isType?.('textbox') || object.isType?.('text')));
   }
 
-  function isImageObject(object) {
-    return Boolean(object && (object.type === 'Image' || object.type === 'image' || object.isType?.('image')));
-  }
-
-  function childObjects(object) {
-    if (!object) return [];
-    if (typeof object.getObjects === 'function') return object.getObjects() || [];
-    return object.objects || object._objects || [];
-  }
-
-  function textObjectsFromTarget(target) {
-    const textObjects = [];
-    const seen = new Set();
+  function collectTextObjects(selection) {
+    const found = [], seen = new Set();
     const visit = object => {
       if (!object || seen.has(object)) return;
       seen.add(object);
-      if (isTextObject(object)) textObjects.push(object);
-      childObjects(object).forEach(visit);
+      if (isTextObject(object)) found.push(object);
+      const children = object.getObjects?.() || object._objects || object.objects || [];
+      children.forEach(visit);
     };
-    visit(target);
-    return textObjects;
+    (Array.isArray(selection) ? selection : [selection]).forEach(visit);
+    return found;
   }
 
-  function selectedTextObjects(canvas) {
-    const active = getActive(canvas);
-    return textObjectsFromTarget(active);
-  }
-
-  function applyToSelectedText(canvas, callback) {
-    const active = getActive(canvas);
-    const textObjects = textObjectsFromTarget(active);
-    if (!textObjects.length) return false;
+  async function applyFontToSelection(canvas, selection, fontFamily, customFont = null) {
+    const textObjects = collectTextObjects(selection);
+    if (!textObjects.length) return 0;
+    if (customFont) await globalThis.VisualFonts?.loadFont?.(customFont);
     textObjects.forEach(object => {
-      callback(object);
+      object.set?.('fontFamily', fontFamily);
+      if (customFont) {
+        object.set?.({ fontId: customFont.id, fontFamilyKey: customFont.family_name, fontStoragePath: customFont.storage_path });
+      } else {
+        delete object.fontId;
+        delete object.fontFamilyKey;
+        delete object.fontStoragePath;
+      }
       object.initDimensions?.();
       object.setCoords?.();
     });
-    active?.setCoords?.();
-    canvas.requestRenderAll();
-    return true;
-  }
-
-  function applyImageTint(object, color) {
-    if (!isImageObject(object) || !color) return false;
-    const fabric = requireFabric();
-    object.imageTint = color;
-    object.set({ stroke: color, strokeWidth: Math.max(number(object.strokeWidth, 0), 1) });
-    const existing = (object.filters || []).filter(filter => filter?.__visualTint !== true);
-    const BlendColor = fabric.filters?.BlendColor;
-    if (BlendColor) {
-      const tint = new BlendColor({ color, mode: 'tint', alpha: 0.45 });
-      tint.__visualTint = true;
-      object.filters = [...existing, tint];
-      object.applyFilters?.();
-    } else {
-      object.filters = existing;
-    }
-    object.setCoords?.();
-    return true;
+    const updateParentCoords = object => {
+      const children = object?.getObjects?.() || object?._objects || object?.objects || [];
+      children.forEach(updateParentCoords);
+      if (children.length) object.setCoords?.();
+    };
+    updateParentCoords(selection);
+    canvas?.requestRenderAll?.();
+    return textObjects.length;
   }
 
   function isSliderObject(object) {
@@ -357,15 +335,6 @@
   function updateActiveObject(canvas, changes = {}) {
     const active = getActive(canvas);
     if (!active) return false;
-    const textOnlyKeys = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'underline', 'textAlign', 'charSpacing', 'lineHeight'];
-    const keys = Object.keys(changes);
-    if (keys.length && keys.every(key => textOnlyKeys.includes(key)) && textObjectsFromTarget(active).length) {
-      return applyToSelectedText(canvas, object => {
-        Object.entries(changes).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') object.set(key, value);
-        });
-      });
-    }
     Object.entries(changes).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') active.set(key, value);
     });
@@ -385,13 +354,11 @@
           const role = item.sliderConfig?.role;
           if (role === 'fill' || role === 'value' || role === undefined) item.set?.('fill', color);
           if (role === 'track') item.set?.('stroke', color);
-          if (isTextObject(item)) item.set?.('fill', color);
         });
         return;
       }
-      const nestedText = textObjectsFromTarget(object);
-      if (nestedText.length) nestedText.forEach(item => item.set('fill', color));
-      else if (isImageObject(object)) applyImageTint(object, color);
+      if (isTextObject(object)) object.set('fill', color);
+      else if (object.type === 'Image' || object.type === 'image') object.set('stroke', color);
       else object.set({ fill: color, stroke: object.stroke && object.stroke !== 'transparent' ? color : object.stroke });
       object.setCoords?.();
     });
@@ -449,15 +416,18 @@
   }
 
   function applyTextEffect(canvas, effect = 'clear') {
+    const active = getActive(canvas);
+    if (!isTextObject(active)) return false;
     const theme = currentTheme();
-    return applyToSelectedText(canvas, object => {
-      if (effect === 'shadow') object.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
-      if (effect === 'glow') object.set({ shadow: `0 0 16px ${theme.accent}` });
-      if (effect === 'outline') object.set({ stroke: theme.accent, strokeWidth: 1 });
-      if (effect === 'hollow') object.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
-      if (effect === 'lift') object.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
-      if (effect === 'clear') object.set({ shadow: null, stroke: null, strokeWidth: 0 });
-    });
+    if (effect === 'shadow') active.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
+    if (effect === 'glow') active.set({ shadow: `0 0 16px ${theme.accent}` });
+    if (effect === 'outline') active.set({ stroke: theme.accent, strokeWidth: 1 });
+    if (effect === 'hollow') active.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
+    if (effect === 'lift') active.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
+    if (effect === 'clear') active.set({ shadow: null, stroke: null, strokeWidth: 0 });
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
   }
 
   function applyAppearancePreset(canvas, preset = 'plain') {
@@ -1182,7 +1152,6 @@
             <a href="#fabric-panel-fields">Book info</a>
             <a href="#fabric-panel-uploads">Uploads</a>
           </nav>
-          <button type="button" class="fabric-mobile-more" data-fabric-mobile-more aria-expanded="false">See more tools</button>
           <section id="fabric-panel-templates" class="fabric-tool-section fabric-panel">
             <p>Starter looks</p>
             <button type="button" data-fabric-card-preset="classic">Classic card</button>
@@ -1210,9 +1179,7 @@
               <p>My fonts</p>
               <label>Display name <input type="text" name="fabricFontName" data-fabric-font-name></label>
               <label class="fabric-upload-control">Choose font<input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" data-fabric-font-upload></label>
-              <output class="fabric-upload-filename" data-fabric-font-filename>No font selected.</output>
               <label class="fabric-check-control"><input type="checkbox" name="fabricFontLicense" data-fabric-font-license> I confirm that I own this font or have permission to upload and use it.</label>
-              <button type="button" data-fabric-font-submit disabled>Upload Font</button>
               <output class="fabric-library-status" data-fabric-font-status aria-live="polite"></output>
               <div class="fabric-library-list" data-fabric-font-list></div>
             </div>
@@ -1231,9 +1198,7 @@
               <p>My elements</p>
               <label>Name <input type="text" name="fabricAssetName" data-fabric-asset-name></label>
               <label>Category <select name="fabricAssetCategory" data-fabric-asset-category>${['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'].map(value => `<option value="${value}">${value}</option>`).join('')}</select></label>
-              <label class="fabric-upload-control">Choose reusable element<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-asset-upload></label>
-              <output class="fabric-upload-filename" data-fabric-asset-filename>No element selected.</output>
-              <button type="button" data-fabric-asset-submit disabled>Upload Element</button>
+              <label class="fabric-upload-control">Upload reusable element<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-asset-upload></label>
               <label>Search <input type="search" name="fabricAssetSearch" data-fabric-asset-search></label>
               <label>Filter <select name="fabricAssetFilter" data-fabric-asset-filter><option value="">All categories</option>${['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'].map(value => `<option value="${value}">${value}</option>`).join('')}</select></label>
               <output class="fabric-library-status" data-fabric-asset-status aria-live="polite"></output>
@@ -1302,7 +1267,7 @@
             <button type="button" data-fabric-action="back">To back</button>
           </div>
           <div class="fabric-text-tools" data-fabric-text-tools aria-label="Text tools" hidden>
-            <label>Font <select data-fabric-font-family>${FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('')}</select></label>
+            <label>Font <select data-fabric-font-family><option value="" data-fabric-multiple-font hidden>Multiple fonts</option>${FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('')}</select></label>
             <label>Align <select data-fabric-text-align><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></label>
             <div class="fabric-text-effect-grid"><button type="button" data-fabric-text-effect="shadow">Shadow</button><button type="button" data-fabric-text-effect="glow">Glow</button><button type="button" data-fabric-text-effect="outline">Outline</button><button type="button" data-fabric-text-effect="hollow">Hollow</button><button type="button" data-fabric-text-effect="lift">Lift</button><button type="button" data-fabric-text-effect="clear">Clear FX</button></div>
           </div>
@@ -1345,39 +1310,11 @@
     const undoButton = document.querySelector('[data-fabric-undo]');
     const redoButton = document.querySelector('[data-fabric-redo]');
     let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null;
-    let assetUploadFile = null, fontUploadFile = null, assetUploading = false, fontUploading = false, libraryLoading = false;
-    const logLibraryError = (kind, stage, error, context = {}) => console.error(`[CanvasEditor] ${kind} ${stage}`, { ...context, error });
     const setLibraryStatus = (kind, message) => { const output = document.querySelector(`[data-fabric-${kind}-status]`); if (output) output.textContent = message || ''; };
-    const setUploadFilename = (kind, file) => {
-      const output = document.querySelector(`[data-fabric-${kind}-filename]`);
-      if (output) output.textContent = file ? file.name : (kind === 'font' ? 'No font selected.' : 'No element selected.');
-    };
-    const syncUploadButtons = () => {
-      const assetButton = document.querySelector('[data-fabric-asset-submit]');
-      const fontButton = document.querySelector('[data-fabric-font-submit]');
-      const license = document.querySelector('[data-fabric-font-license]')?.checked;
-      if (assetButton) assetButton.disabled = assetUploading || !assetUploadFile || !globalThis.VisualCloud?.isSignedIn?.();
-      if (fontButton) fontButton.disabled = fontUploading || !fontUploadFile || !license || !globalThis.VisualCloud?.isSignedIn?.();
-    };
-    const withRetryRefresh = (kind, message) => {
-      setLibraryStatus(kind, message);
-      const output = document.querySelector(`[data-fabric-${kind}-status]`);
-      if (!output || output.querySelector('button')) return;
-      const retry = document.createElement('button');
-      retry.type = 'button';
-      retry.textContent = 'Retry Library Refresh';
-      retry.addEventListener('click', () => refreshLibraries().catch(error => {
-        logLibraryError(kind, 'retry-refresh-failed', error);
-        setLibraryStatus(kind, error.message || 'Library refresh failed again.');
-      }));
-      output.append(' ', retry);
-    };
     const applyCustomFont = async font => {
-      if (!selectedTextObjects(editor.canvas).length) throw new Error('Select a text object before applying a font.');
-      await globalThis.VisualFonts.loadFont(font);
-      applyToSelectedText(editor.canvas, object => {
-        object.set({ fontFamily: font.family_name, fontId: font.id, fontFamilyKey: font.family_name, fontStoragePath: font.storage_path });
-      });
+      const active = getActive(editor.canvas);
+      if (!collectTextObjects(active).length) throw new Error('Select text or a widget containing text before applying a font.');
+      await applyFontToSelection(editor.canvas, active, font.family_name, font);
       pushHistory();
       syncInspector();
     };
@@ -1389,71 +1326,38 @@
       const list = document.querySelector('[data-fabric-font-list]');
       if (!list) return;
       list.replaceChildren();
-      if ((libraryLoading || fontUploading) && !userFonts.length) {
-        list.textContent = fontUploading ? 'Uploading font…' : 'Loading library…';
-        return;
-      }
       userFonts.forEach(font => {
         const row = document.createElement('div'); row.className = 'fabric-library-row';
-        const preview = document.createElement('span'); preview.className = 'fabric-font-preview'; preview.textContent = font.display_name; preview.style.fontFamily = font.family_name;
-        const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'Apply'; apply.addEventListener('click', () => applyCustomFont(font).catch(error => { logLibraryError('font', 'apply-failed', error, { id: font.id }); setLibraryStatus('font', error.message); }));
-        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Font display name', font.display_name); if (!name) return; try { await globalThis.VisualFonts.renameFont(font.id, name); await refreshLibraries(); } catch (error) { logLibraryError('font', 'rename-failed', error, { id: font.id }); setLibraryStatus('font', error.message); } });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${font.display_name}? Existing cards will use a fallback font.`)) return; try { await globalThis.VisualFonts.deleteFont(font.id); await refreshLibraries(); } catch (error) { logLibraryError('font', 'delete-failed', error, { id: font.id }); setLibraryStatus('font', error.message); } });
-        row.append(preview, apply, rename, remove); list.append(row);
+        const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = font.display_name; apply.style.fontFamily = font.family_name; apply.addEventListener('click', () => applyCustomFont(font).catch(error => setLibraryStatus('font', error.message)));
+        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Font display name', font.display_name); if (!name) return; await globalThis.VisualFonts.renameFont(font.id, name); await refreshLibraries(); });
+        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${font.display_name}? Existing cards will use a fallback font.`)) return; await globalThis.VisualFonts.deleteFont(font.id); await refreshLibraries(); });
+        row.append(apply, rename, remove); list.append(row);
       });
-      if (!userFonts.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No custom fonts uploaded yet.' : 'Sign in to use reusable fonts.';
+      if (!userFonts.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No custom fonts yet.' : 'Sign in to use reusable fonts.';
     };
     const renderAssetLibrary = async () => {
       const list = document.querySelector('[data-fabric-asset-list]');
       if (!list) return;
       list.replaceChildren();
-      if ((libraryLoading || assetUploading) && !userAssets.length) {
-        list.textContent = assetUploading ? 'Uploading element…' : 'Loading library…';
-        return;
-      }
       const search = document.querySelector('[data-fabric-asset-search]')?.value.trim().toLowerCase() || '';
       const category = document.querySelector('[data-fabric-asset-filter]')?.value || '';
       const matches = userAssets.filter(asset => (!search || String(asset.name).toLowerCase().includes(search)) && (!category || asset.category === category));
       for (const asset of matches) {
         const card = document.createElement('div'); card.className = 'fabric-library-card';
-        const image = document.createElement('img'); image.alt = asset.name || 'Reusable element thumbnail'; image.loading = 'lazy'; globalThis.VisualAssets.getAssetUrl(asset).then(url => { image.src = url; }).catch(error => { image.hidden = true; logLibraryError('asset', 'signed-url-failed', error, { id: asset.id }); });
-        const meta = document.createElement('span'); meta.className = 'fabric-library-meta'; meta.textContent = `${asset.name || 'Untitled'} · ${asset.category || 'element'}`;
-        const insert = document.createElement('button'); insert.type = 'button'; insert.textContent = 'Insert'; insert.addEventListener('click', () => addLibraryAsset(editor.canvas, asset).then(() => { pushHistory(); syncInspector(); }).catch(error => { logLibraryError('asset', 'insert-failed', error, { id: asset.id }); setLibraryStatus('asset', error.message); }));
-        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Element name', asset.name); if (!name) return; try { await globalThis.VisualAssets.renameAsset(asset.id, name); await refreshLibraries(); } catch (error) { logLibraryError('asset', 'rename-failed', error, { id: asset.id }); setLibraryStatus('asset', error.message); } });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${asset.name}? Placed copies will show as unavailable.`)) return; try { await globalThis.VisualAssets.deleteAsset(asset.id); await refreshLibraries(); } catch (error) { logLibraryError('asset', 'delete-failed', error, { id: asset.id }); setLibraryStatus('asset', error.message); } });
-        card.append(image, meta, insert, rename, remove); list.append(card);
+        const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; globalThis.VisualAssets.getAssetUrl(asset).then(url => { image.src = url; }).catch(() => { image.hidden = true; });
+        const insert = document.createElement('button'); insert.type = 'button'; insert.textContent = asset.name; insert.addEventListener('click', () => addLibraryAsset(editor.canvas, asset).then(() => { pushHistory(); syncInspector(); }).catch(error => setLibraryStatus('asset', error.message)));
+        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Element name', asset.name); if (!name) return; await globalThis.VisualAssets.renameAsset(asset.id, name); await refreshLibraries(); });
+        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${asset.name}? Placed copies will show as unavailable.`)) return; await globalThis.VisualAssets.deleteAsset(asset.id); await refreshLibraries(); });
+        card.append(image, insert, rename, remove); list.append(card);
       }
-      if (!matches.length && globalThis.VisualCloud?.isSignedIn?.()) list.textContent = (search || category) ? 'No elements match the current search or category filter.' : 'No reusable elements uploaded yet.';
-      if (!matches.length && !globalThis.VisualCloud?.isSignedIn?.()) list.textContent = 'Sign in to use reusable elements.';
+      if (!matches.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No matching reusable elements.' : 'Sign in to use reusable elements.';
     };
     const refreshLibraries = async () => {
-      libraryLoading = true;
-      setLibraryStatus('asset', 'Loading library…');
-      setLibraryStatus('font', 'Loading library…');
+      if (!globalThis.VisualCloud?.isSignedIn?.()) { userAssets = []; userFonts = []; renderFontLibrary(); await renderAssetLibrary(); return; }
+      const [assets, fonts] = await Promise.all([globalThis.VisualAssets?.listAssets?.() || [], globalThis.VisualFonts?.listFonts?.() || []]);
+      userAssets = assets; userFonts = fonts;
+      await Promise.allSettled(userFonts.map(font => globalThis.VisualFonts.loadFont(font)));
       renderFontLibrary(); await renderAssetLibrary();
-      try {
-        if (!globalThis.VisualCloud?.isSignedIn?.()) {
-          userAssets = []; userFonts = [];
-          setLibraryStatus('asset', '');
-          setLibraryStatus('font', '');
-          renderFontLibrary(); await renderAssetLibrary();
-          return;
-        }
-        const [assets, fonts] = await Promise.all([globalThis.VisualAssets?.listAssets?.() || [], globalThis.VisualFonts?.listFonts?.() || []]);
-        userAssets = assets; userFonts = fonts;
-        const fontResults = await Promise.allSettled(userFonts.map(font => globalThis.VisualFonts.loadFont(font)));
-        fontResults.filter(result => result.status === 'rejected').forEach(result => logLibraryError('font', 'fontface-load-failed', result.reason));
-        renderFontLibrary(); await renderAssetLibrary();
-        setLibraryStatus('asset', '');
-        setLibraryStatus('font', '');
-      } catch (error) {
-        logLibraryError('library', 'refresh-failed', error);
-        throw error;
-      } finally {
-        libraryLoading = false;
-        renderFontLibrary(); await renderAssetLibrary();
-        syncUploadButtons();
-      }
     };
     const historyJson = () => JSON.stringify(serializeCanvas(editor.canvas));
     const syncHistoryButtons = () => {
@@ -1520,9 +1424,10 @@
       const imageControls = document.querySelector('[data-fabric-image-controls]');
       const layerList = document.querySelector('[data-fabric-layer-list]');
       const isValueObject = Boolean(active && isSliderObject(active));
+      const selectedTextObjects = collectTextObjects(active);
       if (valueControls) valueControls.hidden = !isValueObject;
-      const activeTextObjects = selectedTextObjects(editor.canvas);
-      if (textTools) textTools.hidden = !activeTextObjects.length;
+      if (textTools) textTools.hidden = !selectedTextObjects.length;
+      if (fontSelect) fontSelect.disabled = !selectedTextObjects.length;
       if (imageControls) imageControls.hidden = !(active && (active.type === 'Image' || active.type === 'image'));
       if (layerList) {
         layerList.innerHTML = editor.canvas.getObjects().slice().reverse().filter(object => object.selectable !== false || object.cardRole === 'background-image').map((object, index) => {
@@ -1548,10 +1453,10 @@
           maxInput.disabled = activePath === 'progress';
         }
       }
-      if (activeTextObjects.length) {
-        const firstText = activeTextObjects[0];
-        if (fontSelect) fontSelect.value = firstText.fontFamily || 'Libre Baskerville';
-        if (textAlignSelect) textAlignSelect.value = firstText.textAlign || 'left';
+      if (selectedTextObjects.length) {
+        const fonts = new Set(selectedTextObjects.map(object => object.fontFamily || 'Libre Baskerville'));
+        if (fontSelect) fontSelect.value = fonts.size === 1 ? [...fonts][0] : '';
+        if (textAlignSelect) textAlignSelect.value = active.textAlign || 'left';
       }
       document.querySelectorAll('[data-fabric-prop]').forEach(input => {
         if (!active) return;
@@ -1591,33 +1496,6 @@
         if (object.setPositionByOrigin) object.setPositionByOrigin({ x: left, y: top }, 'left', 'top');
         else object.set({ left, top });
       }
-    });
-    const mobileToolbox = document.querySelector('.fabric-editor-sidebar');
-    const mobileMore = document.querySelector('[data-fabric-mobile-more]');
-    let mobileToolPointer = null;
-    mobileToolbox?.addEventListener('pointerdown', event => {
-      mobileToolPointer = { x: event.clientX, y: event.clientY, moved: false };
-    }, true);
-    mobileToolbox?.addEventListener('pointermove', event => {
-      if (!mobileToolPointer) return;
-      if (Math.abs(event.clientX - mobileToolPointer.x) > 10 || Math.abs(event.clientY - mobileToolPointer.y) > 10) mobileToolPointer.moved = true;
-    }, true);
-    mobileToolbox?.addEventListener('click', event => {
-      if (!mobileToolPointer?.moved) return;
-      if (!event.target.closest('button,a,label')) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      mobileToolPointer = null;
-    }, true);
-    mobileMore?.addEventListener('click', event => {
-      const button = event.currentTarget;
-      const sidebar = button.closest('.fabric-editor-sidebar');
-      const layout = button.closest('.fabric-editor-layout');
-      const expanded = !sidebar?.classList.contains('is-expanded');
-      sidebar?.classList.toggle('is-expanded', expanded);
-      layout?.classList.toggle('is-tools-expanded', expanded);
-      button.setAttribute('aria-expanded', String(expanded));
-      button.textContent = expanded ? 'Show fewer tools' : 'See more tools';
     });
     document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
       button.addEventListener('click', () => {
@@ -1673,112 +1551,20 @@
       if (file) editor.addImageFromFile(file).catch(error => adapters.showToast?.(error.message || 'Image upload failed.'));
     });
     document.querySelector('[data-fabric-asset-upload]')?.addEventListener('change', async event => {
-      assetUploadFile = event.target.files?.[0] || null;
-      setUploadFilename('asset', assetUploadFile);
-      syncUploadButtons();
-      if (!assetUploadFile) return setLibraryStatus('asset', '');
+      const file = event.target.files?.[0]; if (!file) return;
       try {
-        setLibraryStatus('asset', 'Validating…');
-        await globalThis.VisualAssets.validate(assetUploadFile);
-        setLibraryStatus('asset', 'Ready to upload.');
-      } catch (error) {
-        logLibraryError('asset', 'validation-failed', error, { fileName: assetUploadFile?.name });
-        assetUploadFile = null;
-        event.target.value = '';
-        setUploadFilename('asset', null);
-        setLibraryStatus('asset', error.message || 'Element validation failed.');
-      } finally {
-        syncUploadButtons();
-      }
-    });
-    document.querySelector('[data-fabric-asset-submit]')?.addEventListener('click', async event => {
-      if (!assetUploadFile || assetUploading) return;
-      const fileInput = document.querySelector('[data-fabric-asset-upload]');
-      assetUploading = true;
-      syncUploadButtons();
-      try {
-        const file = assetUploadFile;
-        setLibraryStatus('asset', 'Validating…');
-        await globalThis.VisualAssets.uploadAsset(file, {
-          name: document.querySelector('[data-fabric-asset-name]')?.value || file.name,
-          category: document.querySelector('[data-fabric-asset-category]')?.value || 'element',
-          onStatus: message => setLibraryStatus('asset', message)
-        });
-        assetUploadFile = null;
-        if (fileInput) fileInput.value = '';
-        setUploadFilename('asset', null);
-        try {
-          await refreshLibraries();
-          setLibraryStatus('asset', 'Upload complete.');
-        } catch (refreshError) {
-          logLibraryError('asset', 'refresh-after-upload-failed', refreshError);
-          withRetryRefresh('asset', `Upload complete, but library refresh failed: ${refreshError.message}`);
-        }
-      } catch (error) {
-        logLibraryError('asset', 'upload-failed', error, { fileName: assetUploadFile?.name });
-        setLibraryStatus('asset', error.message || 'Element upload failed.');
-      } finally {
-        assetUploading = false;
-        syncUploadButtons();
-      }
+        setLibraryStatus('asset', 'Uploading…');
+        await globalThis.VisualAssets.uploadAsset(file, { name: document.querySelector('[data-fabric-asset-name]')?.value || file.name, category: document.querySelector('[data-fabric-asset-category]')?.value || 'element' });
+        event.target.value = ''; await refreshLibraries(); setLibraryStatus('asset', 'Element uploaded.');
+      } catch (error) { setLibraryStatus('asset', error.message || 'Upload failed.'); }
     });
     document.querySelector('[data-fabric-font-upload]')?.addEventListener('change', async event => {
-      fontUploadFile = event.target.files?.[0] || null;
-      setUploadFilename('font', fontUploadFile);
-      syncUploadButtons();
-      if (!fontUploadFile) return setLibraryStatus('font', '');
+      const file = event.target.files?.[0]; if (!file) return;
       try {
-        setLibraryStatus('font', 'Validating…');
-        await globalThis.VisualFonts.validate(fontUploadFile);
-        setLibraryStatus('font', document.querySelector('[data-fabric-font-license]')?.checked ? 'Ready to upload.' : 'Confirm the font license to enable upload.');
-      } catch (error) {
-        logLibraryError('font', 'validation-failed', error, { fileName: fontUploadFile?.name });
-        fontUploadFile = null;
-        event.target.value = '';
-        setUploadFilename('font', null);
-        setLibraryStatus('font', error.message || 'Font validation failed.');
-      } finally {
-        syncUploadButtons();
-      }
-    });
-    document.querySelector('[data-fabric-font-license]')?.addEventListener('change', () => {
-      syncUploadButtons();
-      if (fontUploadFile) setLibraryStatus('font', document.querySelector('[data-fabric-font-license]')?.checked ? 'Ready to upload.' : 'Confirm the font license to enable upload.');
-    });
-    document.querySelector('[data-fabric-font-submit]')?.addEventListener('click', async () => {
-      if (!fontUploadFile || fontUploading) return;
-      const fileInput = document.querySelector('[data-fabric-font-upload]');
-      fontUploading = true;
-      syncUploadButtons();
-      try {
-        const file = fontUploadFile;
-        setLibraryStatus('font', 'Validating…');
-        const font = await globalThis.VisualFonts.uploadFont(file, {
-          displayName: document.querySelector('[data-fabric-font-name]')?.value || file.name.replace(/\.[^.]+$/, ''),
-          licenseConfirmed: document.querySelector('[data-fabric-font-license]')?.checked,
-          onStatus: message => setLibraryStatus('font', message)
-        });
-        setLibraryStatus('font', 'Loading font…');
-        await globalThis.VisualFonts.loadFont(font);
-        fontUploadFile = null;
-        if (fileInput) fileInput.value = '';
-        setUploadFilename('font', null);
-        const licenseBox = document.querySelector('[data-fabric-font-license]');
-        if (licenseBox) licenseBox.checked = false;
-        try {
-          await refreshLibraries();
-          setLibraryStatus('font', 'Upload complete.');
-        } catch (refreshError) {
-          logLibraryError('font', 'refresh-after-upload-failed', refreshError);
-          withRetryRefresh('font', `Upload complete, but library refresh failed: ${refreshError.message}`);
-        }
-      } catch (error) {
-        logLibraryError('font', 'upload-failed', error, { fileName: fontUploadFile?.name });
-        setLibraryStatus('font', error.message || 'Font upload failed.');
-      } finally {
-        fontUploading = false;
-        syncUploadButtons();
-      }
+        setLibraryStatus('font', 'Uploading…');
+        await globalThis.VisualFonts.uploadFont(file, { displayName: document.querySelector('[data-fabric-font-name]')?.value || file.name.replace(/\.[^.]+$/, ''), licenseConfirmed: document.querySelector('[data-fabric-font-license]')?.checked });
+        event.target.value = ''; await refreshLibraries(); setLibraryStatus('font', 'Font uploaded.');
+      } catch (error) { setLibraryStatus('font', error.message || 'Upload failed.'); }
     });
     document.querySelector('[data-fabric-asset-search]')?.addEventListener('input', renderAssetLibrary);
     document.querySelector('[data-fabric-asset-filter]')?.addEventListener('change', renderAssetLibrary);
@@ -1795,14 +1581,16 @@
       editor.canvas.requestRenderAll();
     });
     document.querySelector('[data-fabric-fill]')?.addEventListener('input', event => {
-      editor.applySmartColor(event.target.value);
+      const active = editor.canvas.getActiveObject();
+      if (active) active.set('fill', event.target.value);
+      editor.canvas.requestRenderAll();
       pushHistory();
-      syncInspector();
     });
     document.querySelector('[data-fabric-text]')?.addEventListener('input', event => {
-      applyToSelectedText(editor.canvas, object => object.set('fill', event.target.value));
+      const active = editor.canvas.getActiveObject();
+      if (isTextObject(active)) active.set('fill', event.target.value);
+      editor.canvas.requestRenderAll();
       pushHistory();
-      syncInspector();
     });
     document.querySelector('[data-fabric-card-bg]')?.addEventListener('input', event => {
       editor.setCardBackgroundColor(event.target.value);
@@ -1888,16 +1676,20 @@
       syncInspector();
     });
     document.querySelector('[data-fabric-font-family]')?.addEventListener('change', async event => {
-      if (!selectedTextObjects(editor.canvas).length) return;
+      const active = getActive(editor.canvas);
+      if (!collectTextObjects(active).length || !event.target.value) return;
       const custom = userFonts.find(font => font.family_name === event.target.value);
       if (custom) { try { await applyCustomFont(custom); } catch (error) { setLibraryStatus('font', error.message); } return; }
-      applyToSelectedText(editor.canvas, object => object.set('fontFamily', event.target.value));
+      await applyFontToSelection(editor.canvas, active, event.target.value);
       pushHistory();
       syncInspector();
     });
     document.querySelector('[data-fabric-text-align]')?.addEventListener('change', event => {
-      if (!selectedTextObjects(editor.canvas).length) return;
-      applyToSelectedText(editor.canvas, object => object.set('textAlign', event.target.value));
+      const active = getActive(editor.canvas);
+      if (!isTextObject(active)) return;
+      active.set('textAlign', event.target.value);
+      active.setCoords?.();
+      editor.canvas.requestRenderAll();
       pushHistory();
       syncInspector();
     });
@@ -2142,6 +1934,8 @@
     addImageFromFile,
     addLibraryAsset,
     resolveLibraryReferences,
+    collectTextObjects,
+    applyFontToSelection,
     deleteActiveElement,
     baseScene,
     bindRecord,

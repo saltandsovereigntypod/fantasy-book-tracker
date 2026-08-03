@@ -79,7 +79,7 @@ function host(scene, key, connected = true) {
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(failed2.viewport.dataset.fabricRenderState, 'failed');
   assert.equal(failed2.overlay.hidden, true);
-  assert.equal(failed2.fallback.hidden, false, 'failure shows a visible fallback instead of a blank shell');
+  assert.equal(failed2.fallback.hidden, true, 'terminal failure never replaces the complete card with a message');
   assert.ok(failedHarness.errors.some(entry => String(entry[0]).includes('card render failed')), 'terminal failures include card context');
 
   const builderContext = { ...harness().C, globalThis: null };

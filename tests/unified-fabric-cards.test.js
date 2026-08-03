@@ -11,7 +11,7 @@ const book = { id: 'unified-1', title: 'Fourth Wing', author: 'Rebecca Yarros', 
 const template = { id: 'standard-book-card-v1', canvas: { width: 420, height: 380 }, modules: [] };
 
 const standard = C.resolveCardScene(template, book, {});
-for (const id of ['cover', 'title', 'author', 'series', 'status', 'progress', 'rating', 'spice', 'impact', 'actions']) {
+for (const id of ['cover', 'title', 'author', 'series', 'status', 'progress', 'progress-track', 'progress-fill', 'rating', 'spice', 'impact', 'reaction', 'actions']) {
   assert.ok(standard.objects.some(object => object.id === id), `standard scene contains ${id}`);
 }
 assert.equal(standard.width, 420);

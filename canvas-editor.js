@@ -3,7 +3,7 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'actionId', 'actionButtons', 'selectable', 'evented', 'locked', 'originX', 'originY', 'cropX', 'cropY', 'cropMode', 'backgroundImageSrc', 'assetId', 'assetStoragePath', 'fontId', 'fontFamilyKey', 'fontStoragePath'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'semanticGroup', 'appearancePreset', 'sliderConfig', 'actionId', 'actionButtons', 'selectable', 'evented', 'locked', 'originX', 'originY', 'cropX', 'cropY', 'cropMode', 'backgroundImageSrc', 'assetId', 'assetStoragePath', 'fontId', 'fontFamilyKey', 'fontStoragePath'];
   let userAssets = [], userFonts = [];
   const renderSceneRegistry = new Map(), activeLibraryCanvases = new Map(), renderTokens = new WeakMap();
   let renderSceneSequence = 0, renderGeneration = 0;
@@ -162,9 +162,9 @@
     const full = Math.floor(rating);
     const hasHalf = rating - full >= .5 && full < max;
     const emptyCount = Math.max(0, max - full - (hasHalf ? 1 : 0));
-    if (path === 'spice') return `${'🔥'.repeat(full)}${hasHalf ? '½' : ''}${'·'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
-    if (path === 'impact') return `${'♥'.repeat(full)}${hasHalf ? '◐' : ''}${'♡'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
-    return `${'★'.repeat(full)}${hasHalf ? '⯨' : ''}${'☆'.repeat(emptyCount)}\n${displayNumber(rating)} of ${max}`;
+    const label = path === 'spice' ? 'Spice' : path === 'impact' ? 'Emotional impact' : 'Overall rating';
+    const icons = path === 'spice' ? `${'🔥'.repeat(full)}${hasHalf ? '½' : ''}${'·'.repeat(emptyCount)}` : path === 'impact' ? `${'♥'.repeat(full)}${hasHalf ? '◐' : ''}${'♡'.repeat(emptyCount)}` : `${'★'.repeat(full)}${hasHalf ? '⯨' : ''}${'☆'.repeat(emptyCount)}`;
+    return `${label}\n${icons}\n${displayNumber(rating)} of ${max}`;
   }
 
   function sliderDisplay(config = {}, path = '') {
@@ -233,10 +233,13 @@
       { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'author', dataBinding: { path: 'author' }, left: x(144), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
       { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'series', dataBinding: { path: 'series' }, left: x(276), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, text: record.series || 'Series' },
       { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'status', dataBinding: { path: 'status' }, left: x(16), top: y(204), width: x(116), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'Want to read' },
-      { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: x(144), top: y(204), width: x(256), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` },
+      { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', semanticGroup: 'progress', dataBinding: { path: 'progress' }, left: x(144), top: y(196), width: x(256), height: y(36), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` },
+      { type: 'Rect', id: 'progress-track', name: 'Progress line', cardRole: 'progress', semanticGroup: 'progress', left: x(144), top: y(239), width: x(256), height: y(7), rx: y(4), ry: y(4), fill: theme.border },
+      { type: 'Rect', id: 'progress-fill', name: 'Progress value', cardRole: 'progress', semanticGroup: 'progress', left: x(144), top: y(239), width: x(256) * clamp(recordValue(record, 'progress'), 0, 100) / 100, height: y(7), rx: y(4), ry: y(4), fill: theme.accent },
       { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: x(16), top: y(272), width: x(116), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
       { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: x(152), top: y(272), width: x(112), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('spice', recordValue(record, 'spice')) },
-      { type: 'Textbox', id: 'impact', name: 'Impact', cardRole: 'rating', dataBinding: { path: 'impact' }, left: x(288), top: y(272), width: x(112), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('impact', recordValue(record, 'impact')) }, actions
+      { type: 'Textbox', id: 'impact', name: 'Impact', cardRole: 'impact-rating', dataBinding: { path: 'impact' }, left: x(288), top: y(272), width: x(112), height: y(62), fontSize: font(12), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('impact', recordValue(record, 'impact')) },
+      { type: 'Textbox', id: 'reaction', name: 'Reaction', cardRole: 'reaction', dataBinding: { path: 'reaction' }, left: x(144), top: y(250), width: x(256), height: y(18), fontSize: font(10), fontFamily: 'Libre Baskerville', fontStyle: 'italic', fill: theme.muted, textAlign: 'right', text: String(recordValue(record, 'reaction') || '') }, actions
     ] };
   }
 
@@ -266,15 +269,35 @@
     return clone;
   }
 
-  function resolveCardScene(template = {}, record = {}, options = {}) {
-    const source = templateJson(template) || baseScene({
+  // Read-only compatibility adapter. Legacy module data is never rewritten; it is
+  // projected into the same Fabric pipeline used by native scenes.
+  function legacyTemplateScene(template = {}, record = {}, theme = currentTheme()) {
+    if (!Array.isArray(template.modules) || !template.modules.length) return null;
+    const width = number(template.canvas?.width, DEFAULT_SIZE.width), height = number(template.canvas?.height, DEFAULT_SIZE.height);
+    const objects = [{ type: 'Rect', id: 'legacy-card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: number(template.canvas?.borderWidth, 1), rx: number(template.canvas?.borderRadius, 14), ry: number(template.canvas?.borderRadius, 14), selectable: false, evented: false }];
+    template.modules.forEach((module, index) => {
+      const path = module.dataBinding?.path || '', common = { id: module.id || `legacy-module-${index}`, name: module.name || path || 'Module', cardRole: visibilityKey({ dataBinding: { path } }) || module.type || 'content', semanticGroup: module.groupId || '', dataBinding: { ...(module.dataBinding || {}) }, left: number(module.x, 0), top: number(module.y, 0), width: number(module.width, 120), height: number(module.height, 44), angle: number(module.rotation, 0), opacity: number(module.style?.opacity, 1) };
+      if (path === '$actions') { objects.push(actionGroupObject({ width: common.width, height: common.height, theme, record, ...common })); Object.assign(objects.at(-1), common, { cardRole: 'actions' }); return; }
+      if (['image', 'uploaded-image'].includes(module.type)) { const src = recordValue(record, path) || module.config?.src; objects.push(src ? { type: 'Image', ...common, src, crossOrigin: 'anonymous' } : { type: 'Rect', ...common, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1, rx: number(module.style?.borderRadius, 8), ry: number(module.style?.borderRadius, 8) }); return; }
+      objects.push({ type: 'Textbox', ...common, text: String(recordValue(record, path) ?? module.config?.text ?? module.name ?? ''), fontFamily: module.style?.fontFamily === 'inherit' ? 'Libre Baskerville' : module.style?.fontFamily || 'Libre Baskerville', fontSize: number(module.style?.fontSize || module.style?.maxFontSize, module.type === 'title' ? 28 : 14), fontWeight: module.style?.fontWeight || (module.type === 'title' ? '700' : '600'), textAlign: module.style?.alignment || 'left', fill: themeToken(module.style?.textColor, theme) || theme.text });
+    });
+    return { version: FABRIC_VERSION, width, height, legacyTemplateAdapter: true, sourceTemplateId: template.id || '', background: theme.surfaceSoft, objects };
+  }
+
+  function resolveBookCardScene(record = {}, template = {}, preferences = {}, options = {}) {
+    const standardOptions = {
       width: options.width || template.canvas?.width,
       height: options.height || template.canvas?.height,
       theme: options.theme || currentTheme(),
       record
-    });
+    };
+    const source = templateJson(template) || (template.id === 'standard-book-card-v1' ? baseScene(standardOptions) : legacyTemplateScene(template, record, standardOptions.theme)) || baseScene(standardOptions);
     const bound = bindRecord(source, record, options);
-    return options.editor ? bound : applySceneVisibility(bound, options.visible || {});
+    return options.editor ? bound : applySceneVisibility(bound, preferences.visible || preferences || {});
+  }
+
+  function resolveCardScene(template = {}, record = {}, options = {}) {
+    return resolveBookCardScene(record, template, options.visible || {}, options);
   }
 
   function actionOverlayHtml(scene, record = {}, canvas = {}) {
@@ -2005,12 +2028,9 @@
       return;
     }
     const overlay = viewport.querySelector?.('.fabric-card-action-overlay');
-    const fallback = viewport.querySelector?.('.fabric-card-render-fallback');
     if (overlay) overlay.hidden = state !== 'ready';
-    if (fallback) {
-      fallback.hidden = state !== 'failed';
-      if (state === 'failed') fallback.textContent = 'This card could not be drawn. Open the book to view its details.';
-    }
+    const fallback = viewport.querySelector?.('.fabric-card-render-fallback');
+    if (fallback) fallback.hidden = true;
     viewport.dataset.fabricRenderState = state;
   }
 
@@ -2127,6 +2147,8 @@
     actionOverlayHtml,
     visibilityKey,
     applySceneVisibility,
+    legacyTemplateScene,
+    resolveBookCardScene,
     resolveCardScene,
     bindRecord,
     validScene,

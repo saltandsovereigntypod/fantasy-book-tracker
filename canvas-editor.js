@@ -3,7 +3,7 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked', 'originX', 'originY', 'cropX', 'cropY', 'cropMode', 'backgroundImageSrc', 'assetId', 'assetStoragePath', 'fontId', 'fontFamilyKey', 'fontStoragePath'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'actionId', 'actionButtons', 'selectable', 'evented', 'locked', 'originX', 'originY', 'cropX', 'cropY', 'cropMode', 'backgroundImageSrc', 'assetId', 'assetStoragePath', 'fontId', 'fontFamilyKey', 'fontStoragePath'];
   let userAssets = [], userFonts = [];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
   const FALLBACK_FIELD_META = {
@@ -176,7 +176,7 @@
     return `${name}${iconNote}\n${sliderGlyphs(style, value, max)}\n${displayNumber(value)} of ${max}`;
   }
 
-  function baseScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
+  function classicScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
     return {
       version: FABRIC_VERSION,
       objects: [
@@ -194,6 +194,67 @@
       ],
       background: theme.surfaceSoft
     };
+  }
+
+  function actionDefinitions(record = {}) {
+    return [
+      { actionId: 'start-reading', label: record.status === 'completed' ? 'Reread' : record.status === 'reading' ? 'Update' : 'Start Reading' },
+      { actionId: 'edit-book', label: 'Rate & Edit' },
+      { actionId: 'progress-book', label: 'Progress' },
+      { actionId: 'pin-book', label: 'Pin' },
+      ...(record.status !== 'completed' ? [{ actionId: 'complete-book', label: 'Complete' }] : [])
+    ];
+  }
+
+  function actionGroupObject({ width, height, theme, record }) {
+    const actions = actionDefinitions(record), gap = 5, buttonWidth = (width - gap * (actions.length - 1)) / actions.length;
+    const objects = actions.flatMap((action, index) => {
+      const left = index * (buttonWidth + gap);
+      return [
+        { type: 'Rect', left, top: 0, width: buttonWidth, height, rx: 9, ry: 9, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1 },
+        { type: 'Textbox', left, top: 9, width: buttonWidth, fontSize: 9, fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: action.label, selectable: false, evented: false }
+      ];
+    });
+    return { type: 'Group', id: 'actions', name: 'Action buttons', cardRole: 'actions', dataBinding: { path: '$actions' }, left: 16, top: 340, width, height, originX: 'left', originY: 'top', objects, actionButtons: actions.map((action, index) => ({ ...action, xRatio: index / actions.length, widthRatio: 1 / actions.length })) };
+  }
+
+  function baseScene({ width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height, theme = currentTheme(), record = {} } = {}) {
+    const sx = width / 420, sy = height / 380, scale = Math.min(sx, sy), x = value => value * sx, y = value => value * sy, font = value => Math.max(8, value * scale);
+    const coverSource = recordValue(record, 'coverUrl');
+    const cover = coverSource
+      ? { type: 'Image', id: 'cover', name: 'Cover', cardRole: 'image', dataBinding: { path: 'coverUrl' }, src: coverSource, crossOrigin: 'anonymous', left: x(16), top: y(24), width: x(112), height: y(164), originX: 'left', originY: 'top' }
+      : { type: 'Rect', id: 'cover', name: 'Cover', cardRole: 'image', dataBinding: { path: 'coverUrl' }, left: x(16), top: y(24), width: x(112), height: y(164), fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1, rx: 10, ry: 10 };
+    const actions = actionGroupObject({ width: x(388), height: y(34), theme, record }); actions.left=x(16);actions.top=y(340);
+    return { version: FABRIC_VERSION, standardBookCard: true, width, height, background: theme.surfaceSoft, objects: [
+      { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: x(18), ry: x(18), selectable: false, evented: false }, cover,
+      { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: x(144), top: y(20), width: x(256), height: y(58), fontSize: font(28), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.title || 'Book Title' },
+      { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: x(144), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
+      { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'metadata', dataBinding: { path: 'series' }, left: x(276), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, text: record.series || 'Series' },
+      { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'metadata', dataBinding: { path: 'status' }, left: x(16), top: y(204), width: x(116), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'Want to read' },
+      { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: x(144), top: y(204), width: x(256), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` },
+      { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: x(16), top: y(272), width: x(116), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
+      { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: x(152), top: y(272), width: x(112), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('spice', recordValue(record, 'spice')) },
+      { type: 'Textbox', id: 'impact', name: 'Impact', cardRole: 'rating', dataBinding: { path: 'impact' }, left: x(288), top: y(272), width: x(112), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('impact', recordValue(record, 'impact')) }, actions
+    ] };
+  }
+
+  function actionOverlayHtml(scene, record = {}, canvas = {}) {
+    const width = number(canvas.width || scene?.width, DEFAULT_SIZE.width), height = number(canvas.height || scene?.height, DEFAULT_SIZE.height), buttons = [], currentActions = new Map(actionDefinitions(record).map(action => [action.actionId, action.label]));
+    const visit = object => {
+      const configuredActions = Array.isArray(object?.actionButtons) && object.actionButtons.length ? object.actionButtons : object?.cardRole === 'actions' ? actionDefinitions(record) : [];
+      if (configuredActions.length) {
+        const scaledWidth = number(object.width, width) * number(object.scaleX, 1), scaledHeight = number(object.height, 34) * number(object.scaleY, 1);
+        const left = number(object.left, 0) - (object.originX === 'center' ? scaledWidth / 2 : 0), top = number(object.top, 0) - (object.originY === 'center' ? scaledHeight / 2 : 0);
+        const available = configuredActions.filter(action => currentActions.has(action.actionId));
+        available.forEach((action, index) => {
+          const xRatio = index / available.length, widthRatio = 1 / available.length;
+          buttons.push({ ...action, label: currentActions.get(action.actionId), left: left + scaledWidth * xRatio, top, width: scaledWidth * widthRatio, height: scaledHeight });
+        });
+      }
+      (object?.objects || []).forEach(visit);
+    };
+    (scene?.objects || []).forEach(visit);
+    return buttons.map(button => `<button type="button" class="small-button fabric-action-overlay-button" data-action="${escapeHtml(button.actionId)}" data-id="${escapeHtml(record.id || '')}" style="--action-left:${button.left / width * 100}%;--action-top:${button.top / height * 100}%;--action-width:${button.width / width * 100}%;--action-height:${button.height / height * 100}%">${escapeHtml(button.label)}</button>`).join('');
   }
 
   function bindRecord(scene, record = {}, options = {}) {
@@ -458,9 +519,9 @@
   function applyCardPreset(canvas, preset = 'classic', record = {}) {
     const theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width, height = canvas.__designHeight || DEFAULT_SIZE.height;
     const scenes = {
-      classic: baseScene({ width, height, theme, record }),
+      classic: classicScene({ width, height, theme, record }),
       poster: {
-        ...baseScene({ width, height, theme, record }),
+        ...classicScene({ width, height, theme, record }),
         objects: [
           { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: 26, ry: 26, selectable: false, evented: false },
           { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .08, top: height * .10, width: width * .84, fontSize: Math.max(34, width * .095), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: record.title || 'Book Title' },
@@ -471,8 +532,8 @@
         ]
       },
       dashboard: {
-        ...baseScene({ width, height, theme, record }),
-        objects: baseScene({ width, height, theme, record }).objects.map(object => object.id === 'card-bg' ? { ...object, rx: 14, ry: 14 } : object)
+        ...classicScene({ width, height, theme, record }),
+        objects: classicScene({ width, height, theme, record }).objects.map(object => object.id === 'card-bg' ? { ...object, rx: 14, ry: 14 } : object)
       }
     };
     return loadScene(canvas, scenes[preset] || scenes.classic, record);
@@ -487,6 +548,8 @@
     (json.objects || []).forEach(stripTemporaryUrls);
     return json;
   }
+
+  const shouldPreserveStandardOnSave = (savedScene, initialSnapshot, currentSnapshot) => !savedScene && Boolean(initialSnapshot) && initialSnapshot === currentSnapshot;
 
   function setUniformScale(canvas, targetWidth = canvas.getWidth()) {
     const baseWidth = number(canvas.__designWidth || canvas.getWidth(), canvas.getWidth());
@@ -785,9 +848,7 @@
 
   function addActionButtons(canvas, record = {}, options = {}) {
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
-    const labels = record.status === 'completed'
-      ? ['Reread', 'Rate & Edit', 'Progress', 'Pin']
-      : [record.status === 'reading' ? 'Update' : 'Start Reading', 'Rate & Edit', 'Progress', 'Pin'];
+    const actions = actionDefinitions(record), labels = actions.map(action => action.label);
     const left = options.left ?? 64, top = options.top ?? Math.max(220, (canvas.__designHeight || DEFAULT_SIZE.height) - 88);
     const buttonWidth = options.buttonWidth || Math.max(64, Math.min(92, (width - 110) / labels.length));
     const gap = 8;
@@ -802,6 +863,7 @@
       name: 'Action buttons',
       cardRole: 'actions',
       dataBinding: { path: '$actions' },
+      actionButtons: actions.map((action, index) => ({ ...action, xRatio: index / actions.length, widthRatio: 1 / actions.length })),
       originX: 'center',
       originY: 'center',
       centeredRotation: true
@@ -1157,7 +1219,7 @@
     return `<section class="fabric-card-editor" aria-label="Canvas card editor">
       <header class="fabric-editor-header">
         <div><p class="eyebrow">Canvas card editor</p><h2 id="formModalTitle">${escapeHtml(title)}</h2><p>${width} × ${height} · Fabric.js ${FABRIC_VERSION}</p></div>
-        <div class="fabric-editor-actions"><button type="button" data-fabric-undo disabled>Undo</button><button type="button" data-fabric-redo disabled>Redo</button><button type="button" class="primary-button" data-fabric-save>Save</button><button type="button" data-fabric-close>Cancel</button></div>
+        <div class="fabric-editor-actions"><button type="button" data-fabric-undo disabled>Undo</button><button type="button" data-fabric-redo disabled>Redo</button><button type="button" class="primary-button" data-fabric-save disabled>Save</button><button type="button" data-fabric-close>Cancel</button></div>
       </header>
       <nav class="fabric-mobile-view-tabs" aria-label="Editor area"><button type="button" data-fabric-mobile-view="tools" aria-pressed="true">Tools</button><button type="button" data-fabric-mobile-view="canvas" aria-pressed="false">Canvas</button><button type="button" data-fabric-mobile-view="inspector" aria-pressed="false">Inspector</button></nav>
       <div class="fabric-editor-layout" data-fabric-mobile-layout="tools">
@@ -1167,7 +1229,7 @@
           </div>
           <div class="fabric-sidebar-pages">
             <section id="fabric-panel-templates" class="fabric-tool-section fabric-panel" role="tabpanel" aria-labelledby="fabric-tab-templates" data-fabric-panel="templates">
-              <h3>Templates</h3><h4>Starter looks</h4>
+              <h3>Templates</h3><h4>Current design</h4><div class="fabric-compact-grid"><button type="button" data-fabric-restore-saved>Restore Current Saved Design</button><button type="button" data-fabric-reset-standard>Reset to Standard Book Card</button></div><h4>Starter looks</h4>
               <div class="fabric-compact-grid"><button type="button" data-fabric-card-preset="classic">Classic card</button><button type="button" data-fabric-card-preset="poster">Poster card</button><button type="button" data-fabric-card-preset="dashboard">Dashboard card</button></div>
               <h4>Template actions</h4><button type="button" data-fabric-share-formatting>Share formatting across all cards</button>
             </section>
@@ -1223,10 +1285,11 @@
     const host = document.getElementById('formModal');
     host?.classList.add('fabric-editor-backdrop');
     const editor = initCanvasEditor(canvasId, currentTheme(), { width, height, record: book });
-    const scene = templateJson(template) || baseScene({ width, height, theme: currentTheme(), record: book });
+    const savedScene = templateJson(template), scene = savedScene || baseScene({ width, height, theme: currentTheme(), record: book });
     const undoButton = document.querySelector('[data-fabric-undo]');
     const redoButton = document.querySelector('[data-fabric-redo]');
-    let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null, activePanel = 'templates', activeLibraryType = 'all', selectedAssetId = '', selectedFontId = '';
+    const saveButton = document.querySelector('[data-fabric-save]');
+    let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null, initialCanvasSnapshot = '', activePanel = 'templates', activeLibraryType = 'all', selectedAssetId = '', selectedFontId = '';
     const setLibraryStatus = (kind, message) => { const output = document.querySelector(`[data-fabric-${kind}-status]`); if (output) output.textContent = message || ''; };
     const applyCustomFont = async font => {
       const active = getActive(editor.canvas);
@@ -1333,16 +1396,18 @@
     };
     loadScene(editor.canvas, scene, book).catch(error => {
       console.error(error);
-      loadScene(editor.canvas, baseScene({ width, height, theme: currentTheme(), record: book }), book);
+      return loadScene(editor.canvas, baseScene({ width, height, theme: currentTheme(), record: book }), book);
     }).finally(() => {
       fitCanvasToWorkspace();
       pushHistory();
+      initialCanvasSnapshot = historyJson();
+      if (saveButton) saveButton.disabled = false;
     });
     const syncInspector = () => {
       const active = getActive(editor.canvas);
       const selectedName = document.querySelector('[data-fabric-selected-name]');
       const activePath = bindingPath(active);
-      if (selectedName) selectedName.textContent = active ? (active.name || active.id || active.type || 'Selected piece') : 'Nothing selected';
+      if (selectedName) selectedName.textContent = active ? `${active.name || active.id || active.type || 'Selected piece'}${active.actionId ? ` · ${active.actionId}` : active.actionButtons?.length ? ' · library actions' : ''}` : 'Nothing selected';
       const valueControls = document.querySelector('[data-fabric-value-controls]');
       const valueInput = document.querySelector('[data-fabric-value]');
       const valueOutput = document.querySelector('[data-fabric-value-output]');
@@ -1451,6 +1516,16 @@
       document.querySelectorAll('[data-fabric-mobile-view]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
     }));
     showPanel(activePanel);
+    const replaceEditorScene = async nextScene => {
+      await loadScene(editor.canvas, nextScene, book);
+      editor.canvas.discardActiveObject();
+      pushHistory(); syncInspector();
+    };
+    document.querySelector('[data-fabric-restore-saved]')?.addEventListener('click', () => replaceEditorScene(savedScene || baseScene({ width, height, theme: currentTheme(), record: book })).catch(error => adapters.showToast?.(error.message || 'Could not restore the saved design.')));
+    document.querySelector('[data-fabric-reset-standard]')?.addEventListener('click', () => {
+      if (!confirm('Reset this canvas to the Standard Book Card? Unsaved layout changes will be replaced.')) return;
+      replaceEditorScene(baseScene({ width, height, theme: currentTheme(), record: book })).catch(error => adapters.showToast?.(error.message || 'Could not reset the card.'));
+    });
     document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
       button.addEventListener('click', () => {
         if (!confirm('Replace this card layout with this starter look? Book details stay safe.')) return;
@@ -1705,6 +1780,11 @@
     });
     let copiedObject = null, copiedStyle = null;
     const saveEditor = () => {
+      if (shouldPreserveStandardOnSave(savedScene, initialCanvasSnapshot, historyJson())) {
+        adapters.showToast?.('Card design unchanged.');
+        closeEditor();
+        return;
+      }
       const saved = adapters.save?.(serializeCanvas(editor.canvas), { width, height, name: title, sourceTemplate: template });
       adapters.showToast?.(saved ? 'Canvas card saved.' : 'Canvas card could not be saved.');
       adapters.renderAll?.();
@@ -1904,6 +1984,11 @@
     fieldPaletteHtml,
     deleteActiveElement,
     baseScene,
+    classicScene,
+    templateJson,
+    actionDefinitions,
+    actionOverlayHtml,
+    shouldPreserveStandardOnSave,
     bindRecord,
     validScene,
     normalizeScene,

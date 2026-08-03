@@ -33,5 +33,4 @@ The repository contains only the Supabase publishable key, which is intended for
 
 ## Email delivery
 
-No service beyond GitHub and Supabase is required for the basic setup. Supabase's built-in email delivery can be rate-limited, so custom SMTP may be added later if confirmation or reset emails become unreliable.
-
+No service beyond GitHub and Supabase is required for the basic setup. Supabase's built-in email delivery can be rate-limited, so custom SMTP may be added later if confirmation or reset emails become unreliable

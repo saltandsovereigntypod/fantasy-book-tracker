@@ -69,5 +69,5 @@ for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBook
 for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-style-palette','fabric-elements-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','fabric-quick-actions','fabric-value-controls','fabric-check-control','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column','fabric-text-tools','fabric-text-effect-grid','modal-close'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
-assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);
+assert.match(bridge,/visual-fields\.js', 'canvas-editor\.js', 'visual-builder\.js/);
 console.log('Fabric canvas editor module, save pipeline, themed shell, and production render assertions passed');

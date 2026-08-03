@@ -5,7 +5,7 @@
   const DEFAULT_SIZE = { width: 420, height: 380 };
   const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked', 'originX', 'originY'];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
-  const FIELD_META = {
+  const FALLBACK_FIELD_META = {
     title: { label: 'Title', role: 'title' },
     author: { label: 'Author', role: 'metadata' },
     series: { label: 'Series', role: 'metadata' },
@@ -14,6 +14,24 @@
     rating: { label: 'Overall', role: 'rating' },
     spice: { label: 'Spice', role: 'rating' },
     impact: { label: 'Impact', role: 'rating' }
+  };
+  const registryFields = () => {
+    try { return globalThis.VisualFields?.fields?.() || []; }
+    catch { return []; }
+  };
+  const FIELD_META = {
+    ...FALLBACK_FIELD_META,
+    ...Object.fromEntries(registryFields().map(field => [field.id, {
+      label: field.label || field.id,
+      role: field.role || field.type || 'metadata',
+      path: field.path || field.id,
+      category: field.category || 'Book fields',
+      moduleType: field.moduleType || field.type || 'text',
+      defaultWidth: field.defaultWidth,
+      defaultHeight: field.defaultHeight,
+      max: field.max,
+      display: field.display
+    }]))
   };
   const TEXT_STYLE_PRESETS = {
     romantasy: { label: 'Romantasy title', text: 'Moonlit Archive', fontFamily: 'Libre Baskerville', fontSize: 34, fontWeight: '700', fill: 'theme:text', shadow: '0 10px 24px rgba(0,0,0,.48)' },
@@ -102,6 +120,11 @@
   }
 
   function recordValue(record = {}, path = '') {
+    if (globalThis.VisualFields?.resolve) {
+      const field = globalThis.VisualFields.byId?.(path);
+      const resolved = globalThis.VisualFields.resolve(record, field || path);
+      if (resolved !== undefined && resolved !== null && resolved !== '') return resolved;
+    }
     if (path === 'rating') return record.ratings?.overall ?? record.ratings?.rating ?? pathValue(record, path) ?? 0;
     if (path === 'spice') return record.ratings?.spice ?? pathValue(record, path) ?? 0;
     if (path === 'impact') return record.ratings?.impact ?? pathValue(record, path) ?? 0;
@@ -166,6 +189,12 @@
       const value = recordValue(record, path);
       const type = String(object.type || '').toLowerCase();
       const textLike = ['textbox', 'text', 'i-text', 'itext'].includes(type);
+      const meta = FIELD_META[path] || globalThis.VisualFields?.byId?.(path) || {};
+      if (type === 'image' || object.cardRole === 'image' || meta.moduleType === 'image') {
+        if (value) object.set ? object.set({ src: value, crossOrigin: 'anonymous' }) : Object.assign(object, { src: value, crossOrigin: 'anonymous' });
+        return;
+      }
+      if (!textLike && !object.sliderConfig) return;
       if (path === 'progress' && !textLike && object.sliderConfig?.trackWidth) {
         object.width = object.sliderConfig.trackWidth * clamp(value ?? 0, 0, 100) / 100;
         object.sliderConfig = { ...(object.sliderConfig || {}), path, value: clamp(value ?? 0, 0, 100), max: 100, style: 'bar' };
@@ -528,14 +557,57 @@
   }
 
   function fieldText(path, record = {}) {
+    if (globalThis.VisualFields?.display) {
+      const meta = FIELD_META[path] || {};
+      const resolved = globalThis.VisualFields.display(record, meta.path || path);
+      if (resolved !== undefined && resolved !== null && resolved !== '') return String(resolved);
+    }
     const value = recordValue(record, path);
     if (path === 'progress') return `${displayNumber(clamp(value ?? 0, 0, 100))}%`;
     if (['rating', 'spice', 'impact'].includes(path)) return ratingDisplay(path, value);
     return String(value ?? path);
   }
 
+  function addBoundImage(canvas, path, record = {}, options = {}) {
+    const fabric = requireFabric(), theme = currentTheme();
+    const meta = FIELD_META[path] || { label: path, role: 'image', moduleType: 'image' };
+    const sourcePath = meta.path || path;
+    const src = recordValue(record, sourcePath);
+    const left = options.left ?? 64, top = options.top ?? 64;
+    const width = options.width || meta.defaultWidth || 120, height = options.height || meta.defaultHeight || 160;
+    const finish = object => {
+      object.set({
+        id: options.id || path,
+        name: options.name || meta.label,
+        dataBinding: { path: sourcePath },
+        cardRole: options.cardRole || meta.role || 'image',
+        originX: 'center',
+        originY: 'center',
+        centeredRotation: true
+      });
+      canvas.add(object);
+      canvas.setActiveObject(object);
+      canvas.requestRenderAll();
+      return object;
+    };
+    if (!src) return Promise.resolve(finish(new fabric.Rect({ left, top, width, height, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1.5, rx: 16, ry: 16 })));
+    return new Promise(resolve => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => {
+        const object = new fabric.Image(image, { left, top, opacity: 1, crossOrigin: 'anonymous' });
+        object.scaleToWidth(width);
+        if (object.getScaledHeight?.() > height) object.scaleToHeight(height);
+        resolve(finish(object));
+      };
+      image.onerror = () => resolve(finish(new fabric.Rect({ left, top, width, height, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1.5, rx: 16, ry: 16 })));
+      image.src = src;
+    });
+  }
+
   function addBoundTextBox(canvas, path, record = {}, options = {}) {
     const meta = FIELD_META[path] || { label: path, role: 'metadata' };
+    if (meta.moduleType === 'image' || meta.role === 'image') return addBoundImage(canvas, path, record, options);
     const object = addEditableTextBox(canvas, fieldText(path, record), options);
     const isBoundSlider = ['rating', 'spice', 'impact', 'progress'].includes(path);
     object.set({
@@ -548,6 +620,13 @@
     object.exitEditing?.();
     canvas.requestRenderAll();
     return object;
+  }
+
+  function addBoundField(canvas, path, record = {}, options = {}) {
+    const meta = FIELD_META[path] || globalThis.VisualFields?.byId?.(path) || {};
+    return meta.moduleType === 'image' || meta.role === 'image'
+      ? addBoundImage(canvas, path, record, options)
+      : addBoundTextBox(canvas, path, record, options);
   }
 
   function addImageFromFile(canvas, file) {
@@ -786,6 +865,8 @@
       addEditableTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
       addTextBox: (text, extra) => addEditableTextBox(canvas, text, extra),
       addBoundTextBox: (path, record, extra) => addBoundTextBox(canvas, path, record, extra),
+      addBoundField: (path, record, extra) => addBoundField(canvas, path, record, extra),
+      addBoundImage: (path, record, extra) => addBoundImage(canvas, path, record, extra),
       addProgressSlider: (record, extra) => addProgressSlider(canvas, record, extra),
       addCustomSlider: extra => addCustomSlider(canvas, extra),
       addTextPreset: preset => addTextPreset(canvas, preset),
@@ -852,6 +933,8 @@
           <label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label>
           <label class="fabric-check-control"><input type="checkbox" checked data-fabric-snapping> Snap to edges and center</label>
           <div class="fabric-color-row"><label>Fill <input type="color" value="#bd662f" data-fabric-fill></label><label>Text <input type="color" value="#f7ead2" data-fabric-text></label></div>
+          <div class="fabric-color-row"><label>Card background <input type="color" value="#2b160d" data-fabric-card-bg></label></div>
+          <button type="button" data-fabric-share-formatting>Share formatting across all cards</button>
           <p class="fabric-editor-hint">Drag, resize, rotate, edit text inline, or upload art. Everything saves as Fabric JSON.</p>
         </aside>
         <main class="fabric-canvas-workspace"><div class="fabric-canvas-frame"><canvas id="${canvasId}" width="${width}" height="${height}"></canvas></div></main>
@@ -1082,10 +1165,13 @@
       syncInspector();
     });
     document.querySelectorAll('[data-fabric-field]').forEach(button => {
-      button.addEventListener('click', () => editor.addBoundTextBox(button.dataset.fabricField, book, {
+      button.addEventListener('click', () => Promise.resolve(editor.addBoundField(button.dataset.fabricField, book, {
         width: Math.max(140, width * .4),
         fontSize: Math.max(18, width * .045),
         cardRole: ['rating', 'spice', 'impact'].includes(button.dataset.fabricField) ? 'rating' : 'metadata'
+      })).then(() => {
+        pushHistory();
+        syncInspector();
       }));
     });
     document.querySelector('[data-fabric-upload]')?.addEventListener('change', event => {
@@ -1115,6 +1201,18 @@
       if (isTextObject(active)) active.set('fill', event.target.value);
       editor.canvas.requestRenderAll();
       pushHistory();
+    });
+    document.querySelector('[data-fabric-card-bg]')?.addEventListener('input', event => {
+      const background = editor.canvas.getObjects().find(object => object.id === 'card-bg' || object.cardRole === 'background');
+      if (background) background.set({ fill: event.target.value });
+      editor.canvas.backgroundColor = event.target.value;
+      editor.canvas.requestRenderAll();
+      pushHistory();
+    });
+    document.querySelector('[data-fabric-share-formatting]')?.addEventListener('click', () => {
+      if (!confirm('Use this canvas layout for every book card? Each book keeps its own title, ratings, cover, and details.')) return;
+      const shared = adapters.shareFormatting?.(serializeCanvas(editor.canvas), { width, height, name: 'Shared Canvas Book Card', sourceTemplate: template });
+      adapters.showToast?.(shared ? 'Formatting shared across book cards.' : 'Could not share formatting.');
     });
     document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => { editor.updateActiveObject({ stroke: event.target.value }); pushHistory(); });
     document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => { editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }); pushHistory(); });
@@ -1377,6 +1475,8 @@
     addShapeBox,
     addEditableTextBox,
     addBoundTextBox,
+    addBoundField,
+    addBoundImage,
     addProgressSlider,
     addCustomSlider,
     addTextPreset,

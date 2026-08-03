@@ -74,7 +74,8 @@
 
 /* Display size repair: later Canvas rules must beat older card/list width defaults. */
 .book-collection[data-library-layout=cards] .visual-template-card{width:min(100%,var(--card-display-max,420px));max-width:100%}
-.book-collection[data-library-layout=list] .visual-template-card{width:min(100%,var(--card-display-max,640px));max-width:100%}
+.book-collection[data-library-layout=list]{grid-template-columns:1fr!important}
+.book-collection[data-library-layout=list] .visual-template-card{width:100%!important;max-width:100%;--card-display-max:100%}
 
 /* Canva-style object controls: every selected object has side + corner resize handles. */
 .builder-card-canvas[data-layout-mode=absolute] .visual-book-module.is-builder-module.is-selected .builder-resize-handle{display:block!important;position:absolute;z-index:32;width:14px;height:14px;min-width:14px!important;min-height:14px!important;padding:0;border:2px solid var(--ui-surface-raised,var(--panel-2));border-radius:999px;background:var(--ui-accent,var(--accent));box-shadow:var(--shadow);touch-action:none}
@@ -115,6 +116,13 @@
 .builder-context-menu button{display:flex;justify-content:space-between;min-height:36px;border:0;border-radius:10px;background:transparent;color:var(--ui-text,var(--text));font:inherit;font-weight:800;text-align:left}
 .builder-context-menu button:hover,.builder-context-menu button:focus-visible{background:var(--ui-surface,var(--panel));outline:2px solid var(--ui-focus,var(--focus-ring,var(--accent)))}
 .builder-context-menu button:disabled{opacity:.45;cursor:not-allowed}
+.builder-field-picker{display:grid;gap:10px;margin-block:12px;padding:12px;border:1px solid var(--ui-border,var(--border));border-radius:18px;background:color-mix(in srgb,var(--ui-surface-raised,var(--panel-2)) 82%,transparent)}
+.builder-field-picker h3{margin:0;color:var(--ui-text,var(--text))}
+.builder-field-picker details{border:1px solid color-mix(in srgb,var(--ui-border,var(--border)) 65%,transparent);border-radius:14px;padding:8px;background:color-mix(in srgb,var(--ui-surface,var(--panel)) 78%,transparent)}
+.builder-field-picker summary{cursor:pointer;color:var(--ui-text-muted,var(--muted));font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.builder-field-picker div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.builder-field-picker button{min-height:38px;border:1px solid var(--ui-border,var(--border));border-radius:12px;background:var(--ui-surface,var(--panel));color:var(--ui-text,var(--text));font:inherit;font-weight:800}
+.builder-field-picker button:hover,.builder-field-picker button:focus-visible{border-color:var(--ui-accent,var(--accent));outline:2px solid color-mix(in srgb,var(--ui-accent,var(--accent)) 55%,transparent)}
 
 /* Production card guardrails: saved editor canvases must not turn the library into poster-sized cards. */
 .book-collection .visual-card-viewport{overflow:hidden}

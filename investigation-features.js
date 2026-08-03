@@ -21,11 +21,14 @@
 
   function snapshotTheory(theory) {
     return {
+      id: theory.id,
       statement: theory.statement || '',
       notes: theory.notes || '',
       bookId: theory.bookId || '',
       confidence: Number(theory.confidence) || 0,
-      status: theory.status || 'Under investigation'
+      status: theory.status || 'Under investigation',
+      createdAt: theory.createdAt || null,
+      updatedAt: theory.updatedAt || null
     };
   }
 
@@ -89,7 +92,7 @@
       <div class="form-grid">
         <label class="form-group">
           <span class="field-label">Confidence</span>
-          <input type="range" id="editTheoryConfidence" min="0" max="100" value="${Number(theory.confidence) || 50}">
+          <input class="shared-range" type="range" data-range-format="percent" id="editTheoryConfidence" min="0" max="100" value="${Number(theory.confidence) || 50}">
         </label>
         <label class="form-group">
           <span class="field-label">Status</span>
@@ -122,17 +125,19 @@
       if (!theoryChanged(previous, next)) return showToast('Nothing has changed yet.');
       if (!reason) return showToast('Record why the theory changed.');
 
+      const changedAt = Date.now();
+      const completeNext = { ...previous, ...next, updatedAt: changedAt };
       theory.history = Array.isArray(theory.history) ? theory.history : [];
       theory.history.push({
         id: uid(),
-        changedAt: Date.now(),
+        changedAt,
         reason,
         changedFields: describeChanges(previous, next),
-        before: previous,
-        after: next
+        before: { ...previous },
+        after: { ...completeNext }
       });
 
-      Object.assign(theory, next, { updatedAt: Date.now() });
+      Object.assign(theory, completeNext);
       saveState();
       closeModal();
       award(4, 'Theory revision preserved.');
@@ -231,7 +236,11 @@
     return `<div class="card-section-editor" data-section-editor="${sectionId}">
       <div class="section-editor-heading">
         <strong>Custom Section</strong>
-        <button type="button" class="small-button" data-remove-section="${sectionId}">Remove</button>
+        <div class="button-row">
+          <button type="button" class="small-button" data-move-section="up" aria-label="Move section up">↑</button>
+          <button type="button" class="small-button" data-move-section="down" aria-label="Move section down">↓</button>
+          <button type="button" class="small-button" data-remove-section="${sectionId}">Remove</button>
+        </div>
       </div>
       <label class="form-group">
         <span class="field-label">Section name</span>
@@ -245,7 +254,7 @@
         <span class="field-label">Reference cards from any wall</span>
         <select class="select-input section-links-input" multiple size="5">
           ${state.walls.flatMap(wall => state.wallCards
-            .filter(card => card.id !== section.cardId)
+            .filter(card => card.wallId === wall.id && card.id !== section.cardId)
             .map(card => `<option value="${card.id}" ${selected.has(card.id) ? 'selected' : ''}>${esc(wall.name)} › ${esc(card.title)}</option>`)
           ).join('')}
         </select>
@@ -288,6 +297,15 @@
     function bindSectionRemoveButtons() {
       editors.querySelectorAll('[data-remove-section]').forEach(button => {
         button.onclick = () => button.closest('.card-section-editor')?.remove();
+      });
+      editors.querySelectorAll('[data-move-section]').forEach(button => {
+        button.onclick = () => {
+          const row = button.closest('.card-section-editor');
+          const sibling = button.dataset.moveSection === 'up' ? row?.previousElementSibling : row?.nextElementSibling;
+          if (!row || !sibling) return;
+          if (button.dataset.moveSection === 'up') editors.insertBefore(row, sibling);
+          else editors.insertBefore(sibling, row);
+        };
       });
     }
 
@@ -383,6 +401,17 @@
   }
 
   enableWallDragging = function enableDraggingAndResizing() {
+    const board = document.getElementById('wallBoard');
+    if (board) {
+      board.querySelectorAll('.wall-card').forEach(card => {
+        card.addEventListener('mousedown', event => {
+          const rect = card.getBoundingClientRect();
+          if (rect.right - event.clientX <= 22 && rect.bottom - event.clientY <= 22) {
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      });
+    }
     originalEnableWallDragging();
     bindResizePersistence();
   };
@@ -398,4 +427,77 @@
     if (action === 'theory-history') return openTheoryHistory(id);
     return originalHandleAction(action, id);
   };
+
+  function rangePercent(value, min, max) {
+    const low = Number.isFinite(Number(min)) ? Number(min) : 0;
+    const high = Number.isFinite(Number(max)) ? Number(max) : 100;
+    const current = Number.isFinite(Number(value)) ? Number(value) : low;
+    if (high <= low) return 0;
+    return Math.max(0, Math.min(100, ((current - low) / (high - low)) * 100));
+  }
+
+  function formatRangeValue(input) {
+    const value = Number(input.value), max = Number(input.max || 100);
+    const format = input.dataset.rangeFormat || (max === 100 ? 'percent' : 'value');
+    if (format === 'percent') return `${value}%`;
+    if (['rating', 'spice', 'impact'].includes(format)) return `${value} / ${max}`;
+    return String(input.value);
+  }
+
+  function updateRange(input) {
+    const percent = rangePercent(input.value, input.min, input.max), text = formatRangeValue(input);
+    input.style.setProperty('--range-percent', `${percent}%`);
+    input.setAttribute('aria-valuemin', input.min || '0');
+    input.setAttribute('aria-valuemax', input.max || '100');
+    input.setAttribute('aria-valuenow', input.value);
+    input.setAttribute('aria-valuetext', text);
+    const output = document.querySelector(`[data-range-value-for="${CSS.escape(input.id)}"]`);
+    const bubble = document.querySelector(`[data-range-bubble-for="${CSS.escape(input.id)}"]`);
+    if (output) output.textContent = `Current value: ${text}`;
+    if (bubble) { bubble.textContent = text; bubble.style.setProperty('--range-percent', `${percent}%`); }
+  }
+
+  function enhanceRange(input) {
+    if (!input || input.dataset.rangeEnhanced === 'true') return input;
+    input.dataset.rangeEnhanced = 'true';
+    input.classList.add('shared-range');
+    if (!input.id) input.id = `range-${uid()}`;
+    let shell = input.closest('.shared-range-shell');
+    if (!shell) { shell = document.createElement('span'); shell.className = 'shared-range-shell'; input.before(shell); shell.append(input); }
+    let output = document.querySelector(`[data-range-value-for="${CSS.escape(input.id)}"]`);
+    if (!output) { output = document.createElement('output'); output.className = 'range-value'; output.dataset.rangeValueFor = input.id; shell.before(output); }
+    if (!output.id) output.id = `${input.id}-value`;
+    if (!(input.getAttribute('aria-describedby') || '').split(/\s+/).includes(output.id)) input.setAttribute('aria-describedby', `${input.getAttribute('aria-describedby') || ''} ${output.id}`.trim());
+    let bubble = shell.querySelector(`[data-range-bubble-for="${CSS.escape(input.id)}"]`);
+    if (!bubble) { bubble = document.createElement('output'); bubble.className = 'range-bubble'; bubble.dataset.rangeBubbleFor = input.id; bubble.setAttribute('aria-hidden', 'true'); shell.append(bubble); }
+    const show = () => shell.classList.add('is-active'), hide = () => shell.classList.remove('is-active');
+    input.addEventListener('input', () => { updateRange(input); show(); });
+    input.addEventListener('change', () => updateRange(input));
+    input.addEventListener('pointerdown', show);
+    input.addEventListener('pointerup', hide);
+    input.addEventListener('pointercancel', hide);
+    input.addEventListener('blur', hide);
+    input.addEventListener('keydown', () => { show(); requestAnimationFrame(() => updateRange(input)); });
+    input.addEventListener('dragstart', event => event.preventDefault());
+    updateRange(input);
+    return input;
+  }
+
+  function enhanceRanges(root = document) { root.querySelectorAll?.('input[type="range"]').forEach(enhanceRange); }
+  globalThis.RangeUI = { enhance: enhanceRanges, enhanceRange, update: updateRange, rangePercent, formatRangeValue };
+  enhanceRanges();
+  let viewportFrame;
+  const updateVisualViewport = () => {
+    cancelAnimationFrame(viewportFrame);
+    viewportFrame = requestAnimationFrame(() => document.documentElement.style.setProperty('--visual-viewport-height', `${Math.round(globalThis.visualViewport?.height || globalThis.innerHeight)}px`));
+  };
+  updateVisualViewport();
+  globalThis.visualViewport?.addEventListener('resize', updateVisualViewport, { passive: true });
+  globalThis.addEventListener('orientationchange', updateVisualViewport, { passive: true });
+  if (!globalThis.__rangeObserver && typeof MutationObserver !== 'undefined') {
+    globalThis.__rangeObserver = new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+      if (node.nodeType === 1) { if (node.matches?.('input[type="range"]')) enhanceRange(node); enhanceRanges(node); }
+    })));
+    globalThis.__rangeObserver.observe(document.body, { childList: true, subtree: true });
+  }
 })();

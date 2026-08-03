@@ -194,3 +194,56 @@
   .fabric-editor-inspector label,.fabric-editor-inspector .fabric-tool-section,.fabric-editor-inspector .fabric-value-controls,.fabric-editor-inspector .fabric-text-tools,.fabric-editor-inspector .fabric-quick-actions,.fabric-editor-inspector .fabric-preset-grid,.fabric-editor-inspector .fabric-align-grid,.fabric-editor-inspector .fabric-editor-hint{grid-column:1/-1}
   .fabric-preset-grid,.fabric-align-grid,.fabric-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+.builder-field-section{
+
+margin-bottom:12px;
+padding:12px;
+
+border:
+1px solid var(--ui-border);
+
+border-radius:12px;
+
+background:
+var(--ui-surface);
+
+}
+
+
+.builder-field-section legend{
+
+font-weight:700;
+
+}
+
+
+.builder-field-button{
+
+width:100%;
+min-height:44px;
+
+margin-bottom:8px;
+
+border:
+1px solid var(--ui-border);
+
+border-radius:10px;
+
+background:
+var(--ui-surface-raised);
+
+color:
+var(--ui-text);
+
+cursor:pointer;
+
+}
+
+
+.builder-field-button:hover{
+
+border-color:
+var(--ui-accent);
+
+}

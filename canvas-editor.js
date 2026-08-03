@@ -3,7 +3,7 @@
 
   const FABRIC_VERSION = '6';
   const DEFAULT_SIZE = { width: 420, height: 380 };
-  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked', 'originX', 'originY'];
+  const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked', 'originX', 'originY', 'cropX', 'cropY', 'cropMode', 'backgroundImageSrc'];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
   const FALLBACK_FIELD_META = {
     title: { label: 'Title', role: 'title' },
@@ -40,19 +40,33 @@
     metallic: { label: 'Metallic emboss', text: 'Gilded', fontFamily: 'Impact', fontSize: 38, fontWeight: '700', fill: '#f3d28b', stroke: '#6b421f', strokeWidth: 1.2, shadow: '3px 4px 0 rgba(0,0,0,.34)' },
     softScript: { label: 'Soft script', text: 'Secret Chapter', fontFamily: 'Brush Script MT', fontSize: 40, fontWeight: '400', fill: 'theme:muted', shadow: '0 6px 18px rgba(0,0,0,.25)' },
     archive: { label: 'Archive label', text: 'BOOK ARCHIVE', fontFamily: 'Inter', fontSize: 16, fontWeight: '900', fill: 'theme:muted', charSpacing: 180, textAlign: 'center' },
-    sticker: { label: 'Sticker pop', text: 'Obsessed', fontFamily: 'Trebuchet MS', fontSize: 34, fontWeight: '900', fill: 'theme:text', stroke: 'theme:accent', strokeWidth: 2.5, shadow: '0 8px 0 rgba(0,0,0,.28)' }
+    sticker: { label: 'Sticker pop', text: 'Obsessed', fontFamily: 'Trebuchet MS', fontSize: 34, fontWeight: '900', fill: 'theme:text', stroke: 'theme:accent', strokeWidth: 2.5, shadow: '0 8px 0 rgba(0,0,0,.28)' },
+    gothic: { label: 'Gothic drama', text: 'Dark Bloom', fontFamily: 'Copperplate', fontSize: 36, fontWeight: '900', fill: 'theme:accent', stroke: 'theme:text', strokeWidth: .7, shadow: '0 14px 28px rgba(0,0,0,.45)' },
+    typecraft: { label: 'Chunky pop', text: 'NEW DROP', fontFamily: 'Impact', fontSize: 40, fontWeight: '900', fill: 'theme:accent', stroke: 'theme:text', strokeWidth: 2.2, shadow: '5px 5px 0 rgba(0,0,0,.35)' },
+    whisper: { label: 'Whisper serif', text: 'haunted pages', fontFamily: 'Didot', fontSize: 30, fontWeight: '400', fill: 'theme:text', charSpacing: 80, shadow: '0 0 18px rgba(255,255,255,.16)' },
+    courierStamp: { label: 'Courier stamp', text: 'CLASSIFIED', fontFamily: 'Courier New', fontSize: 24, fontWeight: '900', fill: 'theme:accent', stroke: 'theme:accent', strokeWidth: .5, charSpacing: 120 }
   };
   const ELEMENT_PRESETS = {
     divider: { label: 'Divider', kind: 'divider' },
+    thinRule: { label: 'Thin rule', kind: 'thinRule' },
+    doubleRule: { label: 'Double rule', kind: 'doubleRule' },
     banner: { label: 'Banner', kind: 'banner' },
     badge: { label: 'Badge', kind: 'badge' },
     panel: { label: 'Panel', kind: 'panel' },
+    glassPanel: { label: 'Glass panel', kind: 'glassPanel' },
+    tornLabel: { label: 'Torn label', kind: 'tornLabel' },
     circle: { label: 'Circle', kind: 'circle' },
+    oval: { label: 'Oval', kind: 'oval' },
+    diamond: { label: 'Diamond', kind: 'diamond' },
     frame: { label: 'Frame', kind: 'frame' },
+    ornateFrame: { label: 'Ornate frame', kind: 'ornateFrame' },
     sparkle: { label: 'Sparkles', kind: 'glyph', glyph: '✦ ✧ ✦' },
     moon: { label: 'Moon', kind: 'glyph', glyph: '☾' },
     stars: { label: 'Stars', kind: 'glyph', glyph: '★ ✦ ★' },
     hearts: { label: 'Hearts', kind: 'glyph', glyph: '♥ ♥ ♥' },
+    flames: { label: 'Flames', kind: 'glyph', glyph: '🔥 ✦ 🔥' },
+    dagger: { label: 'Dagger', kind: 'glyph', glyph: '†' },
+    vines: { label: 'Vines', kind: 'glyph', glyph: '❧ ❦ ❧' },
     corners: { label: 'Corners', kind: 'corners' },
     flourish: { label: 'Flourish', kind: 'glyph', glyph: '❦' }
   };
@@ -190,6 +204,16 @@
       const type = String(object.type || '').toLowerCase();
       const textLike = ['textbox', 'text', 'i-text', 'itext'].includes(type);
       const meta = FIELD_META[path] || globalThis.VisualFields?.byId?.(path) || {};
+      if (path === '$actions' || object.cardRole === 'actions') return;
+      if (path === 'trackerValues' || path === 'customTracker') {
+        if (object.sliderConfig) {
+          const tracker = recordValue(record, 'customTracker');
+          const next = typeof tracker === 'object' ? tracker : {};
+          object.sliderConfig = { ...(object.sliderConfig || {}), name: next.name || object.sliderConfig.name || 'Custom tracker', value: clamp(next.value ?? object.sliderConfig.value ?? 0, 0, next.max || object.sliderConfig.max || 5), max: next.max || object.sliderConfig.max || 5, style: next.style || object.sliderConfig.style || 'stars' };
+          if (textLike) object.text = sliderDisplay(object.sliderConfig, '');
+        }
+        return;
+      }
       if (type === 'image' || object.cardRole === 'image' || meta.moduleType === 'image') {
         if (value) object.set ? object.set({ src: value, crossOrigin: 'anonymous' }) : Object.assign(object, { src: value, crossOrigin: 'anonymous' });
         return;
@@ -233,7 +257,7 @@
 
   function isSliderObject(object) {
     const path = bindingPath(object);
-    return Boolean(object?.sliderConfig || object?.cardRole === 'custom-slider' || ['progress', 'rating', 'spice', 'impact'].includes(path));
+    return Boolean(object?.sliderConfig || object?.cardRole === 'custom-slider' || object?.cardRole === 'rating' || object?.cardRole === 'progress' || ['progress', 'rating', 'spice', 'impact'].includes(path));
   }
 
   function centerOriginObject(object) {
@@ -257,6 +281,78 @@
       if (value !== undefined && value !== null && value !== '') active.set(key, value);
     });
     active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function applySmartColor(canvas, color) {
+    const active = getActive(canvas);
+    if (!active || !color) return false;
+    const objects = selectedObjects(canvas);
+    const targets = objects.length ? objects : [active];
+    targets.forEach(object => {
+      if (isSliderObject(object)) {
+        sliderObjects(canvas, object).forEach(item => {
+          const role = item.sliderConfig?.role;
+          if (role === 'fill' || role === 'value' || role === undefined) item.set?.('fill', color);
+          if (role === 'track') item.set?.('stroke', color);
+        });
+        return;
+      }
+      if (isTextObject(object)) object.set('fill', color);
+      else if (object.type === 'Image' || object.type === 'image') object.set('stroke', color);
+      else object.set({ fill: color, stroke: object.stroke && object.stroke !== 'transparent' ? color : object.stroke });
+      object.setCoords?.();
+    });
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function setCardBackgroundColor(canvas, color) {
+    const background = canvas.getObjects().find(object => object.id === 'card-bg' || object.cardRole === 'background');
+    if (background) background.set({ fill: color });
+    canvas.backgroundColor = color;
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function setImageCropMode(canvas, mode = 'cover') {
+    const active = getActive(canvas);
+    if (!active || !(active.type === 'Image' || active.type === 'image')) return false;
+    active.cropMode = mode;
+    if (mode === 'contain') active.set({ scaleX: Math.abs(active.scaleX || 1), scaleY: Math.abs(active.scaleY || 1), cropX: 0, cropY: 0 });
+    if (mode === 'cover') active.set({ cropX: 0, cropY: 0 });
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function cropActiveImage(canvas, changes = {}) {
+    const active = getActive(canvas);
+    if (!active || !(active.type === 'Image' || active.type === 'image')) return false;
+    const scale = changes.zoom !== undefined ? clamp(changes.zoom, 10, 300) / 100 : Math.max(Math.abs(active.scaleX || 1), .01);
+    active.set({
+      scaleX: active.flipX ? -scale : scale,
+      scaleY: active.flipY ? -scale : scale,
+      cropX: clamp(changes.cropX ?? active.cropX ?? 0, 0, 10000),
+      cropY: clamp(changes.cropY ?? active.cropY ?? 0, 0, 10000),
+      cropMode: active.cropMode || 'cover'
+    });
+    active.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function setActiveImageAsBackground(canvas) {
+    const active = getActive(canvas);
+    if (!active || !(active.type === 'Image' || active.type === 'image')) return false;
+    const width = canvas.__designWidth || canvas.getWidth(), height = canvas.__designHeight || canvas.getHeight();
+    active.set({ left: width / 2, top: height / 2, originX: 'center', originY: 'center', selectable: false, evented: false, cardRole: 'background-image', name: 'Background image' });
+    active.scaleToWidth(width);
+    if (active.getScaledHeight?.() < height) active.scaleToHeight(height);
+    canvas.sendObjectToBack?.(active) || canvas.sendToBack?.(active);
+    const cardBg = canvas.getObjects().find(object => object.id === 'card-bg');
+    if (cardBg) canvas.sendObjectToBack?.(cardBg) || canvas.sendToBack?.(cardBg);
     canvas.requestRenderAll();
     return true;
   }
@@ -386,16 +482,30 @@
     let object;
     if (preset.kind === 'divider') {
       object = new fabric.Rect({ left: 72, top: 92, width: 220, height: 4, rx: 999, ry: 999, fill: theme.accent, name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'thinRule') {
+      object = new fabric.Rect({ left: 72, top: 92, width: 240, height: 2, rx: 999, ry: 999, fill: theme.muted, opacity: .75, name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'doubleRule') {
+      object = new fabric.Textbox('━━━━━━\n━━━━━━', { left: 72, top: 84, width: 260, fontSize: 18, fontFamily: 'Georgia', fill: theme.accent, charSpacing: 90, name: preset.label, cardRole: 'decor' });
     } else if (preset.kind === 'banner') {
       object = new fabric.Rect({ left: 64, top: 64, width: 230, height: 56, rx: 18, ry: 18, fill: theme.accent, stroke: theme.border, strokeWidth: 1, shadow: '0 14px 28px rgba(0,0,0,.30)', name: preset.label, cardRole: 'decor' });
     } else if (preset.kind === 'badge') {
       object = new fabric.Circle({ left: 84, top: 72, radius: 44, fill: theme.surfaceSoft, stroke: theme.accent, strokeWidth: 3, shadow: '0 16px 34px rgba(0,0,0,.34)', name: preset.label, cardRole: 'decor' });
     } else if (preset.kind === 'panel') {
       object = new fabric.Rect({ left: 48, top: 48, width: 260, height: 150, rx: 24, ry: 24, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 2, opacity: .9, shadow: '0 20px 46px rgba(0,0,0,.36)', name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'glassPanel') {
+      object = new fabric.Rect({ left: 48, top: 48, width: 260, height: 150, rx: 28, ry: 28, fill: 'rgba(255,255,255,.08)', stroke: 'rgba(255,255,255,.24)', strokeWidth: 1.5, opacity: .9, shadow: '0 22px 50px rgba(0,0,0,.42)', name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'tornLabel') {
+      object = new fabric.Textbox('▰  ▰▰  ▰', { left: 56, top: 70, width: 220, fontSize: 34, fontFamily: 'Courier New', fill: theme.surfaceSoft, stroke: theme.accent, strokeWidth: 1, name: preset.label, cardRole: 'decor' });
     } else if (preset.kind === 'circle') {
       object = new fabric.Circle({ left: 86, top: 76, radius: 54, fill: 'transparent', stroke: theme.accent, strokeWidth: 2, name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'oval') {
+      object = new fabric.Rect({ left: 64, top: 74, width: 210, height: 78, rx: 999, ry: 999, fill: 'transparent', stroke: theme.accent, strokeWidth: 2, name: preset.label, cardRole: 'decor' });
+    } else if (preset.kind === 'diamond') {
+      object = new fabric.Rect({ left: 110, top: 78, width: 88, height: 88, angle: 45, fill: 'transparent', stroke: theme.accent, strokeWidth: 2, name: preset.label, cardRole: 'decor' });
     } else if (preset.kind === 'frame') {
       object = new fabric.Rect({ left: 52, top: 52, width: 180, height: 230, rx: 18, ry: 18, fill: 'transparent', stroke: theme.muted, strokeWidth: 3, shadow: 'inset 0 0 0 1px rgba(255,255,255,.12)', name: preset.label, cardRole: 'frame' });
+    } else if (preset.kind === 'ornateFrame') {
+      object = new fabric.Textbox('╔════════╗\n║        ║\n║        ║\n╚════════╝', { left: 58, top: 50, width: 260, fontSize: 24, fontFamily: 'Georgia', fontWeight: '700', fill: theme.accent, name: preset.label, cardRole: 'frame' });
     } else if (preset.kind === 'corners') {
       object = new fabric.Textbox('⌜        ⌝\n\n\n⌞        ⌟', { left: 60, top: 60, width: 220, fontSize: 34, fontFamily: 'Georgia', fontWeight: '700', fill: theme.accent, name: preset.label, cardRole: 'decor', splitByGrapheme: true });
     } else {
@@ -605,9 +715,44 @@
     });
   }
 
+  function addActionButtons(canvas, record = {}, options = {}) {
+    const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
+    const labels = record.status === 'completed'
+      ? ['Reread', 'Rate & Edit', 'Progress', 'Pin']
+      : [record.status === 'reading' ? 'Update' : 'Start Reading', 'Rate & Edit', 'Progress', 'Pin'];
+    const left = options.left ?? 64, top = options.top ?? Math.max(220, (canvas.__designHeight || DEFAULT_SIZE.height) - 88);
+    const buttonWidth = options.buttonWidth || Math.max(64, Math.min(92, (width - 110) / labels.length));
+    const gap = 8;
+    const groupItems = labels.map((label, index) => {
+      const rect = new fabric.Rect({ left: index * (buttonWidth + gap), top: 0, width: buttonWidth, height: 34, rx: 999, ry: 999, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1.5, shadow: '0 8px 16px rgba(0,0,0,.24)' });
+      const text = new fabric.Textbox(label, { left: index * (buttonWidth + gap), top: 7, width: buttonWidth, fontSize: 10, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, textAlign: 'center', selectable: false, evented: false });
+      return [rect, text];
+    }).flat();
+    const group = new fabric.Group(groupItems, {
+      left,
+      top,
+      name: 'Action buttons',
+      cardRole: 'actions',
+      dataBinding: { path: '$actions' },
+      originX: 'center',
+      originY: 'center',
+      centeredRotation: true
+    });
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    return group;
+  }
+
   function addBoundTextBox(canvas, path, record = {}, options = {}) {
     const meta = FIELD_META[path] || { label: path, role: 'metadata' };
     if (meta.moduleType === 'image' || meta.role === 'image') return addBoundImage(canvas, path, record, options);
+    if (meta.moduleType === 'actions' || meta.role === 'actions' || path === '$actions') return addActionButtons(canvas, record, options);
+    if (meta.moduleType === 'custom-slider' || meta.role === 'custom-slider' || path === 'customTracker' || path === 'trackerValues') {
+      const tracker = recordValue(record, 'customTracker');
+      const next = typeof tracker === 'object' ? tracker : {};
+      return addCustomSlider(canvas, { name: next.name || 'Custom tracker', value: next.value ?? 0, max: next.max || 5, style: next.style || 'stars', width: options.width, left: options.left, top: options.top });
+    }
     const object = addEditableTextBox(canvas, fieldText(path, record), options);
     const isBoundSlider = ['rating', 'spice', 'impact', 'progress'].includes(path);
     object.set({
@@ -624,6 +769,8 @@
 
   function addBoundField(canvas, path, record = {}, options = {}) {
     const meta = FIELD_META[path] || globalThis.VisualFields?.byId?.(path) || {};
+    if (meta.moduleType === 'actions' || meta.role === 'actions' || path === '$actions') return addActionButtons(canvas, record, options);
+    if (meta.moduleType === 'custom-slider' || meta.role === 'custom-slider' || path === 'customTracker' || path === 'trackerValues') return addBoundTextBox(canvas, path, record, options);
     return meta.moduleType === 'image' || meta.role === 'image'
       ? addBoundImage(canvas, path, record, options)
       : addBoundTextBox(canvas, path, record, options);
@@ -884,10 +1031,16 @@
       pasteStyle: snapshot => pasteStyle(canvas, snapshot),
       applyAppearancePreset: preset => applyAppearancePreset(canvas, preset),
       applyTextEffect: effect => applyTextEffect(canvas, effect),
+      applySmartColor: color => applySmartColor(canvas, color),
+      setCardBackgroundColor: color => setCardBackgroundColor(canvas, color),
+      setImageCropMode: mode => setImageCropMode(canvas, mode),
+      cropActiveImage: changes => cropActiveImage(canvas, changes),
+      setActiveImageAsBackground: () => setActiveImageAsBackground(canvas),
       applySliderIconFromFile: file => applySliderIconFromFile(getActive(canvas), file),
       applyCardPreset: (preset, record) => applyCardPreset(canvas, preset, record),
       updateActiveObject: changes => updateActiveObject(canvas, changes),
       addImageFromFile: file => addImageFromFile(canvas, file),
+      addActionButtons: (record, extra) => addActionButtons(canvas, record, extra),
       handleImageUpload: file => addImageFromFile(canvas, file),
       deleteActiveElement: () => deleteActiveElement(canvas),
       deleteSelected: () => deleteActiveElement(canvas),
@@ -906,35 +1059,55 @@
       </header>
       <div class="fabric-editor-layout">
         <aside class="fabric-editor-sidebar" aria-label="Canvas tools">
-          <div class="fabric-tool-section">
+          <nav class="fabric-panel-tabs" aria-label="Editor panels">
+            <a href="#fabric-panel-templates">Templates</a>
+            <a href="#fabric-panel-elements">Elements</a>
+            <a href="#fabric-panel-text">Text</a>
+            <a href="#fabric-panel-fields">Book info</a>
+            <a href="#fabric-panel-uploads">Uploads</a>
+          </nav>
+          <section id="fabric-panel-templates" class="fabric-tool-section fabric-panel">
             <p>Starter looks</p>
             <button type="button" data-fabric-card-preset="classic">Classic card</button>
             <button type="button" data-fabric-card-preset="poster">Poster card</button>
             <button type="button" data-fabric-card-preset="dashboard">Dashboard card</button>
-          </div>
-          <button type="button" data-fabric-add="shape">Shape box</button>
-          <button type="button" data-fabric-add="text">Text box</button>
-          <button type="button" data-fabric-add="progress-slider">Progress slider</button>
-          <button type="button" data-fabric-add="custom-slider">Custom slider</button>
-          <div class="fabric-style-palette" aria-label="Text style presets">
-            <p>Text styles</p>
-            ${Object.entries(TEXT_STYLE_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-text-preset="${key}">${escapeHtml(preset.label)}</button>`).join('')}
-          </div>
-          <div class="fabric-elements-palette" aria-label="Decorative elements">
+            <button type="button" data-fabric-share-formatting>Share formatting across all cards</button>
+          </section>
+          <section id="fabric-panel-elements" class="fabric-tool-section fabric-panel">
             <p>Elements</p>
-            ${Object.entries(ELEMENT_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-element="${key}">${escapeHtml(preset.label)}</button>`).join('')}
-          </div>
-          <div class="fabric-field-palette" aria-label="Book fields">
-            <p>Book fields</p>
-            ${Object.entries(FIELD_META).map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}
-          </div>
-          <label class="fabric-upload-control">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label>
-          <button type="button" data-fabric-delete>Delete selected</button>
-          <label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label>
-          <label class="fabric-check-control"><input type="checkbox" checked data-fabric-snapping> Snap to edges and center</label>
-          <div class="fabric-color-row"><label>Fill <input type="color" value="#bd662f" data-fabric-fill></label><label>Text <input type="color" value="#f7ead2" data-fabric-text></label></div>
-          <div class="fabric-color-row"><label>Card background <input type="color" value="#2b160d" data-fabric-card-bg></label></div>
-          <button type="button" data-fabric-share-formatting>Share formatting across all cards</button>
+            <button type="button" data-fabric-add="shape">Shape box</button>
+            <button type="button" data-fabric-add="progress-slider">Progress slider</button>
+            <button type="button" data-fabric-add="custom-slider">Custom slider</button>
+            <div class="fabric-elements-palette" aria-label="Decorative elements">
+              ${Object.entries(ELEMENT_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-element="${key}">${escapeHtml(preset.label)}</button>`).join('')}
+            </div>
+          </section>
+          <section id="fabric-panel-text" class="fabric-tool-section fabric-panel">
+            <p>Text</p>
+            <button type="button" data-fabric-add="text">Add a text box</button>
+            <label>Font family <select data-fabric-new-font>${FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('')}</select></label>
+            <div class="fabric-style-palette" aria-label="Text style presets">
+              ${Object.entries(TEXT_STYLE_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-text-preset="${key}"><span>${escapeHtml(preset.label)}</span><em>${escapeHtml(preset.text)}</em></button>`).join('')}
+            </div>
+          </section>
+          <section id="fabric-panel-fields" class="fabric-tool-section fabric-panel">
+            <p>Book information</p>
+            <div class="fabric-field-palette" aria-label="Book fields">
+              ${Object.entries(FIELD_META).map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}
+            </div>
+          </section>
+          <section id="fabric-panel-uploads" class="fabric-tool-section fabric-panel">
+            <p>Uploads</p>
+            <label class="fabric-upload-control">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label>
+            <button type="button" data-fabric-action="image-background">Set selected image as background</button>
+          </section>
+          <section class="fabric-tool-section fabric-panel">
+            <p>Canvas</p>
+            <label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label>
+            <label class="fabric-check-control"><input type="checkbox" checked data-fabric-snapping> Snap to edges and center</label>
+            <label>Card background <input type="color" value="#2b160d" data-fabric-card-bg></label>
+            <button type="button" data-fabric-delete>Delete selected</button>
+          </section>
           <p class="fabric-editor-hint">Drag, resize, rotate, edit text inline, or upload art. Everything saves as Fabric JSON.</p>
         </aside>
         <main class="fabric-canvas-workspace"><div class="fabric-canvas-frame"><canvas id="${canvasId}" width="${width}" height="${height}"></canvas></div></main>
@@ -943,12 +1116,39 @@
             <p>Selected piece</p>
             <output data-fabric-selected-name>Nothing selected</output>
           </div>
+          <div class="fabric-tool-section fabric-universal-colors">
+            <p>Color</p>
+            <label>Color wheel <input type="color" value="#bd662f" data-fabric-color-wheel></label>
+            <div class="fabric-color-swatches">
+              ${['#bd662f', '#f7ead2', '#a61f3f', '#f4b942', '#9b5de5', '#00bbf9', '#2b160d', '#111111'].map(color => `<button type="button" style="--swatch:${color}" data-fabric-color-swatch="${color}" aria-label="${color}"></button>`).join('')}
+            </div>
+            <label>Border color <input type="color" value="#75451f" data-fabric-stroke></label>
+          </div>
           <div class="fabric-value-controls" data-fabric-value-controls hidden>
             <label>Widget label <input type="text" value="" data-fabric-slider-name></label>
             <label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label>
             <label>Maximum <input type="number" min="1" max="100" step="1" value="5" data-fabric-slider-max></label>
             <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option><option value="custom-icon">Custom icon</option></select></label>
             <label class="fabric-upload-control">Upload slider icon<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-slider-icon></label>
+          </div>
+          <div class="fabric-image-controls" data-fabric-image-controls hidden>
+            <p>Image crop</p>
+            <div class="fabric-quick-actions">
+              <button type="button" data-fabric-image-fit="cover">Crop / cover</button>
+              <button type="button" data-fabric-image-fit="contain">Fit inside</button>
+              <button type="button" data-fabric-action="image-background">Use as background</button>
+            </div>
+            <label>Image zoom <input type="range" min="20" max="300" value="100" data-fabric-image-crop="zoom"></label>
+            <label>Crop X <input type="range" min="0" max="600" value="0" data-fabric-image-crop="cropX"></label>
+            <label>Crop Y <input type="range" min="0" max="600" value="0" data-fabric-image-crop="cropY"></label>
+          </div>
+          <div class="fabric-tool-section">
+            <p>Layers</p>
+            <div class="fabric-layer-list" data-fabric-layer-list aria-label="Layer list"></div>
+            <div class="fabric-quick-actions">
+              <button type="button" data-fabric-action="forward">Forward</button>
+              <button type="button" data-fabric-action="backward">Backward</button>
+            </div>
           </div>
           <div class="fabric-quick-actions" aria-label="Object actions">
             <button type="button" data-fabric-action="duplicate">Duplicate</button>
@@ -982,7 +1182,7 @@
           <label>Opacity <input type="range" min="0" max="100" value="100" data-fabric-prop="opacity"></label>
           <label>Corner radius <input type="range" min="0" max="80" value="16" data-fabric-prop="cornerRadius"></label>
           <label>Border <input type="range" min="0" max="12" value="1" data-fabric-prop="strokeWidth"></label>
-          <div class="fabric-color-row"><label>Border <input type="color" value="#75451f" data-fabric-stroke></label><label>Shadow <input type="checkbox" data-fabric-shadow></label></div>
+          <div class="fabric-color-row"><label>Shadow <input type="checkbox" data-fabric-shadow></label></div>
           <p class="fabric-editor-hint">Select a title, rating, pill, shape, or uploaded image, then use these controls to style it. Use the circular Fabric handle on the selection box for free rotation.</p>
         </aside>
       </div>
@@ -1068,9 +1268,19 @@
       const textTools = document.querySelector('[data-fabric-text-tools]');
       const fontSelect = document.querySelector('[data-fabric-font-family]');
       const textAlignSelect = document.querySelector('[data-fabric-text-align]');
+      const imageControls = document.querySelector('[data-fabric-image-controls]');
+      const layerList = document.querySelector('[data-fabric-layer-list]');
       const isValueObject = Boolean(active && isSliderObject(active));
       if (valueControls) valueControls.hidden = !isValueObject;
       if (textTools) textTools.hidden = !isTextObject(active);
+      if (imageControls) imageControls.hidden = !(active && (active.type === 'Image' || active.type === 'image'));
+      if (layerList) {
+        layerList.innerHTML = editor.canvas.getObjects().slice().reverse().filter(object => object.selectable !== false || object.cardRole === 'background-image').map((object, index) => {
+          const id = object.id || object.name || `layer-${index}`;
+          const activeClass = active === object ? ' is-active' : '';
+          return `<button type="button" class="${activeClass}" data-fabric-layer-index="${editor.canvas.getObjects().indexOf(object)}">${escapeHtml(object.name || object.cardRole || object.type || id)}</button>`;
+        }).join('');
+      }
       if (isValueObject && valueInput) {
         const max = sliderMaxForPath(activePath, number(active.sliderConfig?.max, 5));
         const value = clamp(active.sliderConfig?.value ?? recordValue(book, activePath), 0, max);
@@ -1104,6 +1314,8 @@
     editor.canvas.on('selection:updated', syncInspector);
     editor.canvas.on('selection:cleared', syncInspector);
     editor.canvas.on('object:modified', syncInspector);
+    editor.canvas.on('object:added', syncInspector);
+    editor.canvas.on('object:removed', syncInspector);
     editor.canvas.on('object:modified', pushHistory);
     editor.canvas.on('object:added', pushHistory);
     editor.canvas.on('object:removed', pushHistory);
@@ -1138,7 +1350,11 @@
       });
     });
     document.querySelector('[data-fabric-add="shape"]')?.addEventListener('click', () => editor.addShapeBox());
-    document.querySelector('[data-fabric-add="text"]')?.addEventListener('click', () => editor.addEditableTextBox());
+    document.querySelector('[data-fabric-add="text"]')?.addEventListener('click', () => {
+      editor.addEditableTextBox('Type something beautiful…', { fontFamily: document.querySelector('[data-fabric-new-font]')?.value || 'Libre Baskerville' });
+      pushHistory();
+      syncInspector();
+    });
     document.querySelector('[data-fabric-add="progress-slider"]')?.addEventListener('click', () => editor.addProgressSlider(book));
     document.querySelectorAll('[data-fabric-text-preset]').forEach(button => {
       button.addEventListener('click', () => {
@@ -1203,10 +1419,7 @@
       pushHistory();
     });
     document.querySelector('[data-fabric-card-bg]')?.addEventListener('input', event => {
-      const background = editor.canvas.getObjects().find(object => object.id === 'card-bg' || object.cardRole === 'background');
-      if (background) background.set({ fill: event.target.value });
-      editor.canvas.backgroundColor = event.target.value;
-      editor.canvas.requestRenderAll();
+      editor.setCardBackgroundColor(event.target.value);
       pushHistory();
     });
     document.querySelector('[data-fabric-share-formatting]')?.addEventListener('click', () => {
@@ -1215,6 +1428,41 @@
       adapters.showToast?.(shared ? 'Formatting shared across book cards.' : 'Could not share formatting.');
     });
     document.querySelector('[data-fabric-stroke]')?.addEventListener('input', event => { editor.updateActiveObject({ stroke: event.target.value }); pushHistory(); });
+    document.querySelector('[data-fabric-color-wheel]')?.addEventListener('input', event => {
+      editor.applySmartColor(event.target.value);
+      pushHistory();
+      syncInspector();
+    });
+    document.querySelectorAll('[data-fabric-color-swatch]').forEach(button => {
+      button.addEventListener('click', () => {
+        editor.applySmartColor(button.dataset.fabricColorSwatch);
+        pushHistory();
+        syncInspector();
+      });
+    });
+    document.querySelectorAll('[data-fabric-image-fit]').forEach(button => {
+      button.addEventListener('click', () => {
+        editor.setImageCropMode(button.dataset.fabricImageFit);
+        pushHistory();
+        syncInspector();
+      });
+    });
+    document.querySelectorAll('[data-fabric-image-crop]').forEach(input => {
+      input.addEventListener('input', event => {
+        editor.cropActiveImage({ [event.target.dataset.fabricImageCrop]: number(event.target.value, 0) });
+        pushHistory();
+        syncInspector();
+      });
+    });
+    document.querySelector('[data-fabric-layer-list]')?.addEventListener('click', event => {
+      const button = event.target.closest?.('[data-fabric-layer-index]');
+      if (!button) return;
+      const object = editor.canvas.getObjects()[number(button.dataset.fabricLayerIndex, -1)];
+      if (!object || object.selectable === false) return;
+      editor.canvas.setActiveObject(object);
+      editor.canvas.requestRenderAll();
+      syncInspector();
+    });
     document.querySelector('[data-fabric-shadow]')?.addEventListener('change', event => { editor.updateActiveObject({ shadow: event.target.checked ? '0 18px 42px rgba(0,0,0,.38)' : null }); pushHistory(); });
     document.querySelector('[data-fabric-value]')?.addEventListener('input', event => {
       const active = getActive(editor.canvas);
@@ -1294,8 +1542,11 @@
         if (action === 'flip-y') {
           if (active) editor.updateActiveObject({ flipY: !active.flipY });
         }
+        if (action === 'image-background') editor.setActiveImageAsBackground();
         if (action === 'front') editor.moveLayer('front');
         if (action === 'back') editor.moveLayer('back');
+        if (action === 'forward') editor.moveLayer('forward');
+        if (action === 'backward') editor.moveLayer('backward');
         pushHistory();
         syncInspector();
       });
@@ -1494,6 +1745,11 @@
     pasteStyle,
     applyAppearancePreset,
     applyTextEffect,
+    applySmartColor,
+    setCardBackgroundColor,
+    setImageCropMode,
+    cropActiveImage,
+    setActiveImageAsBackground,
     applyCardPreset,
     updateActiveObject,
     applySliderIconFromFile,

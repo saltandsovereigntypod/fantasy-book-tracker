@@ -25,8 +25,8 @@
     { id: 'linkedTheoryIds', label: 'Theories count', category: 'Connections', path: 'linkedTheoryIds', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 130, defaultHeight: 48 },
     { id: 'linkedWallIds', label: 'Walls count', category: 'Connections', path: 'linkedWallIds', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 130, defaultHeight: 48 },
     { id: 'bookConnections', label: 'Relationships count', category: 'Connections', path: 'bookConnections', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 160, defaultHeight: 48 },
-    { id: '$actions', label: 'Action buttons', category: 'Actions', path: '$actions', type: 'actions', role: 'actions', moduleType: 'button', defaultWidth: 240, defaultHeight: 54 },
-    { id: 'customTracker', label: 'Custom tracker', category: 'Custom', path: 'trackerValues', type: 'custom', role: 'custom-slider', moduleType: 'slider', defaultWidth: 180, defaultHeight: 64 }
+    { id: '$actions', label: 'Action buttons', category: 'Actions', path: '$actions', type: 'actions', role: 'actions', moduleType: 'actions', defaultWidth: 260, defaultHeight: 62 },
+    { id: 'customTracker', label: 'Custom tracker', category: 'Custom', path: 'customTracker', type: 'custom', role: 'custom-slider', moduleType: 'custom-slider', defaultWidth: 190, defaultHeight: 72 }
   ];
 
   const pathValue = (source = {}, path = '') => String(path).split('.').reduce((current, key) => current?.[key], source);
@@ -46,7 +46,7 @@
   function resolve(record = {}, fieldOrPath = '') {
     const field = typeof fieldOrPath === 'object' ? fieldOrPath : fieldById(fieldOrPath) || { id: fieldOrPath, path: fieldOrPath };
     const id = field.id, path = field.path || id;
-    if (id === '$actions') return '';
+    if (id === '$actions') return '$actions';
     if (id === 'rating') return record.ratings?.overall ?? record.ratings?.rating ?? record.rating ?? 0;
     if (id === 'spice') return record.ratings?.spice ?? record.spice ?? 0;
     if (id === 'impact') return record.ratings?.impact ?? record.impact ?? 0;
@@ -55,6 +55,15 @@
     if (id === 'coverUrl') return imageUrl(record.coverUrl || record.coverImage || record.cover || record.images);
     if (id === 'images') return imageUrl(record.images || record.additionalImages);
     if (id === 'bookConnections') return relationshipCount(record);
+    if (id === 'customTracker') {
+      const trackers = record.customTrackers || record.trackers || [];
+      const values = record.trackerValues || {};
+      const first = Array.isArray(trackers) ? trackers[0] : null;
+      if (first) return { name: first.name || first.label || 'Custom tracker', value: values[first.id] ?? first.value ?? 0, max: first.max ?? 5, style: first.display || first.style || 'stars' };
+      const firstKey = Object.keys(values)[0];
+      if (firstKey) return { name: firstKey, value: values[firstKey], max: 5, style: 'stars' };
+      return { name: 'Custom tracker', value: 0, max: 5, style: 'stars' };
+    }
     const direct = pathValue(record, path);
     return direct ?? '';
   }
@@ -63,6 +72,8 @@
     const field = typeof fieldOrPath === 'object' ? fieldOrPath : fieldById(fieldOrPath) || { id: fieldOrPath, path: fieldOrPath };
     const value = resolve(record, field);
     if (field.type === 'image') return imageUrl(value);
+    if (field.type === 'actions') return 'Action buttons';
+    if (field.type === 'custom') return typeof value === 'object' ? value.name || 'Custom tracker' : String(value || 'Custom tracker');
     if (field.type === 'date') return value ? new Date(value).toLocaleDateString() : '';
     if (field.type === 'count') return String(Array.isArray(value) ? value.length : Number(value || 0));
     if (field.id === 'notes') return cleanArray(value).map(note => note.text || note.title || note).join(' · ');

@@ -5,6 +5,8 @@
   const DEFAULT_SIZE = { width: 420, height: 380 };
   const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'actionId', 'actionButtons', 'selectable', 'evented', 'locked', 'originX', 'originY', 'cropX', 'cropY', 'cropMode', 'backgroundImageSrc', 'assetId', 'assetStoragePath', 'fontId', 'fontFamilyKey', 'fontStoragePath'];
   let userAssets = [], userFonts = [];
+  const renderSceneRegistry = new Map(), activeLibraryCanvases = new Map(), renderTokens = new WeakMap();
+  let renderSceneSequence = 0, renderGeneration = 0;
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
   const FALLBACK_FIELD_META = {
     title: { label: 'Title', role: 'title' },
@@ -340,12 +342,12 @@
     const json = JSON.parse(JSON.stringify(scene || {}));
     const visit = async object => {
       if (object?.assetStoragePath && globalThis.VisualAssets) {
-        try { object.src = await globalThis.VisualAssets.getAssetUrl({ id: object.assetId || object.assetStoragePath, storage_path: object.assetStoragePath }); } catch { object.visible = false; }
+        try { object.src = await globalThis.VisualAssets.getAssetUrl({ id: object.assetId || object.assetStoragePath, storage_path: object.assetStoragePath }); } catch (error) { console.error('Fabric asset resolution failed', { assetId: object.assetId, storagePath: object.assetStoragePath, error }); object.visible = false; }
       }
       if (object?.fontId && globalThis.VisualFonts) {
         try {
           await globalThis.VisualFonts.loadFont({ id: object.fontId, family_name: object.fontFamilyKey || object.fontFamily, storage_path: object.fontStoragePath, font_weight: object.fontWeight, font_style: object.fontStyle });
-        } catch { /* Preserve the stable reference and allow browser fallback. */ }
+        } catch (error) { console.error('Fabric custom font loading failed', { fontId: object.fontId, storagePath: object.fontStoragePath, error }); /* Preserve the stable reference and allow browser fallback. */ }
       }
       await Promise.all((object?.objects || []).map(visit));
     };
@@ -353,12 +355,34 @@
     return json;
   }
 
+  function replaceImagesWithPlaceholders(scene) {
+    const clone = normalizeScene(scene);
+    if (!clone) return scene;
+    const replace = object => {
+      if (String(object?.type || '').toLowerCase() === 'image') {
+        const { src, crossOrigin, ...rest } = object;
+        return { ...rest, type: 'Rect', fill: currentTheme().surfaceSoft, stroke: currentTheme().border, strokeWidth: 1, rx: number(object.rx, 10), ry: number(object.ry, 10), imageLoadFailed: true };
+      }
+      if (Array.isArray(object?.objects)) object.objects = object.objects.map(replace);
+      return object;
+    };
+    clone.objects = clone.objects.map(replace);
+    return clone;
+  }
+
   async function loadScene(canvas, scene, record) {
     const resolved = await resolveLibraryReferences(scene);
-    const json = bindRecord(resolved, record, { width: canvas.__designWidth, height: canvas.__designHeight });
-    await canvas.loadFromJSON(json);
+    const json = record ? bindRecord(resolved, record, { width: canvas.__designWidth, height: canvas.__designHeight }) : normalizeScene(resolved);
+    try {
+      await canvas.loadFromJSON(json);
+    } catch (error) {
+      console.error('Fabric loadFromJSON failed; retrying without images', { error, objectCount: json?.objects?.length || 0 });
+      canvas.clear?.();
+      try { await canvas.loadFromJSON(replaceImagesWithPlaceholders(json)); }
+      catch (retryError) { throw new Error(`Fabric scene could not be loaded: ${retryError?.message || retryError}`, { cause: retryError }); }
+    }
     if (!canvas.getObjects().length) {
-      await canvas.loadFromJSON(baseScene({ width: canvas.__designWidth, height: canvas.__designHeight, record }));
+      await canvas.loadFromJSON(replaceImagesWithPlaceholders(baseScene({ width: canvas.__designWidth, height: canvas.__designHeight, record })));
     }
     applyCenterOrigins(canvas);
     canvas.renderAll();
@@ -1952,24 +1976,104 @@
     return editor;
   }
 
+  function registerRenderScene(scene, details = {}) {
+    const normalized = normalizeScene(scene);
+    if (!normalized) throw new Error('Fabric scene resolution failed: the resolved scene is empty.');
+    const key = `scene-${Date.now().toString(36)}-${++renderSceneSequence}`;
+    renderSceneRegistry.set(key, { scene: normalized, details });
+    return key;
+  }
+
+  function disposeLibraryCanvas(element) {
+    const instance = activeLibraryCanvases.get(element);
+    if (!instance) return;
+    activeLibraryCanvases.delete(element);
+    try { Promise.resolve(instance.dispose?.()).catch(error => console.error('Fabric canvas disposal failed', { error })); }
+    catch (error) { console.error('Fabric canvas disposal failed', { error }); }
+  }
+
+  function cleanupDetachedLibraryCanvases() {
+    activeLibraryCanvases.forEach((instance, element) => {
+      if (element.isConnected === false) disposeLibraryCanvas(element);
+    });
+  }
+
+  function renderHostState(element, state, error = null) {
+    const viewport = element.closest?.('.fabric-card-viewport');
+    if (!viewport) {
+      console.error('Fabric library render host missing', { canvasId: element.id, state, error });
+      return;
+    }
+    const overlay = viewport.querySelector?.('.fabric-card-action-overlay');
+    const fallback = viewport.querySelector?.('.fabric-card-render-fallback');
+    if (overlay) overlay.hidden = state !== 'ready';
+    if (fallback) {
+      fallback.hidden = state !== 'failed';
+      if (state === 'failed') fallback.textContent = 'This card could not be drawn. Open the book to view its details.';
+    }
+    viewport.dataset.fabricRenderState = state;
+  }
+
+  function sceneForRender(element, json) {
+    if (json) return normalizeScene(json);
+    const key = element.dataset.fabricSceneKey;
+    if (key) {
+      const registered = renderSceneRegistry.get(key);
+      if (registered) { renderSceneRegistry.delete(key); return normalizeScene(registered.scene); }
+      if (!element.dataset.fabricCardJson) throw new Error(`Fabric scene resolution failed for ${key}.`);
+    }
+    try { return normalizeScene(JSON.parse(element.dataset.fabricCardJson || '{}')); }
+    catch (error) { throw new Error(`Fabric scene parsing failed: ${error?.message || error}`, { cause: error }); }
+  }
+
   async function renderSavedCanvas(element, { record = null, json = null } = {}) {
-    const fabric = requireFabric();
-    const scene = json || JSON.parse(element.dataset.fabricCardJson || '{}');
+    if (!element) throw new Error('Fabric library render host missing.');
+    if (element.id && typeof document !== 'undefined' && document.querySelectorAll?.(`#${globalThis.CSS?.escape ? globalThis.CSS.escape(element.id) : element.id}`).length > 1) console.error('Duplicate Fabric canvas ID', { canvasId: element.id });
+    const token = ++renderGeneration;
+    renderTokens.set(element, token);
+    renderHostState(element, 'loading');
+    disposeLibraryCanvas(element);
+    const scene = sceneForRender(element, json);
+    if (!scene) throw new Error('Fabric scene resolution failed: the scene is empty.');
     const width = number(element.dataset.designWidth || scene.width, element.width || DEFAULT_SIZE.width);
     const height = number(element.dataset.designHeight || scene.height, element.height || DEFAULT_SIZE.height);
-    const canvas = new fabric.StaticCanvas(element, { width, height, backgroundColor: scene.background || currentTheme().surfaceSoft });
+    let canvas;
+    try {
+      const fabric = requireFabric();
+      canvas = new fabric.StaticCanvas(element, { width, height, backgroundColor: scene.background || currentTheme().surfaceSoft });
+    } catch (error) { throw new Error(`Fabric canvas initialization failed: ${error?.message || error}`, { cause: error }); }
+    activeLibraryCanvases.set(element, canvas);
     canvas.__designWidth = width;
     canvas.__designHeight = height;
     await loadScene(canvas, scene, record);
+    if (renderTokens.get(element) !== token || element.isConnected === false) {
+      if (activeLibraryCanvases.get(element) === canvas) activeLibraryCanvases.delete(element);
+      try { await Promise.resolve(canvas.dispose?.()); } catch (error) { console.error('Fabric stale canvas disposal failed', { error }); }
+      return null;
+    }
     setUniformScale(canvas, element.clientWidth || width);
     element.dataset.fabricRendered = 'true';
+    renderHostState(element, 'ready');
     return canvas;
   }
 
+  function failLibraryRender(element, error) {
+    if (element?.isConnected === false) return;
+    console.error('Fabric card render failed', { canvasId: element?.id, sceneKey: element?.dataset?.fabricSceneKey, error });
+    if (element) renderHostState(element, 'failed', error);
+  }
+
   function renderSavedCanvases(root = document) {
-    root.querySelectorAll('canvas[data-fabric-card-json]:not([data-fabric-rendered="true"])').forEach(element => {
-      renderSavedCanvas(element).catch(error => console.error('Fabric card render failed:', error));
-    });
+    cleanupDetachedLibraryCanvases();
+    const elements = root?.querySelectorAll?.('canvas[data-fabric-scene-key]:not([data-fabric-rendered="true"]),canvas[data-fabric-card-json]:not([data-fabric-rendered="true"])');
+    if (!elements) return console.error('Fabric library render host missing', { root });
+    elements.forEach(element => renderSavedCanvas(element).catch(error => failLibraryRender(element, error)));
+  }
+
+  function scheduleSavedCanvasRender(root = document) {
+    const run = () => renderSavedCanvases(root);
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+    else setTimeout(run, 0);
   }
 
   globalThis.CanvasEditor = {
@@ -2027,8 +2131,12 @@
     bindRecord,
     validScene,
     normalizeScene,
+    registerRenderScene,
+    disposeLibraryCanvas,
+    replaceImagesWithPlaceholders,
     renderSavedCanvas,
-    renderSavedCanvases
+    renderSavedCanvases,
+    scheduleSavedCanvasRender
   };
 
   if (typeof document !== 'undefined') {

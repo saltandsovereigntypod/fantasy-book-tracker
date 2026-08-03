@@ -55,7 +55,7 @@ assert.match(mind,/settings\.scope==='author'/);
 assert.match(mind,/settings\.scope==='custom'/);
 assert.match(mind,/state\.books\.map\(book=>String\(book\.author/);
 
-assert.match(index,/20260802-40/);
-assert.match(bridge,/ASSET_VERSION = '20260802-40'/);
+assert.match(index,/20260802-41/);
+assert.match(bridge,/ASSET_VERSION = '20260802-41'/);
 assert.match(bridge,/\['app\.js', 'hotfix\.js', 'runtime-patches\.js', 'investigation-features\.js', 'infinite-wall\.js', 'mind-map\.js', 'dossier-experience\.js', 'visual-fields\.js', 'visual-assets\.js', 'visual-fonts\.js', 'canvas-editor\.js', 'visual-builder\.js'\]/);
 console.log('authentication and archive stabilization assertions passed');

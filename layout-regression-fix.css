@@ -1,0 +1,30 @@
+/* Surgical compatibility fixes for the existing VisualBuilder and Add Book modal. */
+
+/* Preserve each saved module's design box. Size containment caused existing text and
+   tracker modules to collapse into narrow columns after the library integration. */
+.visual-book-module{
+  container-type:normal;
+}
+.visual-book-canvas[data-layout-mode="absolute"] .visual-book-module[data-render-mode="absolute"]{
+  width:var(--module-width)!important;
+  height:var(--module-height)!important;
+  min-width:0;
+  min-height:0;
+}
+.visual-book-canvas[data-layout-mode="absolute"] .visual-book-module.type-title,
+.visual-book-canvas[data-layout-mode="absolute"] .visual-book-module.type-title .book-profile-link{
+  overflow-wrap:normal;
+  word-break:normal;
+}
+
+/* The tabs are part of the fixed modal chrome. Wrap them instead of creating a
+   separate horizontal scrolling rail. Only .book-form-body should scroll. */
+.book-editor-tabs{
+  flex-wrap:wrap;
+  overflow-x:visible;
+  overflow-y:visible;
+  scrollbar-width:none;
+}
+.book-editor-tabs::-webkit-scrollbar{
+  display:none;
+}

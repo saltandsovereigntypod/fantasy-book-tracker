@@ -15,9 +15,13 @@ assert.equal(typeof CE.addEditableTextBox,'function');
 assert.equal(typeof CE.addBoundTextBox,'function');
 assert.equal(typeof CE.addProgressSlider,'function');
 assert.equal(typeof CE.addCustomSlider,'function');
+assert.equal(typeof CE.addTextPreset,'function');
+assert.equal(typeof CE.addElement,'function');
 assert.equal(typeof CE.alignActiveObjects,'function');
+assert.equal(typeof CE.distributeActiveObjects,'function');
 assert.equal(typeof CE.applyCardPreset,'function');
 assert.equal(typeof CE.applyAppearancePreset,'function');
+assert.equal(typeof CE.applyTextEffect,'function');
 assert.equal(typeof CE.addImageFromFile,'function');
 assert.equal(typeof CE.deleteActiveElement,'function');
 assert.equal(typeof CE.validScene,'function');
@@ -60,10 +64,10 @@ assert.match(card,/data-fabric-card-json=/);
 assert.match(card,/CanvasEditor\.renderSavedCanvas|fabric-card-canvas/);
 assert.doesNotMatch(card,/builder-card-canvas/,'Fabric-backed production cards do not render the old editor canvas');
 
-for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection','data-fabric-value','data-fabric-slider-style','data-fabric-slider-max','data-fabric-slider-name','setBookValue','updateSliderObject','cloneActiveElement','nudgeActiveObjects','rotateActiveObjects','moveLayer','toggleLockActive','ArrowLeft','Escape','isSliderObject','data-fabric-undo','data-fabric-redo','restoreHistory','data-fabric-font-family','data-fabric-text-align','data-fabric-text-effect','applyTextEffect','data-fabric-slider-icon','flipX','flipY','centeredRotation','originX','originY'])
+for(const hook of ['initCanvasEditor','canvas.toJSON','canvas.setZoom','openBookCardEditor','data-fabric-save','data-fabric-upload','deleteActiveElement','fabricCanvasJson','data-fabric-field','addBoundTextBox','validScene','data-fabric-card-preset','data-fabric-appearance','data-fabric-prop','addProgressSlider','applyCardPreset','addCustomSlider','alignActiveObjects','data-fabric-align','Backspace','ActiveSelection','data-fabric-value','data-fabric-slider-style','data-fabric-slider-max','data-fabric-slider-name','setBookValue','updateSliderObject','cloneActiveElement','nudgeActiveObjects','rotateActiveObjects','moveLayer','toggleLockActive','ArrowLeft','Escape','isSliderObject','data-fabric-undo','data-fabric-redo','restoreHistory','data-fabric-font-family','data-fabric-text-align','data-fabric-text-effect','applyTextEffect','data-fabric-slider-icon','flipX','flipY','centeredRotation','originX','originY','TEXT_STYLE_PRESETS','ELEMENT_PRESETS','data-fabric-text-preset','data-fabric-element','addTextPreset','addElement','groupSelection','ungroupSelection','copy-style','paste-style','data-fabric-distribute','distributeActiveObjects','custom-icon','applySliderIconFromFile','shiftKey'])
   assert.ok(canvasSource.includes(hook)||builderSource.includes(hook),hook);
-for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','fabric-quick-actions','fabric-value-controls','fabric-check-control','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column','fabric-text-tools','fabric-text-effect-grid','modal-close'])
+for(const style of ['Fabric canvas editor','fabric-editor-sidebar','fabric-canvas-workspace','fabric-card-viewport','fabric-field-palette','fabric-style-palette','fabric-elements-palette','fabric-editor-inspector','fabric-preset-grid','fabric-align-grid','fabric-quick-actions','fabric-value-controls','fabric-check-control','overscroll-behavior','place-items:start center','Phone-first Fabric editor','flex-direction:column','fabric-text-tools','fabric-text-effect-grid','modal-close'])
   assert.ok(css.includes(style),style);
 assert.match(html,/fabric@6\/dist\/index\.min\.js/);
-assert.match(bridge,/canvas-editor\.js', 'visual-builder\.js/);
+assert.match(bridge,/visual-fields\.js', 'canvas-editor\.js', 'visual-builder\.js/);
 console.log('Fabric canvas editor module, save pipeline, themed shell, and production render assertions passed');

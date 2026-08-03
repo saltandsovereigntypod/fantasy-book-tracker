@@ -13,19 +13,9 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260802-34';
-  const APP_SCRIPTS = [
-  'app.js',
-  'hotfix.js',
-  'runtime-patches.js',
-  'investigation-features.js',
-  'infinite-wall.js',
-  'mind-map.js',
-  'dossier-experience.js',
-  'visual-fields.js',
-  'canvas-editor.js',
-  'visual-builder.js'
-  ];
+  const ASSET_VERSION = '20260802-36';
+  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'canvas-editor.js', 'visual-builder.js'];
+
   const $ = id => document.getElementById(id);
   const setMessage = text => { if ($('authMessage')) $('authMessage').textContent = text; };
   const setSync = text => { if ($('syncStatus')) $('syncStatus').textContent = text; };

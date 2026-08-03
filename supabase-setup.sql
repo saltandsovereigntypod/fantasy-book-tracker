@@ -145,3 +145,5 @@ using (user_id = auth.uid());
 -- After the schema succeeds, create at least one invitation code.
 -- Replace the example code before running this statement:
 -- insert into public.invite_codes (code, max_uses) values ('YOUR-PRIVATE-CODE', 20);
+
+-- Visual asset and custom font libraries are created by migrations/202608030001_private_visual_libraries.sql.

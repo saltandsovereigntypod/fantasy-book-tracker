@@ -274,6 +274,67 @@
     return Boolean(object && (object.type === 'Textbox' || object.type === 'textbox' || object.type === 'Text' || object.type === 'IText' || object.isType?.('textbox') || object.isType?.('text')));
   }
 
+  function isImageObject(object) {
+    return Boolean(object && (object.type === 'Image' || object.type === 'image' || object.isType?.('image')));
+  }
+
+  function childObjects(object) {
+    if (!object) return [];
+    if (typeof object.getObjects === 'function') return object.getObjects() || [];
+    return object.objects || object._objects || [];
+  }
+
+  function textObjectsFromTarget(target) {
+    const textObjects = [];
+    const seen = new Set();
+    const visit = object => {
+      if (!object || seen.has(object)) return;
+      seen.add(object);
+      if (isTextObject(object)) textObjects.push(object);
+      childObjects(object).forEach(visit);
+    };
+    visit(target);
+    return textObjects;
+  }
+
+  function selectedTextObjects(canvas) {
+    const active = getActive(canvas);
+    return textObjectsFromTarget(active);
+  }
+
+  function applyToSelectedText(canvas, callback) {
+    const active = getActive(canvas);
+    const textObjects = textObjectsFromTarget(active);
+    if (!textObjects.length) return false;
+    textObjects.forEach(object => {
+      callback(object);
+      object.initDimensions?.();
+      object.setCoords?.();
+    });
+    active?.setCoords?.();
+    canvas.requestRenderAll();
+    return true;
+  }
+
+  function applyImageTint(object, color) {
+    if (!isImageObject(object) || !color) return false;
+    const fabric = requireFabric();
+    object.imageTint = color;
+    object.set({ stroke: color, strokeWidth: Math.max(number(object.strokeWidth, 0), 1) });
+    const existing = (object.filters || []).filter(filter => filter?.__visualTint !== true);
+    const BlendColor = fabric.filters?.BlendColor;
+    if (BlendColor) {
+      const tint = new BlendColor({ color, mode: 'tint', alpha: 0.45 });
+      tint.__visualTint = true;
+      object.filters = [...existing, tint];
+      object.applyFilters?.();
+    } else {
+      object.filters = existing;
+    }
+    object.setCoords?.();
+    return true;
+  }
+
   function isSliderObject(object) {
     const path = bindingPath(object);
     return Boolean(object?.sliderConfig || object?.cardRole === 'custom-slider' || object?.cardRole === 'rating' || object?.cardRole === 'progress' || ['progress', 'rating', 'spice', 'impact'].includes(path));
@@ -296,6 +357,15 @@
   function updateActiveObject(canvas, changes = {}) {
     const active = getActive(canvas);
     if (!active) return false;
+    const textOnlyKeys = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'underline', 'textAlign', 'charSpacing', 'lineHeight'];
+    const keys = Object.keys(changes);
+    if (keys.length && keys.every(key => textOnlyKeys.includes(key)) && textObjectsFromTarget(active).length) {
+      return applyToSelectedText(canvas, object => {
+        Object.entries(changes).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') object.set(key, value);
+        });
+      });
+    }
     Object.entries(changes).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') active.set(key, value);
     });
@@ -315,11 +385,13 @@
           const role = item.sliderConfig?.role;
           if (role === 'fill' || role === 'value' || role === undefined) item.set?.('fill', color);
           if (role === 'track') item.set?.('stroke', color);
+          if (isTextObject(item)) item.set?.('fill', color);
         });
         return;
       }
-      if (isTextObject(object)) object.set('fill', color);
-      else if (object.type === 'Image' || object.type === 'image') object.set('stroke', color);
+      const nestedText = textObjectsFromTarget(object);
+      if (nestedText.length) nestedText.forEach(item => item.set('fill', color));
+      else if (isImageObject(object)) applyImageTint(object, color);
       else object.set({ fill: color, stroke: object.stroke && object.stroke !== 'transparent' ? color : object.stroke });
       object.setCoords?.();
     });
@@ -377,18 +449,15 @@
   }
 
   function applyTextEffect(canvas, effect = 'clear') {
-    const active = getActive(canvas);
-    if (!isTextObject(active)) return false;
     const theme = currentTheme();
-    if (effect === 'shadow') active.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
-    if (effect === 'glow') active.set({ shadow: `0 0 16px ${theme.accent}` });
-    if (effect === 'outline') active.set({ stroke: theme.accent, strokeWidth: 1 });
-    if (effect === 'hollow') active.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
-    if (effect === 'lift') active.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
-    if (effect === 'clear') active.set({ shadow: null, stroke: null, strokeWidth: 0 });
-    active.setCoords?.();
-    canvas.requestRenderAll();
-    return true;
+    return applyToSelectedText(canvas, object => {
+      if (effect === 'shadow') object.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
+      if (effect === 'glow') object.set({ shadow: `0 0 16px ${theme.accent}` });
+      if (effect === 'outline') object.set({ stroke: theme.accent, strokeWidth: 1 });
+      if (effect === 'hollow') object.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
+      if (effect === 'lift') object.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
+      if (effect === 'clear') object.set({ shadow: null, stroke: null, strokeWidth: 0 });
+    });
   }
 
   function applyAppearancePreset(canvas, preset = 'plain') {
@@ -1113,6 +1182,7 @@
             <a href="#fabric-panel-fields">Book info</a>
             <a href="#fabric-panel-uploads">Uploads</a>
           </nav>
+          <button type="button" class="fabric-mobile-more" data-fabric-mobile-more aria-expanded="false">See more tools</button>
           <section id="fabric-panel-templates" class="fabric-tool-section fabric-panel">
             <p>Starter looks</p>
             <button type="button" data-fabric-card-preset="classic">Classic card</button>
@@ -1303,13 +1373,11 @@
       output.append(' ', retry);
     };
     const applyCustomFont = async font => {
-      const active = getActive(editor.canvas);
-      if (!isTextObject(active)) throw new Error('Select a text object before applying a font.');
+      if (!selectedTextObjects(editor.canvas).length) throw new Error('Select a text object before applying a font.');
       await globalThis.VisualFonts.loadFont(font);
-      active.set({ fontFamily: font.family_name, fontId: font.id, fontFamilyKey: font.family_name, fontStoragePath: font.storage_path });
-      active.initDimensions?.();
-      active.setCoords?.();
-      editor.canvas.requestRenderAll();
+      applyToSelectedText(editor.canvas, object => {
+        object.set({ fontFamily: font.family_name, fontId: font.id, fontFamilyKey: font.family_name, fontStoragePath: font.storage_path });
+      });
       pushHistory();
       syncInspector();
     };
@@ -1453,7 +1521,8 @@
       const layerList = document.querySelector('[data-fabric-layer-list]');
       const isValueObject = Boolean(active && isSliderObject(active));
       if (valueControls) valueControls.hidden = !isValueObject;
-      if (textTools) textTools.hidden = !isTextObject(active);
+      const activeTextObjects = selectedTextObjects(editor.canvas);
+      if (textTools) textTools.hidden = !activeTextObjects.length;
       if (imageControls) imageControls.hidden = !(active && (active.type === 'Image' || active.type === 'image'));
       if (layerList) {
         layerList.innerHTML = editor.canvas.getObjects().slice().reverse().filter(object => object.selectable !== false || object.cardRole === 'background-image').map((object, index) => {
@@ -1479,9 +1548,10 @@
           maxInput.disabled = activePath === 'progress';
         }
       }
-      if (isTextObject(active)) {
-        if (fontSelect) fontSelect.value = active.fontFamily || 'Libre Baskerville';
-        if (textAlignSelect) textAlignSelect.value = active.textAlign || 'left';
+      if (activeTextObjects.length) {
+        const firstText = activeTextObjects[0];
+        if (fontSelect) fontSelect.value = firstText.fontFamily || 'Libre Baskerville';
+        if (textAlignSelect) textAlignSelect.value = firstText.textAlign || 'left';
       }
       document.querySelectorAll('[data-fabric-prop]').forEach(input => {
         if (!active) return;
@@ -1521,6 +1591,33 @@
         if (object.setPositionByOrigin) object.setPositionByOrigin({ x: left, y: top }, 'left', 'top');
         else object.set({ left, top });
       }
+    });
+    const mobileToolbox = document.querySelector('.fabric-editor-sidebar');
+    const mobileMore = document.querySelector('[data-fabric-mobile-more]');
+    let mobileToolPointer = null;
+    mobileToolbox?.addEventListener('pointerdown', event => {
+      mobileToolPointer = { x: event.clientX, y: event.clientY, moved: false };
+    }, true);
+    mobileToolbox?.addEventListener('pointermove', event => {
+      if (!mobileToolPointer) return;
+      if (Math.abs(event.clientX - mobileToolPointer.x) > 10 || Math.abs(event.clientY - mobileToolPointer.y) > 10) mobileToolPointer.moved = true;
+    }, true);
+    mobileToolbox?.addEventListener('click', event => {
+      if (!mobileToolPointer?.moved) return;
+      if (!event.target.closest('button,a,label')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      mobileToolPointer = null;
+    }, true);
+    mobileMore?.addEventListener('click', event => {
+      const button = event.currentTarget;
+      const sidebar = button.closest('.fabric-editor-sidebar');
+      const layout = button.closest('.fabric-editor-layout');
+      const expanded = !sidebar?.classList.contains('is-expanded');
+      sidebar?.classList.toggle('is-expanded', expanded);
+      layout?.classList.toggle('is-tools-expanded', expanded);
+      button.setAttribute('aria-expanded', String(expanded));
+      button.textContent = expanded ? 'Show fewer tools' : 'See more tools';
     });
     document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
       button.addEventListener('click', () => {
@@ -1698,16 +1795,14 @@
       editor.canvas.requestRenderAll();
     });
     document.querySelector('[data-fabric-fill]')?.addEventListener('input', event => {
-      const active = editor.canvas.getActiveObject();
-      if (active) active.set('fill', event.target.value);
-      editor.canvas.requestRenderAll();
+      editor.applySmartColor(event.target.value);
       pushHistory();
+      syncInspector();
     });
     document.querySelector('[data-fabric-text]')?.addEventListener('input', event => {
-      const active = editor.canvas.getActiveObject();
-      if (isTextObject(active)) active.set('fill', event.target.value);
-      editor.canvas.requestRenderAll();
+      applyToSelectedText(editor.canvas, object => object.set('fill', event.target.value));
       pushHistory();
+      syncInspector();
     });
     document.querySelector('[data-fabric-card-bg]')?.addEventListener('input', event => {
       editor.setCardBackgroundColor(event.target.value);
@@ -1793,22 +1888,16 @@
       syncInspector();
     });
     document.querySelector('[data-fabric-font-family]')?.addEventListener('change', async event => {
-      const active = getActive(editor.canvas);
-      if (!isTextObject(active)) return;
+      if (!selectedTextObjects(editor.canvas).length) return;
       const custom = userFonts.find(font => font.family_name === event.target.value);
       if (custom) { try { await applyCustomFont(custom); } catch (error) { setLibraryStatus('font', error.message); } return; }
-      active.set('fontFamily', event.target.value);
-      active.setCoords?.();
-      editor.canvas.requestRenderAll();
+      applyToSelectedText(editor.canvas, object => object.set('fontFamily', event.target.value));
       pushHistory();
       syncInspector();
     });
     document.querySelector('[data-fabric-text-align]')?.addEventListener('change', event => {
-      const active = getActive(editor.canvas);
-      if (!isTextObject(active)) return;
-      active.set('textAlign', event.target.value);
-      active.setCoords?.();
-      editor.canvas.requestRenderAll();
+      if (!selectedTextObjects(editor.canvas).length) return;
+      applyToSelectedText(editor.canvas, object => object.set('textAlign', event.target.value));
       pushHistory();
       syncInspector();
     });

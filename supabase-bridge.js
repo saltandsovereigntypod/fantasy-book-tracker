@@ -13,7 +13,7 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260802-37';
+  const ASSET_VERSION = '20260803-01';
   const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'visual-assets.js', 'visual-fonts.js', 'canvas-editor.js', 'visual-builder.js'];
 
   const $ = id => document.getElementById(id);
@@ -64,40 +64,68 @@
   async function listLibrary(table) {
     const account = requireUser();
     const { data, error } = await supabase.from(table).select('*').eq('user_id', account.id).order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      console.error('[VisualCloud] library list failed', { table, userId: account.id, error });
+      throw new Error(`Library refresh failed for ${table}: ${error.message}`);
+    }
     return data || [];
   }
   async function signedUrl(bucket, path) {
     requireUser();
     const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
-    if (error) throw error;
+    if (error) {
+      console.error('[VisualCloud] signed URL failed', { bucket, path, error });
+      throw new Error(`Signed URL failed for ${bucket}: ${error.message}`);
+    }
     return data?.signedUrl || '';
   }
-  async function uploadLibraryFile({ table, bucket, file, id = crypto.randomUUID(), name, record = {} }) {
+  async function uploadLibraryFile({ table, bucket, file, id = crypto.randomUUID(), name, record = {}, onStatus = null }) {
     const account = requireUser();
     const path = `${account.id}/${id}/${safeFilename(file.name)}`;
+    onStatus?.('Uploading file…');
     const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('[VisualCloud] storage upload failed', { table, bucket, path, fileName: file?.name, error: uploadError });
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
+    }
     const row = { id, user_id: account.id, name, storage_path: path, ...record };
     if (table === 'custom_fonts') { row.display_name = row.display_name || row.name; delete row.name; }
+    onStatus?.('Saving library record…');
     const { data, error } = await supabase.from(table).insert(row).select().single();
-    if (error) { await supabase.storage.from(bucket).remove([path]); throw error; }
+    if (error) {
+      console.error('[VisualCloud] metadata insert failed; removing uploaded object', { table, bucket, path, row, error });
+      const { error: cleanupError } = await supabase.storage.from(bucket).remove([path]);
+      if (cleanupError) console.error('[VisualCloud] cleanup after metadata failure failed', { bucket, path, error: cleanupError });
+      throw new Error(`Metadata save failed for ${table}: ${error.message}${cleanupError ? ` Cleanup also failed: ${cleanupError.message}` : ''}`);
+    }
     return data;
   }
   async function renameLibraryRecord(table, id, value, column = 'name') {
     const account = requireUser();
     const { data, error } = await supabase.from(table).update({ [column]: value, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', account.id).select().single();
-    if (error) throw error;
+    if (error) {
+      console.error('[VisualCloud] library rename failed', { table, id, column, error });
+      throw new Error(`Rename failed: ${error.message}`);
+    }
     return data;
   }
   async function deleteLibraryRecord(table, bucket, id) {
     const account = requireUser();
     const { data: row, error: readError } = await supabase.from(table).select('storage_path').eq('id', id).eq('user_id', account.id).single();
-    if (readError) throw readError;
+    if (readError) {
+      console.error('[VisualCloud] library delete lookup failed', { table, id, error: readError });
+      throw new Error(`Delete lookup failed: ${readError.message}`);
+    }
     const { error: storageError } = await supabase.storage.from(bucket).remove([row.storage_path]);
-    if (storageError) throw new Error(`The file could not be removed; its library record was kept. ${storageError.message}`);
+    if (storageError) {
+      console.error('[VisualCloud] storage delete failed', { table, bucket, id, storagePath: row.storage_path, error: storageError });
+      throw new Error(`The file could not be removed; its library record was kept. ${storageError.message}`);
+    }
     const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', account.id);
-    if (error) throw error;
+    if (error) {
+      console.error('[VisualCloud] metadata delete failed', { table, id, error });
+      throw new Error(`Metadata delete failed: ${error.message}`);
+    }
     return true;
   }
   window.VisualCloud = {

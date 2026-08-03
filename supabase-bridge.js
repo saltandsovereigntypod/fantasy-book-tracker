@@ -13,7 +13,7 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260802-39';
+  const ASSET_VERSION = '20260802-40';
   const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'visual-assets.js', 'visual-fonts.js', 'canvas-editor.js', 'visual-builder.js'];
 
   const $ = id => document.getElementById(id);

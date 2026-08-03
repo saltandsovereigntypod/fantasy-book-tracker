@@ -7,7 +7,7 @@ const css=fs.readFileSync('visual-builder.css','utf8');
 assert.match(source,/data-action="view-book"/,'the whole rendered card opens the book even if a title module is awkward');
 assert.match(source,/role="button"/,'the card shell keeps button semantics for opening profiles');
 assert.match(source,/tabindex="0"/,'the card shell can be opened from the keyboard');
-assert.match(source,/renderBookCard → renderCard/,'library cards use the shared renderer');
+assert.match(source,/CanvasEditor.renderSavedCanvas/,'library cards use the shared renderer');
 
 assert.match(css,/data-card-size=small\] \.visual-template-card\{--card-display-max:320px\}/);
 assert.match(css,/data-card-size=medium\] \.visual-template-card\{--card-display-max:420px\}/);

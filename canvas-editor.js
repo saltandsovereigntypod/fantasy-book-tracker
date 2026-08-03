@@ -184,9 +184,9 @@
         { type: 'Rect', id: 'cover-panel', name: 'Cover panel', cardRole: 'decor', left: width * .06, top: height * .12, width: width * .25, height: height * .38, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1, rx: 14, ry: 14, opacity: .72 },
         { type: 'Textbox', id: 'cover-title', name: 'Cover title', cardRole: 'decor', dataBinding: { path: 'title' }, left: width * .085, top: height * .26, width: width * .20, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.accent, text: record.title || 'Book Title' },
         { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .34, top: height * .07, width: width * .58, fontSize: Math.max(24, width * .075), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.title || 'Book Title' },
-        { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .34, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
-        { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'metadata', dataBinding: { path: 'series' }, left: width * .64, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.series || 'Series' },
-        { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'metadata', dataBinding: { path: 'status' }, left: width * .06, top: height * .53, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'status' },
+        { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'author', dataBinding: { path: 'author' }, left: width * .34, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
+        { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'series', dataBinding: { path: 'series' }, left: width * .64, top: height * .25, width: width * .28, fontSize: Math.max(14, width * .036), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.series || 'Series' },
+        { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'status', dataBinding: { path: 'status' }, left: width * .06, top: height * .53, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'status' },
         { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .34, top: height * .53, width: width * .58, fontSize: Math.max(16, width * .042), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` },
         { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .06, top: height * .72, width: width * .25, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
         { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .37, top: height * .72, width: width * .22, fontSize: Math.max(15, width * .038), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: ratingDisplay('spice', recordValue(record, 'spice')) },
@@ -222,15 +222,15 @@
     const sx = width / 420, sy = height / 380, scale = Math.min(sx, sy), x = value => value * sx, y = value => value * sy, font = value => Math.max(8, value * scale);
     const coverSource = recordValue(record, 'coverUrl');
     const cover = coverSource
-      ? { type: 'Image', id: 'cover', name: 'Cover', cardRole: 'image', dataBinding: { path: 'coverUrl' }, src: coverSource, crossOrigin: 'anonymous', left: x(16), top: y(24), width: x(112), height: y(164), originX: 'left', originY: 'top' }
-      : { type: 'Rect', id: 'cover', name: 'Cover', cardRole: 'image', dataBinding: { path: 'coverUrl' }, left: x(16), top: y(24), width: x(112), height: y(164), fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1, rx: 10, ry: 10 };
+      ? { type: 'Image', id: 'cover', name: 'Cover', cardRole: 'cover', dataBinding: { path: 'coverUrl' }, src: coverSource, crossOrigin: 'anonymous', left: x(16), top: y(24), width: x(112), height: y(164), originX: 'left', originY: 'top' }
+      : { type: 'Rect', id: 'cover', name: 'Cover', cardRole: 'cover', dataBinding: { path: 'coverUrl' }, left: x(16), top: y(24), width: x(112), height: y(164), fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1, rx: 10, ry: 10 };
     const actions = actionGroupObject({ width: x(388), height: y(34), theme, record }); actions.left=x(16);actions.top=y(340);
     return { version: FABRIC_VERSION, standardBookCard: true, width, height, background: theme.surfaceSoft, objects: [
       { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: x(18), ry: x(18), selectable: false, evented: false }, cover,
       { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: x(144), top: y(20), width: x(256), height: y(58), fontSize: font(28), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.title || 'Book Title' },
-      { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: x(144), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
-      { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'metadata', dataBinding: { path: 'series' }, left: x(276), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, text: record.series || 'Series' },
-      { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'metadata', dataBinding: { path: 'status' }, left: x(16), top: y(204), width: x(116), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'Want to read' },
+      { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'author', dataBinding: { path: 'author' }, left: x(144), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.author || 'Author' },
+      { type: 'Textbox', id: 'series', name: 'Series', cardRole: 'series', dataBinding: { path: 'series' }, left: x(276), top: y(88), width: x(124), height: y(48), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.muted, text: record.series || 'Series' },
+      { type: 'Textbox', id: 'status', name: 'Status', cardRole: 'status', dataBinding: { path: 'status' }, left: x(16), top: y(204), width: x(116), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: record.status || 'Want to read' },
       { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: x(144), top: y(204), width: x(256), height: y(52), fontSize: font(16), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` },
       { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: x(16), top: y(272), width: x(116), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
       { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: x(152), top: y(272), width: x(112), height: y(62), fontSize: font(14), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('spice', recordValue(record, 'spice')) },
@@ -238,9 +238,47 @@
     ] };
   }
 
+  const VISIBILITY_PATHS = Object.freeze({
+    coverUrl: 'cover', coverImage: 'cover', images: 'cover', author: 'author', series: 'series',
+    status: 'status', progress: 'progress', rating: 'rating', spice: 'spice', impact: 'impact',
+    reaction: 'reaction', '$actions': 'actions'
+  });
+  const VISIBILITY_ROLES = Object.freeze({
+    cover: 'cover', author: 'author', series: 'series', status: 'status', progress: 'progress',
+    reaction: 'reaction', actions: 'actions'
+  });
+
+  function visibilityKey(object = {}) {
+    return VISIBILITY_PATHS[object.dataBinding?.path] || VISIBILITY_ROLES[object.cardRole] || null;
+  }
+
+  function applySceneVisibility(scene, visible = {}) {
+    const clone = normalizeScene(scene);
+    if (!clone) return null;
+    const visit = object => {
+      const key = visibilityKey(object);
+      if (key && visible[key] === false) object.visible = false;
+      (object.objects || []).forEach(visit);
+    };
+    clone.objects.forEach(visit);
+    return clone;
+  }
+
+  function resolveCardScene(template = {}, record = {}, options = {}) {
+    const source = templateJson(template) || baseScene({
+      width: options.width || template.canvas?.width,
+      height: options.height || template.canvas?.height,
+      theme: options.theme || currentTheme(),
+      record
+    });
+    const bound = bindRecord(source, record, options);
+    return options.editor ? bound : applySceneVisibility(bound, options.visible || {});
+  }
+
   function actionOverlayHtml(scene, record = {}, canvas = {}) {
     const width = number(canvas.width || scene?.width, DEFAULT_SIZE.width), height = number(canvas.height || scene?.height, DEFAULT_SIZE.height), buttons = [], currentActions = new Map(actionDefinitions(record).map(action => [action.actionId, action.label]));
     const visit = object => {
+      if (object?.visible === false) return;
       const configuredActions = Array.isArray(object?.actionButtons) && object.actionButtons.length ? object.actionButtons : object?.cardRole === 'actions' ? actionDefinitions(record) : [];
       if (configuredActions.length) {
         const scaledWidth = number(object.width, width) * number(object.scaleX, 1), scaledHeight = number(object.height, 34) * number(object.scaleY, 1);
@@ -525,7 +563,7 @@
         objects: [
           { type: 'Rect', id: 'card-bg', name: 'Card background', cardRole: 'background', left: 0, top: 0, width, height, fill: theme.surface, stroke: theme.border, strokeWidth: 2, rx: 26, ry: 26, selectable: false, evented: false },
           { type: 'Textbox', id: 'title', name: 'Title', cardRole: 'title', dataBinding: { path: 'title' }, left: width * .08, top: height * .10, width: width * .84, fontSize: Math.max(34, width * .095), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: record.title || 'Book Title' },
-          { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'metadata', dataBinding: { path: 'author' }, left: width * .12, top: height * .32, width: width * .76, fontSize: Math.max(17, width * .045), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.muted, text: record.author || 'Author' },
+          { type: 'Textbox', id: 'author', name: 'Author', cardRole: 'author', dataBinding: { path: 'author' }, left: width * .12, top: height * .32, width: width * .76, fontSize: Math.max(17, width * .045), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.muted, text: record.author || 'Author' },
           { type: 'Textbox', id: 'rating', name: 'Overall', cardRole: 'rating', dataBinding: { path: 'rating' }, left: width * .16, top: height * .60, width: width * .30, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.accent, text: ratingDisplay('rating', recordValue(record, 'rating')) },
           { type: 'Textbox', id: 'spice', name: 'Spice', cardRole: 'rating', dataBinding: { path: 'spice' }, left: width * .55, top: height * .60, width: width * .28, fontSize: Math.max(18, width * .046), fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, text: ratingDisplay('spice', recordValue(record, 'spice')) },
           { type: 'Textbox', id: 'progress', name: 'Progress', cardRole: 'progress', dataBinding: { path: 'progress' }, left: width * .20, top: height * .80, width: width * .60, fontSize: Math.max(16, width * .04), fontFamily: 'Libre Baskerville', fontWeight: '700', textAlign: 'center', fill: theme.text, text: `${displayNumber(recordValue(record, 'progress'))}%` }
@@ -549,7 +587,6 @@
     return json;
   }
 
-  const shouldPreserveStandardOnSave = (savedScene, initialSnapshot, currentSnapshot) => !savedScene && Boolean(initialSnapshot) && initialSnapshot === currentSnapshot;
 
   function setUniformScale(canvas, targetWidth = canvas.getWidth()) {
     const baseWidth = number(canvas.__designWidth || canvas.getWidth(), canvas.getWidth());
@@ -849,9 +886,10 @@
   function addActionButtons(canvas, record = {}, options = {}) {
     const fabric = requireFabric(), theme = currentTheme(), width = canvas.__designWidth || DEFAULT_SIZE.width;
     const actions = actionDefinitions(record), labels = actions.map(action => action.label);
-    const left = options.left ?? 64, top = options.top ?? Math.max(220, (canvas.__designHeight || DEFAULT_SIZE.height) - 88);
-    const buttonWidth = options.buttonWidth || Math.max(64, Math.min(92, (width - 110) / labels.length));
-    const gap = 8;
+    const padding = options.padding ?? 16, gap = options.gap ?? 5;
+    const availableWidth = Math.max(120, width - padding * 2);
+    const buttonWidth = options.buttonWidth || (availableWidth - gap * (labels.length - 1)) / labels.length;
+    const left = options.left ?? padding, top = options.top ?? Math.max(220, (canvas.__designHeight || DEFAULT_SIZE.height) - 40);
     const groupItems = labels.map((label, index) => {
       const rect = new fabric.Rect({ left: index * (buttonWidth + gap), top: 0, width: buttonWidth, height: 34, rx: 999, ry: 999, fill: theme.surfaceSoft, stroke: theme.border, strokeWidth: 1.5, shadow: '0 8px 16px rgba(0,0,0,.24)' });
       const text = new fabric.Textbox(label, { left: index * (buttonWidth + gap), top: 7, width: buttonWidth, fontSize: 10, fontFamily: 'Libre Baskerville', fontWeight: '700', fill: theme.text, textAlign: 'center', selectable: false, evented: false });
@@ -864,8 +902,8 @@
       cardRole: 'actions',
       dataBinding: { path: '$actions' },
       actionButtons: actions.map((action, index) => ({ ...action, xRatio: index / actions.length, widthRatio: 1 / actions.length })),
-      originX: 'center',
-      originY: 'center',
+      originX: 'left',
+      originY: 'top',
       centeredRotation: true
     });
     canvas.add(group);
@@ -1285,7 +1323,7 @@
     const host = document.getElementById('formModal');
     host?.classList.add('fabric-editor-backdrop');
     const editor = initCanvasEditor(canvasId, currentTheme(), { width, height, record: book });
-    const savedScene = templateJson(template), scene = savedScene || baseScene({ width, height, theme: currentTheme(), record: book });
+    const savedScene = templateJson(template), scene = resolveCardScene(template, book, { width, height, theme: currentTheme(), editor: true });
     const undoButton = document.querySelector('[data-fabric-undo]');
     const redoButton = document.querySelector('[data-fabric-redo]');
     const saveButton = document.querySelector('[data-fabric-save]');
@@ -1780,11 +1818,6 @@
     });
     let copiedObject = null, copiedStyle = null;
     const saveEditor = () => {
-      if (shouldPreserveStandardOnSave(savedScene, initialCanvasSnapshot, historyJson())) {
-        adapters.showToast?.('Card design unchanged.');
-        closeEditor();
-        return;
-      }
       const saved = adapters.save?.(serializeCanvas(editor.canvas), { width, height, name: title, sourceTemplate: template });
       adapters.showToast?.(saved ? 'Canvas card saved.' : 'Canvas card could not be saved.');
       adapters.renderAll?.();
@@ -1988,7 +2021,9 @@
     templateJson,
     actionDefinitions,
     actionOverlayHtml,
-    shouldPreserveStandardOnSave,
+    visibilityKey,
+    applySceneVisibility,
+    resolveCardScene,
     bindRecord,
     validScene,
     normalizeScene,

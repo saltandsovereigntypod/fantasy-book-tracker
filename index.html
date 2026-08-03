@@ -2,16 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="A private, immersive fantasy book tracker for readers who collect evidence, build theories, and survive every chapter.">
   <title>The Empyrean Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="supabase.css">
+  <link rel="stylesheet" href="styles.css?v=20260802-38">
+  <link rel="stylesheet" href="supabase.css?v=20260802-38">
+  <link rel="stylesheet" href="investigation-features.css?v=20260802-38">
+  <link rel="stylesheet" href="infinite-wall.css?v=20260802-38">
+  <link rel="stylesheet" href="mind-map.css?v=20260802-38">
+  <link rel="stylesheet" href="dossier-experience.css?v=20260802-38">
+  <link rel="stylesheet" href="visual-builder.css?v=20260802-38">
 </head>
-<body>
+<body class="auth-hydrating">
+  <div id="authHydration" class="auth-hydration" role="status" aria-live="polite"><span aria-hidden="true">✦</span><strong>Restoring your archive…</strong></div>
   <div id="app" class="app-shell" data-path="rider">
     <aside class="sidebar" aria-label="Primary navigation">
       <div class="brand-block">
@@ -28,6 +34,7 @@
         <button class="nav-item" data-view="session"><span>◉</span><span data-copy="navSession">Reading Deployment</span></button>
         <button class="nav-item" data-view="theories"><span>⌁</span><span data-copy="navTheories">Intelligence Ledger</span></button>
         <button class="nav-item" data-view="wall"><span>✣</span><span data-copy="navWall">Conspiracy Wall</span></button>
+        <button class="nav-item" data-view="mindmap"><span>⌘</span><span>Mind Map</span></button>
         <button class="nav-item" data-view="profile"><span>♜</span><span data-copy="navProfile">Service Record</span></button>
       </nav>
 
@@ -68,11 +75,12 @@
       <section id="session" class="view"></section>
       <section id="theories" class="view"></section>
       <section id="wall" class="view"></section>
+      <section id="mindmap" class="view"></section>
       <section id="profile" class="view"></section>
     </main>
   </div>
 
-  <div class="modal-backdrop is-open" id="authModal" aria-hidden="false">
+  <div class="modal-backdrop" id="authModal" aria-hidden="true">
     <section class="modal compact-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <div class="auth-sigil">✦</div>
       <p class="eyebrow">The Empyrean Tracker</p>
@@ -140,6 +148,7 @@
   </template>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-bridge.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fabric@6/dist/index.min.js"></script>
+  <script src="supabase-bridge.js?v=20260802-38"></script>
 </body>
 </html>

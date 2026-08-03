@@ -1,19 +1,6 @@
 (() => {
   'use strict';
 
-  // Preserve compatibility with the earlier path-switch handler.
-  persistActivePathRecord = saveCurrentPathRecord;
-
-  // A progress-only record is allowed to accumulate standing before the path
-  // is chosen, but it must not count as a previously entered path.
-  const originalRestorePathRecord = restorePathRecord;
-  restorePathRecord = function restorePathRecordWithStatus(pathKey) {
-    const record = state.pathRecords?.[pathKey];
-    const existed = Boolean(record && !record.progressOnly);
-    originalRestorePathRecord(pathKey);
-    return existed;
-  };
-
   function calculateRank(pathKey, record) {
     const config = PATHS[pathKey];
     let rankIndex = 0;

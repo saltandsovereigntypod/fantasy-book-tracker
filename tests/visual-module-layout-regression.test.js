@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('visual-builder.js','utf8'),css=fs.readFileSync('visual-builder.css','utf8'),app=fs.readFileSync('app.js','utf8');
+const state={books:[],sessions:[],visualTemplates:[]},context={globalThis:null,state,Date,Math,Number,String,Boolean,Array,Set,Map,console,saveState(){},renderAll(){}};
+context.globalThis=context;vm.runInNewContext(source,context);
+const B=context.VisualBuilder,book={id:'book-1',title:'Onyx Storm',notes:[],trackerValues:{}};
+state.books.push(book);
+const card=B.renderBookCard(book);
+assert.doesNotMatch(css,/\.visual-book-module\{[^}]*container-type\s*:\s*(?:size|inline-size)/,'intrinsic-sized modules must not contain their own inline or block size');
+assert.match(css,/\.visual-book-module\{[^}]*padding:clamp\(3px,2cqw,12px\)/,'module padding scales from the card container');
+assert.match(card,/data-book-id="book-1"[^>]+data-action="view-book"[^>]+role="button"[^>]+tabindex="0"/,'the whole card opens the book even without a usable title module');
+assert.match(app,/e\.target!==b\|\|!\['Enter',' '\]\.includes\(e\.key\)/,'non-native card buttons support Enter and Space without intercepting nested controls');
+console.log('visual module intrinsic sizing and whole-card interaction regression assertions passed');

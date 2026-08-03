@@ -152,7 +152,6 @@
       finishHydration();
     } catch (error) {
       console.error('Production runtime failed to load:', error);
-      appLoaded = false;
       setMessage('The tracker could not load its latest runtime. Refresh the page.');
       finishHydration();
       openAuth();

@@ -5,16 +5,18 @@
   const DEFAULT_SIZE = { width: 420, height: 380 };
   const SERIALIZE_PROPS = ['id', 'name', 'dataBinding', 'cardRole', 'appearancePreset', 'sliderConfig', 'selectable', 'evented', 'locked', 'originX', 'originY'];
   const TYPE_ALIASES = { rect: 'Rect', textbox: 'Textbox', image: 'Image', circle: 'Circle', path: 'Path', group: 'Group', text: 'Text', 'i-text': 'IText' };
-  const FIELD_META = {
-    title: { label: 'Title', role: 'title' },
-    author: { label: 'Author', role: 'metadata' },
-    series: { label: 'Series', role: 'metadata' },
-    status: { label: 'Status', role: 'metadata' },
-    progress: { label: 'Progress', role: 'progress' },
-    rating: { label: 'Overall', role: 'rating' },
-    spice: { label: 'Spice', role: 'rating' },
-    impact: { label: 'Impact', role: 'rating' }
-  };
+  const FIELD_META = Object.fromEntries(
+    globalThis.VisualFields
+      ? globalThis.VisualFields.allVisualFields()
+        .map(field => [
+          field.id,
+          {
+            label: field.label,
+            role: field.type
+          }
+        ])
+      : []
+  );
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, number(value, min)));

@@ -417,14 +417,18 @@
 
   function applyTextEffect(canvas, effect = 'clear') {
     const active = getActive(canvas);
-    if (!isTextObject(active)) return false;
+    const textObjects = collectTextObjects(active);
+    if (!textObjects.length) return false;
     const theme = currentTheme();
-    if (effect === 'shadow') active.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
-    if (effect === 'glow') active.set({ shadow: `0 0 16px ${theme.accent}` });
-    if (effect === 'outline') active.set({ stroke: theme.accent, strokeWidth: 1 });
-    if (effect === 'hollow') active.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
-    if (effect === 'lift') active.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
-    if (effect === 'clear') active.set({ shadow: null, stroke: null, strokeWidth: 0 });
+    textObjects.forEach(object => {
+      if (effect === 'shadow') object.set({ shadow: '0 8px 16px rgba(0,0,0,.45)' });
+      if (effect === 'glow') object.set({ shadow: `0 0 16px ${theme.accent}` });
+      if (effect === 'outline') object.set({ stroke: theme.accent, strokeWidth: 1 });
+      if (effect === 'hollow') object.set({ fill: 'transparent', stroke: theme.text, strokeWidth: 1.5, shadow: null });
+      if (effect === 'lift') object.set({ shadow: `2px 3px 0 ${theme.accent}, 0 12px 26px rgba(0,0,0,.36)` });
+      if (effect === 'clear') object.set({ shadow: null, stroke: null, strokeWidth: 0 });
+      object.setCoords?.();
+    });
     active.setCoords?.();
     canvas.requestRenderAll();
     return true;
@@ -1137,157 +1141,70 @@
     };
   }
 
+  function fieldPaletteHtml() {
+    const groups = new Map();
+    Object.entries(FIELD_META).forEach(([path, meta]) => {
+      const category = meta.category || 'Other';
+      if (!groups.has(category)) groups.set(category, []);
+      groups.get(category).push([path, meta]);
+    });
+    return [...groups].map(([category, fields]) => `<section class="fabric-field-group"><h4>${escapeHtml(category)}</h4><div class="fabric-field-palette">${fields.map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}</div></section>`).join('');
+  }
+
   function editorShell({ canvasId, title, width, height }) {
+    const fonts = FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('');
+    const categories = ['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'];
     return `<section class="fabric-card-editor" aria-label="Canvas card editor">
       <header class="fabric-editor-header">
         <div><p class="eyebrow">Canvas card editor</p><h2 id="formModalTitle">${escapeHtml(title)}</h2><p>${width} × ${height} · Fabric.js ${FABRIC_VERSION}</p></div>
         <div class="fabric-editor-actions"><button type="button" data-fabric-undo disabled>Undo</button><button type="button" data-fabric-redo disabled>Redo</button><button type="button" class="primary-button" data-fabric-save>Save</button><button type="button" data-fabric-close>Cancel</button></div>
       </header>
-      <div class="fabric-editor-layout">
+      <nav class="fabric-mobile-view-tabs" aria-label="Editor area"><button type="button" data-fabric-mobile-view="tools" aria-pressed="true">Tools</button><button type="button" data-fabric-mobile-view="canvas" aria-pressed="false">Canvas</button><button type="button" data-fabric-mobile-view="inspector" aria-pressed="false">Inspector</button></nav>
+      <div class="fabric-editor-layout" data-fabric-mobile-layout="tools">
         <aside class="fabric-editor-sidebar" aria-label="Canvas tools">
-          <nav class="fabric-panel-tabs" aria-label="Editor panels">
-            <a href="#fabric-panel-templates">Templates</a>
-            <a href="#fabric-panel-elements">Elements</a>
-            <a href="#fabric-panel-text">Text</a>
-            <a href="#fabric-panel-fields">Book info</a>
-            <a href="#fabric-panel-uploads">Uploads</a>
-          </nav>
-          <section id="fabric-panel-templates" class="fabric-tool-section fabric-panel">
-            <p>Starter looks</p>
-            <button type="button" data-fabric-card-preset="classic">Classic card</button>
-            <button type="button" data-fabric-card-preset="poster">Poster card</button>
-            <button type="button" data-fabric-card-preset="dashboard">Dashboard card</button>
-            <button type="button" data-fabric-share-formatting>Share formatting across all cards</button>
-          </section>
-          <section id="fabric-panel-elements" class="fabric-tool-section fabric-panel">
-            <p>Elements</p>
-            <button type="button" data-fabric-add="shape">Shape box</button>
-            <button type="button" data-fabric-add="progress-slider">Progress slider</button>
-            <button type="button" data-fabric-add="custom-slider">Custom slider</button>
-            <div class="fabric-elements-palette" aria-label="Decorative elements">
-              ${Object.entries(ELEMENT_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-element="${key}">${escapeHtml(preset.label)}</button>`).join('')}
-            </div>
-          </section>
-          <section id="fabric-panel-text" class="fabric-tool-section fabric-panel">
-            <p>Text</p>
-            <button type="button" data-fabric-add="text">Add a text box</button>
-            <label>Font family <select data-fabric-new-font>${FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('')}</select></label>
-            <div class="fabric-style-palette" aria-label="Text style presets">
-              ${Object.entries(TEXT_STYLE_PRESETS).map(([key, preset]) => `<button type="button" data-fabric-text-preset="${key}"><span>${escapeHtml(preset.label)}</span><em>${escapeHtml(preset.text)}</em></button>`).join('')}
-            </div>
-            <div class="fabric-library-manager" aria-label="My fonts">
-              <p>My fonts</p>
-              <label>Display name <input type="text" name="fabricFontName" data-fabric-font-name></label>
-              <label class="fabric-upload-control">Choose font<input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" data-fabric-font-upload></label>
-              <label class="fabric-check-control"><input type="checkbox" name="fabricFontLicense" data-fabric-font-license> I confirm that I own this font or have permission to upload and use it.</label>
-              <output class="fabric-library-status" data-fabric-font-status aria-live="polite"></output>
-              <div class="fabric-library-list" data-fabric-font-list></div>
-            </div>
-          </section>
-          <section id="fabric-panel-fields" class="fabric-tool-section fabric-panel">
-            <p>Book information</p>
-            <div class="fabric-field-palette" aria-label="Book fields">
-              ${Object.entries(FIELD_META).map(([path, meta]) => `<button type="button" data-fabric-field="${path}">${escapeHtml(meta.label)}</button>`).join('')}
-            </div>
-          </section>
-          <section id="fabric-panel-uploads" class="fabric-tool-section fabric-panel">
-            <p>Uploads</p>
-            <label class="fabric-upload-control">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label>
-            <button type="button" data-fabric-action="image-background">Set selected image as background</button>
-            <div class="fabric-library-manager" aria-label="My reusable elements">
-              <p>My elements</p>
-              <label>Name <input type="text" name="fabricAssetName" data-fabric-asset-name></label>
-              <label>Category <select name="fabricAssetCategory" data-fabric-asset-category>${['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'].map(value => `<option value="${value}">${value}</option>`).join('')}</select></label>
-              <label class="fabric-upload-control">Upload reusable element<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-asset-upload></label>
-              <label>Search <input type="search" name="fabricAssetSearch" data-fabric-asset-search></label>
-              <label>Filter <select name="fabricAssetFilter" data-fabric-asset-filter><option value="">All categories</option>${['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'].map(value => `<option value="${value}">${value}</option>`).join('')}</select></label>
-              <output class="fabric-library-status" data-fabric-asset-status aria-live="polite"></output>
-              <div class="fabric-library-grid" data-fabric-asset-list></div>
-            </div>
-          </section>
-          <section class="fabric-tool-section fabric-panel">
-            <p>Canvas</p>
-            <label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label>
-            <label class="fabric-check-control"><input type="checkbox" checked data-fabric-snapping> Snap to edges and center</label>
-            <label>Card background <input type="color" value="#2b160d" data-fabric-card-bg></label>
-            <button type="button" data-fabric-delete>Delete selected</button>
-          </section>
-          <p class="fabric-editor-hint">Drag, resize, rotate, edit text inline, or upload art. Everything saves as Fabric JSON.</p>
+          <div class="fabric-panel-tabs" role="tablist" aria-label="Editor panels">
+            ${[['templates','Templates'],['elements','Elements'],['text','Text'],['fields','Book Info'],['uploads','Uploads']].map(([id,label],index)=>`<button type="button" role="tab" id="fabric-tab-${id}" aria-controls="fabric-panel-${id}" aria-selected="${index===0}" tabindex="${index===0?0:-1}" data-fabric-panel-tab="${id}">${label}</button>`).join('')}
+          </div>
+          <div class="fabric-sidebar-pages">
+            <section id="fabric-panel-templates" class="fabric-tool-section fabric-panel" role="tabpanel" aria-labelledby="fabric-tab-templates" data-fabric-panel="templates">
+              <h3>Templates</h3><h4>Starter looks</h4>
+              <div class="fabric-compact-grid"><button type="button" data-fabric-card-preset="classic">Classic card</button><button type="button" data-fabric-card-preset="poster">Poster card</button><button type="button" data-fabric-card-preset="dashboard">Dashboard card</button></div>
+              <h4>Template actions</h4><button type="button" data-fabric-share-formatting>Share formatting across all cards</button>
+            </section>
+            <section id="fabric-panel-elements" class="fabric-tool-section fabric-panel" role="tabpanel" aria-labelledby="fabric-tab-elements" data-fabric-panel="elements" hidden>
+              <h3>Elements</h3><h4>Core elements</h4>
+              <div class="fabric-compact-grid"><button type="button" data-fabric-add="shape">Shape box</button><button type="button" data-fabric-add="progress-slider">Progress slider</button><button type="button" data-fabric-add="custom-slider">Custom slider</button></div>
+              <h4>Decorative presets</h4><div class="fabric-elements-palette" aria-label="Decorative elements">${Object.entries(ELEMENT_PRESETS).map(([key,preset])=>`<button type="button" data-fabric-element="${key}">${escapeHtml(preset.label)}</button>`).join('')}</div>
+              <div class="fabric-library-manager" aria-label="My reusable elements"><h4>My elements</h4>
+                <div class="fabric-library-toolbar"><label>Search <input type="search" name="fabricAssetSearch" data-fabric-asset-search></label><label>Category <select name="fabricAssetFilter" data-fabric-asset-filter><option value="">All categories</option>${categories.map(value=>`<option value="${value}">${value}</option>`).join('')}</select></label></div>
+                <details class="fabric-upload-details"><summary>Upload an element</summary><label>Name <input type="text" name="fabricAssetName" data-fabric-asset-name></label><label>Category <select name="fabricAssetCategory" data-fabric-asset-category>${categories.map(value=>`<option value="${value}">${value}</option>`).join('')}</select></label><label class="fabric-upload-control">Choose PNG, JPG, or WebP<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-asset-upload></label></details>
+                <output class="fabric-library-status" data-fabric-asset-status aria-live="polite"></output><div class="fabric-library-grid" data-fabric-asset-list></div>
+              </div>
+            </section>
+            <section id="fabric-panel-text" class="fabric-tool-section fabric-panel" role="tabpanel" aria-labelledby="fabric-tab-text" data-fabric-panel="text" hidden>
+              <h3>Text</h3><h4>Add text</h4><button type="button" data-fabric-add="text">Add a text box</button><label>New-text font <select data-fabric-new-font>${fonts}</select></label>
+              <section class="fabric-selected-text-tools" data-fabric-text-tools hidden><h4>Selected text</h4><label>Font family <select data-fabric-font-family><option value="" data-fabric-multiple-font hidden>Multiple fonts</option>${fonts}</select></label><label>Alignment <select data-fabric-text-align><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></label><label>Font size <output data-fabric-font-size-output>24</output><input type="range" min="8" max="72" value="24" data-fabric-prop="fontSize"></label><div class="fabric-text-effect-grid"><button type="button" data-fabric-text-effect="shadow">Shadow</button><button type="button" data-fabric-text-effect="glow">Glow</button><button type="button" data-fabric-text-effect="outline">Outline</button><button type="button" data-fabric-text-effect="hollow">Hollow</button><button type="button" data-fabric-text-effect="lift">Lift</button><button type="button" data-fabric-text-effect="clear">Clear FX</button></div></section>
+              <div class="fabric-library-manager" aria-label="My fonts"><h4>My fonts</h4><label>Search fonts <input type="search" name="fabricFontSearch" data-fabric-font-search></label><details class="fabric-upload-details"><summary>Upload a font</summary><label>Display name <input type="text" name="fabricFontName" data-fabric-font-name></label><label class="fabric-upload-control">Choose WOFF2, WOFF, TTF, or OTF<input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" data-fabric-font-upload></label><label class="fabric-check-control"><input type="checkbox" name="fabricFontLicense" data-fabric-font-license> I confirm that I own this font or have permission to use it.</label></details><output class="fabric-library-status" data-fabric-font-status aria-live="polite"></output><div class="fabric-library-list" data-fabric-font-list></div></div>
+              <h4>Text style presets</h4><div class="fabric-style-palette" aria-label="Text style presets">${Object.entries(TEXT_STYLE_PRESETS).map(([key,preset])=>`<button type="button" data-fabric-text-preset="${key}"><span>${escapeHtml(preset.label)}</span><em>${escapeHtml(preset.text)}</em></button>`).join('')}</div>
+            </section>
+            <section id="fabric-panel-fields" class="fabric-tool-section fabric-panel" role="tabpanel" aria-labelledby="fabric-tab-fields" data-fabric-panel="fields" hidden><h3>Book information</h3>${fieldPaletteHtml()}</section>
+            <section id="fabric-panel-uploads" class="fabric-tool-section fabric-panel" role="tabpanel" aria-labelledby="fabric-tab-uploads" data-fabric-panel="uploads" hidden>
+              <h3>Uploads</h3><label class="fabric-upload-control">Upload one-time image<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-upload></label><button type="button" data-fabric-action="image-background">Set selected image as background</button>
+              <div class="fabric-library-toolbar"><label>Search library <input type="search" name="fabricCombinedSearch" data-fabric-combined-search></label><label>Type <select name="fabricCombinedType" data-fabric-combined-type><option value="all">All</option><option value="fonts">Fonts</option><option value="elements">Elements</option><option value="images">Images</option></select></label><label>Category <select name="fabricCombinedCategory" data-fabric-combined-category><option value="">All categories</option>${categories.map(value=>`<option value="${value}">${value}</option>`).join('')}</select></label></div><div class="fabric-combined-library" data-fabric-combined-list></div>
+            </section>
+          </div>
+          <details class="fabric-canvas-utilities"><summary>Canvas controls</summary><label>Zoom <input type="range" min="40" max="180" value="100" data-fabric-zoom></label><label class="fabric-check-control"><input type="checkbox" checked data-fabric-snapping> Snap to edges and center</label><label>Card background <input type="color" value="#2b160d" data-fabric-card-bg></label><button type="button" data-fabric-delete>Delete selected</button></details>
         </aside>
         <main class="fabric-canvas-workspace"><div class="fabric-canvas-frame"><canvas id="${canvasId}" width="${width}" height="${height}"></canvas></div></main>
         <aside class="fabric-editor-inspector" aria-label="Selected object controls">
-          <div class="fabric-tool-section">
-            <p>Selected piece</p>
-            <output data-fabric-selected-name>Nothing selected</output>
-          </div>
-          <div class="fabric-tool-section fabric-universal-colors">
-            <p>Color</p>
-            <label>Color wheel <input type="color" value="#bd662f" data-fabric-color-wheel></label>
-            <div class="fabric-color-swatches">
-              ${['#bd662f', '#f7ead2', '#a61f3f', '#f4b942', '#9b5de5', '#00bbf9', '#2b160d', '#111111'].map(color => `<button type="button" style="--swatch:${color}" data-fabric-color-swatch="${color}" aria-label="${color}"></button>`).join('')}
-            </div>
-            <label>Border color <input type="color" value="#75451f" data-fabric-stroke></label>
-          </div>
-          <div class="fabric-value-controls" data-fabric-value-controls hidden>
-            <label>Widget label <input type="text" value="" data-fabric-slider-name></label>
-            <label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label>
-            <label>Maximum <input type="number" min="1" max="100" step="1" value="5" data-fabric-slider-max></label>
-            <label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option><option value="custom-icon">Custom icon</option></select></label>
-            <label class="fabric-upload-control">Upload slider icon<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-slider-icon></label>
-          </div>
-          <div class="fabric-image-controls" data-fabric-image-controls hidden>
-            <p>Image crop</p>
-            <div class="fabric-quick-actions">
-              <button type="button" data-fabric-image-fit="cover">Crop / cover</button>
-              <button type="button" data-fabric-image-fit="contain">Fit inside</button>
-              <button type="button" data-fabric-action="image-background">Use as background</button>
-            </div>
-            <label>Image zoom <input type="range" min="20" max="300" value="100" data-fabric-image-crop="zoom"></label>
-            <label>Crop X <input type="range" min="0" max="600" value="0" data-fabric-image-crop="cropX"></label>
-            <label>Crop Y <input type="range" min="0" max="600" value="0" data-fabric-image-crop="cropY"></label>
-          </div>
-          <div class="fabric-tool-section">
-            <p>Layers</p>
-            <div class="fabric-layer-list" data-fabric-layer-list aria-label="Layer list"></div>
-            <div class="fabric-quick-actions">
-              <button type="button" data-fabric-action="forward">Forward</button>
-              <button type="button" data-fabric-action="backward">Backward</button>
-            </div>
-          </div>
-          <div class="fabric-quick-actions" aria-label="Object actions">
-            <button type="button" data-fabric-action="duplicate">Duplicate</button>
-            <button type="button" data-fabric-action="lock">Lock</button>
-            <button type="button" data-fabric-action="copy-style">Copy style</button>
-            <button type="button" data-fabric-action="paste-style">Paste style</button>
-            <button type="button" data-fabric-action="group">Group</button>
-            <button type="button" data-fabric-action="ungroup">Ungroup</button>
-            <button type="button" data-fabric-action="flip-x">Flip X</button>
-            <button type="button" data-fabric-action="flip-y">Flip Y</button>
-            <button type="button" data-fabric-action="front">To front</button>
-            <button type="button" data-fabric-action="back">To back</button>
-          </div>
-          <div class="fabric-text-tools" data-fabric-text-tools aria-label="Text tools" hidden>
-            <label>Font <select data-fabric-font-family><option value="" data-fabric-multiple-font hidden>Multiple fonts</option>${FONT_OPTIONS.map(font => `<option value="${escapeHtml(font)}">${escapeHtml(font)}</option>`).join('')}</select></label>
-            <label>Align <select data-fabric-text-align><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option></select></label>
-            <div class="fabric-text-effect-grid"><button type="button" data-fabric-text-effect="shadow">Shadow</button><button type="button" data-fabric-text-effect="glow">Glow</button><button type="button" data-fabric-text-effect="outline">Outline</button><button type="button" data-fabric-text-effect="hollow">Hollow</button><button type="button" data-fabric-text-effect="lift">Lift</button><button type="button" data-fabric-text-effect="clear">Clear FX</button></div>
-          </div>
-          <div class="fabric-preset-grid" aria-label="Appearance presets">
-            ${['plain', 'pill', 'badge', 'raised', 'glass', 'accent', 'outline'].map(preset => `<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}
-          </div>
-          <div class="fabric-align-grid" aria-label="Alignment controls">
-            ${['left', 'center', 'right', 'top', 'middle', 'bottom'].map(action => `<button type="button" data-fabric-align="${action}">${action}</button>`).join('')}
-            <button type="button" data-fabric-distribute="horizontal">Distribute H</button>
-            <button type="button" data-fabric-distribute="vertical">Distribute V</button>
-          </div>
-          <label>Font size <input type="range" min="8" max="72" value="24" data-fabric-prop="fontSize"></label>
-          <label>Object width <input type="range" min="20" max="${Math.max(240, width)}" value="180" data-fabric-prop="width"></label>
-          <label>Object height <input type="range" min="8" max="${Math.max(240, height)}" value="80" data-fabric-prop="height"></label>
-          <label>Rotation <input type="range" min="-180" max="180" value="0" data-fabric-prop="angle"></label>
-          <label>Opacity <input type="range" min="0" max="100" value="100" data-fabric-prop="opacity"></label>
-          <label>Corner radius <input type="range" min="0" max="80" value="16" data-fabric-prop="cornerRadius"></label>
-          <label>Border <input type="range" min="0" max="12" value="1" data-fabric-prop="strokeWidth"></label>
-          <div class="fabric-color-row"><label>Shadow <input type="checkbox" data-fabric-shadow></label></div>
-          <p class="fabric-editor-hint">Select a title, rating, pill, shape, or uploaded image, then use these controls to style it. Use the circular Fabric handle on the selection box for free rotation.</p>
+          <section class="fabric-inspector-section"><h3>Selected piece</h3><output data-fabric-selected-name>Nothing selected</output></section>
+          <section class="fabric-inspector-section fabric-universal-colors"><h3>Color</h3><label>Color wheel <input type="color" value="#bd662f" data-fabric-color-wheel></label><div class="fabric-color-swatches">${['#bd662f','#f7ead2','#a61f3f','#f4b942','#9b5de5','#00bbf9','#2b160d','#111111'].map(color=>`<button type="button" style="--swatch:${color}" data-fabric-color-swatch="${color}" aria-label="${color}"></button>`).join('')}</div><label>Border color <input type="color" value="#75451f" data-fabric-stroke></label></section>
+          <section class="fabric-value-controls fabric-inspector-section" data-fabric-value-controls hidden><h3>Tracker controls</h3><label>Widget label <input type="text" value="" data-fabric-slider-name></label><label>Live value <output data-fabric-value-output>0</output><input type="range" min="0" max="5" step="0.5" value="0" data-fabric-value></label><label>Maximum <input type="number" min="1" max="100" step="1" value="5" data-fabric-slider-max></label><label>Slider look <select data-fabric-slider-style><option value="stars">Stars</option><option value="fire">Fire</option><option value="hearts">Hearts</option><option value="dots">Dots</option><option value="bar">Bar</option><option value="custom-icon">Custom icon</option></select></label><label class="fabric-upload-control">Upload slider icon<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-slider-icon></label></section>
+          <section class="fabric-image-controls fabric-inspector-section" data-fabric-image-controls hidden><h3>Image controls</h3><div class="fabric-quick-actions"><button type="button" data-fabric-image-fit="cover">Crop / cover</button><button type="button" data-fabric-image-fit="contain">Fit inside</button><button type="button" data-fabric-action="image-background">Use as background</button></div><label>Image zoom <input type="range" min="20" max="300" value="100" data-fabric-image-crop="zoom"></label><label>Crop X <input type="range" min="0" max="600" value="0" data-fabric-image-crop="cropX"></label><label>Crop Y <input type="range" min="0" max="600" value="0" data-fabric-image-crop="cropY"></label></section>
+          <section class="fabric-inspector-section"><h3>Layers</h3><div class="fabric-layer-list" data-fabric-layer-list aria-label="Layer list"></div><div class="fabric-quick-actions"><button type="button" data-fabric-action="forward">Forward</button><button type="button" data-fabric-action="backward">Backward</button></div></section>
+          <section class="fabric-inspector-section"><h3>Object actions</h3><div class="fabric-quick-actions"><button type="button" data-fabric-action="duplicate">Duplicate</button><button type="button" data-fabric-action="lock">Lock</button><button type="button" data-fabric-action="copy-style">Copy style</button><button type="button" data-fabric-action="paste-style">Paste style</button><button type="button" data-fabric-action="group">Group</button><button type="button" data-fabric-action="ungroup">Ungroup</button><button type="button" data-fabric-action="flip-x">Flip X</button><button type="button" data-fabric-action="flip-y">Flip Y</button><button type="button" data-fabric-action="front">To front</button><button type="button" data-fabric-action="back">To back</button></div></section>
+          <section class="fabric-inspector-section"><h3>Geometry</h3><div class="fabric-align-grid">${['left','center','right','top','middle','bottom'].map(action=>`<button type="button" data-fabric-align="${action}">${action}</button>`).join('')}<button type="button" data-fabric-distribute="horizontal">Distribute H</button><button type="button" data-fabric-distribute="vertical">Distribute V</button></div><label>Object width <input type="range" min="20" max="${Math.max(240,width)}" value="180" data-fabric-prop="width"></label><label>Object height <input type="range" min="8" max="${Math.max(240,height)}" value="80" data-fabric-prop="height"></label><label>Rotation <input type="range" min="-180" max="180" value="0" data-fabric-prop="angle"></label></section>
+          <section class="fabric-inspector-section"><h3>Appearance</h3><div class="fabric-preset-grid">${['plain','pill','badge','raised','glass','accent','outline'].map(preset=>`<button type="button" data-fabric-appearance="${preset}">${preset}</button>`).join('')}</div><label>Opacity <input type="range" min="0" max="100" value="100" data-fabric-prop="opacity"></label><label>Corner radius <input type="range" min="0" max="80" value="16" data-fabric-prop="cornerRadius"></label><label>Border <input type="range" min="0" max="12" value="1" data-fabric-prop="strokeWidth"></label><label>Shadow <input type="checkbox" data-fabric-shadow></label></section>
         </aside>
       </div>
     </section>`;
@@ -1309,7 +1226,7 @@
     const scene = templateJson(template) || baseScene({ width, height, theme: currentTheme(), record: book });
     const undoButton = document.querySelector('[data-fabric-undo]');
     const redoButton = document.querySelector('[data-fabric-redo]');
-    let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null;
+    let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null, activePanel = 'templates', activeLibraryType = 'all', selectedAssetId = '', selectedFontId = '';
     const setLibraryStatus = (kind, message) => { const output = document.querySelector(`[data-fabric-${kind}-status]`); if (output) output.textContent = message || ''; };
     const applyCustomFont = async font => {
       const active = getActive(editor.canvas);
@@ -1318,46 +1235,60 @@
       pushHistory();
       syncInspector();
     };
+    const fontActions = font => {
+      const actions = document.createElement('div'); actions.className = 'fabric-library-actions';
+      const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'Apply'; apply.addEventListener('click', () => applyCustomFont(font).catch(error => setLibraryStatus('font', error.message)));
+      const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Font display name', font.display_name); if (!name) return; await globalThis.VisualFonts.renameFont(font.id, name); await refreshLibraries(); });
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${font.display_name}? Existing cards will use a fallback font.`)) return; await globalThis.VisualFonts.deleteFont(font.id); selectedFontId = ''; await refreshLibraries(); });
+      actions.append(apply, rename, remove); return actions;
+    };
+    const assetActions = asset => {
+      const actions = document.createElement('div'); actions.className = 'fabric-library-actions';
+      const insert = document.createElement('button'); insert.type = 'button'; insert.textContent = 'Insert'; insert.addEventListener('click', () => addLibraryAsset(editor.canvas, asset).then(() => { pushHistory(); syncInspector(); }).catch(error => setLibraryStatus('asset', error.message)));
+      const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Element name', asset.name); if (!name) return; await globalThis.VisualAssets.renameAsset(asset.id, name); await refreshLibraries(); });
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${asset.name}? Placed copies will show as unavailable.`)) return; await globalThis.VisualAssets.deleteAsset(asset.id); selectedAssetId = ''; await refreshLibraries(); });
+      actions.append(insert, rename, remove); return actions;
+    };
     const renderFontLibrary = () => {
       document.querySelectorAll('[data-fabric-new-font],[data-fabric-font-family]').forEach(select => {
         select.querySelectorAll('option[data-user-font]').forEach(option => option.remove());
         userFonts.forEach(font => { const option = document.createElement('option'); option.value = font.family_name; option.dataset.userFont = font.id; option.textContent = font.display_name; option.style.fontFamily = font.family_name; select.append(option); });
       });
-      const list = document.querySelector('[data-fabric-font-list]');
-      if (!list) return;
-      list.replaceChildren();
-      userFonts.forEach(font => {
-        const row = document.createElement('div'); row.className = 'fabric-library-row';
-        const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = font.display_name; apply.style.fontFamily = font.family_name; apply.addEventListener('click', () => applyCustomFont(font).catch(error => setLibraryStatus('font', error.message)));
-        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Font display name', font.display_name); if (!name) return; await globalThis.VisualFonts.renameFont(font.id, name); await refreshLibraries(); });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${font.display_name}? Existing cards will use a fallback font.`)) return; await globalThis.VisualFonts.deleteFont(font.id); await refreshLibraries(); });
-        row.append(apply, rename, remove); list.append(row);
+      const list = document.querySelector('[data-fabric-font-list]'); if (!list) return;
+      list.replaceChildren(); const search = document.querySelector('[data-fabric-font-search]')?.value.trim().toLowerCase() || '';
+      const matches = userFonts.filter(font => !search || font.display_name.toLowerCase().includes(search));
+      matches.forEach(font => {
+        const card = document.createElement('article'); card.className = `fabric-font-card${selectedFontId === font.id ? ' is-selected' : ''}`; card.title = font.display_name;
+        const choose = document.createElement('button'); choose.type = 'button'; choose.className = 'fabric-library-choice'; choose.setAttribute('aria-pressed', String(selectedFontId === font.id));
+        const name = document.createElement('strong'); name.textContent = font.display_name; const sample = document.createElement('span'); sample.textContent = 'The dragon chose her.'; sample.style.fontFamily = font.family_name; choose.append(name, sample);
+        choose.addEventListener('click', () => { selectedFontId = font.id; renderFontLibrary(); renderCombinedLibrary(); }); card.append(choose); if (selectedFontId === font.id) card.append(fontActions(font)); list.append(card);
       });
-      if (!userFonts.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No custom fonts yet.' : 'Sign in to use reusable fonts.';
+      if (!matches.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No matching custom fonts.' : 'Sign in to use reusable fonts.';
     };
     const renderAssetLibrary = async () => {
-      const list = document.querySelector('[data-fabric-asset-list]');
-      if (!list) return;
-      list.replaceChildren();
-      const search = document.querySelector('[data-fabric-asset-search]')?.value.trim().toLowerCase() || '';
-      const category = document.querySelector('[data-fabric-asset-filter]')?.value || '';
+      const list = document.querySelector('[data-fabric-asset-list]'); if (!list) return; list.replaceChildren();
+      const search = document.querySelector('[data-fabric-asset-search]')?.value.trim().toLowerCase() || '', category = document.querySelector('[data-fabric-asset-filter]')?.value || '';
       const matches = userAssets.filter(asset => (!search || String(asset.name).toLowerCase().includes(search)) && (!category || asset.category === category));
       for (const asset of matches) {
-        const card = document.createElement('div'); card.className = 'fabric-library-card';
+        const card = document.createElement('article'); card.className = `fabric-library-card${selectedAssetId === asset.id ? ' is-selected' : ''}`; card.title = asset.name;
+        const choose = document.createElement('button'); choose.type = 'button'; choose.className = 'fabric-library-choice'; choose.setAttribute('aria-pressed', String(selectedAssetId === asset.id));
         const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; globalThis.VisualAssets.getAssetUrl(asset).then(url => { image.src = url; }).catch(() => { image.hidden = true; });
-        const insert = document.createElement('button'); insert.type = 'button'; insert.textContent = asset.name; insert.addEventListener('click', () => addLibraryAsset(editor.canvas, asset).then(() => { pushHistory(); syncInspector(); }).catch(error => setLibraryStatus('asset', error.message)));
-        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Element name', asset.name); if (!name) return; await globalThis.VisualAssets.renameAsset(asset.id, name); await refreshLibraries(); });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${asset.name}? Placed copies will show as unavailable.`)) return; await globalThis.VisualAssets.deleteAsset(asset.id); await refreshLibraries(); });
-        card.append(image, insert, rename, remove); list.append(card);
+        const name = document.createElement('strong'); name.textContent = asset.name; const categoryLabel = document.createElement('small'); categoryLabel.textContent = asset.category || 'element'; choose.append(image, name, categoryLabel);
+        choose.addEventListener('click', () => { selectedAssetId = asset.id; renderAssetLibrary(); renderCombinedLibrary(); }); card.append(choose); if (selectedAssetId === asset.id) card.append(assetActions(asset)); list.append(card);
       }
       if (!matches.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No matching reusable elements.' : 'Sign in to use reusable elements.';
     };
+    const renderCombinedLibrary = async () => {
+      const list = document.querySelector('[data-fabric-combined-list]'); if (!list) return; list.replaceChildren();
+      const search = document.querySelector('[data-fabric-combined-search]')?.value.trim().toLowerCase() || '', type = document.querySelector('[data-fabric-combined-type]')?.value || activeLibraryType, category = document.querySelector('[data-fabric-combined-category]')?.value || '';
+      if (type === 'all' || type === 'fonts') userFonts.filter(font => !search || font.display_name.toLowerCase().includes(search)).forEach(font => { const row=document.createElement('article');row.className=`fabric-combined-item${selectedFontId===font.id?' is-selected':''}`;const choose=document.createElement('button');choose.type='button';choose.className='fabric-library-choice';choose.title=font.display_name;choose.innerHTML=`<strong>${escapeHtml(font.display_name)}</strong><span style="font-family:${escapeHtml(font.family_name)}">The dragon chose her.</span>`;choose.onclick=()=>{selectedFontId=font.id;renderCombinedLibrary();renderFontLibrary();};row.append(choose);if(selectedFontId===font.id)row.append(fontActions(font));list.append(row); });
+      if (type === 'all' || type === 'elements' || type === 'images') for (const asset of userAssets.filter(asset => (!search || String(asset.name).toLowerCase().includes(search)) && (!category || asset.category === category))) { const row=document.createElement('article');row.className=`fabric-combined-item${selectedAssetId===asset.id?' is-selected':''}`;const choose=document.createElement('button');choose.type='button';choose.className='fabric-library-choice';choose.title=asset.name;const image=document.createElement('img');image.alt='';globalThis.VisualAssets.getAssetUrl(asset).then(url=>image.src=url).catch(()=>image.hidden=true);const name=document.createElement('strong');name.textContent=asset.name;choose.append(image,name);choose.onclick=()=>{selectedAssetId=asset.id;renderCombinedLibrary();renderAssetLibrary();};row.append(choose);if(selectedAssetId===asset.id)row.append(assetActions(asset));list.append(row); }
+      if (!list.children.length) list.textContent = 'No matching uploads.';
+    };
     const refreshLibraries = async () => {
-      if (!globalThis.VisualCloud?.isSignedIn?.()) { userAssets = []; userFonts = []; renderFontLibrary(); await renderAssetLibrary(); return; }
-      const [assets, fonts] = await Promise.all([globalThis.VisualAssets?.listAssets?.() || [], globalThis.VisualFonts?.listFonts?.() || []]);
-      userAssets = assets; userFonts = fonts;
-      await Promise.allSettled(userFonts.map(font => globalThis.VisualFonts.loadFont(font)));
-      renderFontLibrary(); await renderAssetLibrary();
+      if (!globalThis.VisualCloud?.isSignedIn?.()) { userAssets = []; userFonts = []; renderFontLibrary(); await renderAssetLibrary(); await renderCombinedLibrary(); return; }
+      const [assets, fonts] = await Promise.all([globalThis.VisualAssets?.listAssets?.() || [], globalThis.VisualFonts?.listFonts?.() || []]); userAssets = assets; userFonts = fonts;
+      await Promise.allSettled(userFonts.map(font => globalThis.VisualFonts.loadFont(font))); renderFontLibrary(); await renderAssetLibrary(); await renderCombinedLibrary();
     };
     const historyJson = () => JSON.stringify(serializeCanvas(editor.canvas));
     const syncHistoryButtons = () => {
@@ -1456,14 +1387,16 @@
       if (selectedTextObjects.length) {
         const fonts = new Set(selectedTextObjects.map(object => object.fontFamily || 'Libre Baskerville'));
         if (fontSelect) fontSelect.value = fonts.size === 1 ? [...fonts][0] : '';
-        if (textAlignSelect) textAlignSelect.value = active.textAlign || 'left';
+        if (textAlignSelect) textAlignSelect.value = selectedTextObjects[0].textAlign || 'left';
       }
       document.querySelectorAll('[data-fabric-prop]').forEach(input => {
         if (!active) return;
         const prop = input.dataset.fabricProp;
         if (prop === 'opacity') input.value = Math.round(number(active.opacity, 1) * 100);
         else if (prop === 'cornerRadius') input.value = number(active.rx ?? active.ry, 0);
+        else if (prop === 'fontSize' && selectedTextObjects.length) input.value = number(selectedTextObjects[0].fontSize, number(input.value, 24));
         else input.value = number(active[prop], number(input.value, 0));
+        if (prop === 'fontSize') { const output = document.querySelector('[data-fabric-font-size-output]'); if (output) output.textContent = input.value; }
       });
     };
     editor.canvas.on('selection:created', syncInspector);
@@ -1497,6 +1430,27 @@
         else object.set({ left, top });
       }
     });
+    const showPanel = panel => {
+      activePanel = panel;
+      document.querySelectorAll('[data-fabric-panel]').forEach(page => { page.hidden = page.dataset.fabricPanel !== panel; });
+      document.querySelectorAll('[data-fabric-panel-tab]').forEach(tab => { const selected = tab.dataset.fabricPanelTab === panel; tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1; });
+    };
+    const panelTabs = [...document.querySelectorAll('[data-fabric-panel-tab]')];
+    panelTabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => showPanel(tab.dataset.fabricPanelTab));
+      tab.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? panelTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + panelTabs.length) % panelTabs.length;
+        panelTabs[next].focus(); showPanel(panelTabs[next].dataset.fabricPanelTab);
+      });
+    });
+    document.querySelectorAll('[data-fabric-mobile-view]').forEach(button => button.addEventListener('click', () => {
+      const view = button.dataset.fabricMobileView, layout = document.querySelector('[data-fabric-mobile-layout]');
+      if (layout) layout.dataset.fabricMobileLayout = view;
+      document.querySelectorAll('[data-fabric-mobile-view]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    }));
+    showPanel(activePanel);
     document.querySelectorAll('[data-fabric-card-preset]').forEach(button => {
       button.addEventListener('click', () => {
         if (!confirm('Replace this card layout with this starter look? Book details stay safe.')) return;
@@ -1554,7 +1508,8 @@
       const file = event.target.files?.[0]; if (!file) return;
       try {
         setLibraryStatus('asset', 'Uploading…');
-        await globalThis.VisualAssets.uploadAsset(file, { name: document.querySelector('[data-fabric-asset-name]')?.value || file.name, category: document.querySelector('[data-fabric-asset-category]')?.value || 'element' });
+        const uploaded = await globalThis.VisualAssets.uploadAsset(file, { name: document.querySelector('[data-fabric-asset-name]')?.value || file.name, category: document.querySelector('[data-fabric-asset-category]')?.value || 'element' });
+        selectedAssetId = uploaded.id;
         event.target.value = ''; await refreshLibraries(); setLibraryStatus('asset', 'Element uploaded.');
       } catch (error) { setLibraryStatus('asset', error.message || 'Upload failed.'); }
     });
@@ -1562,12 +1517,17 @@
       const file = event.target.files?.[0]; if (!file) return;
       try {
         setLibraryStatus('font', 'Uploading…');
-        await globalThis.VisualFonts.uploadFont(file, { displayName: document.querySelector('[data-fabric-font-name]')?.value || file.name.replace(/\.[^.]+$/, ''), licenseConfirmed: document.querySelector('[data-fabric-font-license]')?.checked });
+        const uploaded = await globalThis.VisualFonts.uploadFont(file, { displayName: document.querySelector('[data-fabric-font-name]')?.value || file.name.replace(/\.[^.]+$/, ''), licenseConfirmed: document.querySelector('[data-fabric-font-license]')?.checked });
+        selectedFontId = uploaded.id;
         event.target.value = ''; await refreshLibraries(); setLibraryStatus('font', 'Font uploaded.');
       } catch (error) { setLibraryStatus('font', error.message || 'Upload failed.'); }
     });
     document.querySelector('[data-fabric-asset-search]')?.addEventListener('input', renderAssetLibrary);
     document.querySelector('[data-fabric-asset-filter]')?.addEventListener('change', renderAssetLibrary);
+    document.querySelector('[data-fabric-font-search]')?.addEventListener('input', renderFontLibrary);
+    document.querySelector('[data-fabric-combined-search]')?.addEventListener('input', renderCombinedLibrary);
+    document.querySelector('[data-fabric-combined-type]')?.addEventListener('change', event => { activeLibraryType = event.target.value; renderCombinedLibrary(); });
+    document.querySelector('[data-fabric-combined-category]')?.addEventListener('change', renderCombinedLibrary);
     document.querySelector('[data-fabric-slider-icon]')?.addEventListener('change', event => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -1686,8 +1646,8 @@
     });
     document.querySelector('[data-fabric-text-align]')?.addEventListener('change', event => {
       const active = getActive(editor.canvas);
-      if (!isTextObject(active)) return;
-      active.set('textAlign', event.target.value);
+      const textObjects = collectTextObjects(active); if (!textObjects.length) return;
+      textObjects.forEach(object => { object.set('textAlign', event.target.value); object.initDimensions?.(); object.setCoords?.(); });
       active.setCoords?.();
       editor.canvas.requestRenderAll();
       pushHistory();
@@ -1732,7 +1692,11 @@
       input.addEventListener('input', event => {
         const prop = event.target.dataset.fabricProp;
         const raw = number(event.target.value, 0);
-        if (prop === 'opacity') editor.updateActiveObject({ opacity: raw / 100 });
+        if (prop === 'fontSize') {
+          collectTextObjects(getActive(editor.canvas)).forEach(object => { object.set?.('fontSize', raw); object.initDimensions?.(); object.setCoords?.(); });
+          editor.canvas.requestRenderAll();
+          const output = document.querySelector('[data-fabric-font-size-output]'); if (output) output.textContent = String(raw);
+        } else if (prop === 'opacity') editor.updateActiveObject({ opacity: raw / 100 });
         else if (prop === 'cornerRadius') editor.updateActiveObject({ rx: raw, ry: raw });
         else editor.updateActiveObject({ [prop]: raw });
         pushHistory();
@@ -1936,6 +1900,8 @@
     resolveLibraryReferences,
     collectTextObjects,
     applyFontToSelection,
+    editorShell,
+    fieldPaletteHtml,
     deleteActiveElement,
     baseScene,
     bindRecord,

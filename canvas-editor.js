@@ -1140,7 +1140,9 @@
               <p>My fonts</p>
               <label>Display name <input type="text" name="fabricFontName" data-fabric-font-name></label>
               <label class="fabric-upload-control">Choose font<input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" data-fabric-font-upload></label>
+              <output class="fabric-upload-filename" data-fabric-font-filename>No font selected.</output>
               <label class="fabric-check-control"><input type="checkbox" name="fabricFontLicense" data-fabric-font-license> I confirm that I own this font or have permission to upload and use it.</label>
+              <button type="button" data-fabric-font-submit disabled>Upload Font</button>
               <output class="fabric-library-status" data-fabric-font-status aria-live="polite"></output>
               <div class="fabric-library-list" data-fabric-font-list></div>
             </div>
@@ -1159,7 +1161,9 @@
               <p>My elements</p>
               <label>Name <input type="text" name="fabricAssetName" data-fabric-asset-name></label>
               <label>Category <select name="fabricAssetCategory" data-fabric-asset-category>${['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'].map(value => `<option value="${value}">${value}</option>`).join('')}</select></label>
-              <label class="fabric-upload-control">Upload reusable element<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-asset-upload></label>
+              <label class="fabric-upload-control">Choose reusable element<input type="file" accept="image/png,image/jpeg,image/webp" data-fabric-asset-upload></label>
+              <output class="fabric-upload-filename" data-fabric-asset-filename>No element selected.</output>
+              <button type="button" data-fabric-asset-submit disabled>Upload Element</button>
               <label>Search <input type="search" name="fabricAssetSearch" data-fabric-asset-search></label>
               <label>Filter <select name="fabricAssetFilter" data-fabric-asset-filter><option value="">All categories</option>${['element','background','texture','overlay','divider','frame','logo','sticker','symbol','decoration'].map(value => `<option value="${value}">${value}</option>`).join('')}</select></label>
               <output class="fabric-library-status" data-fabric-asset-status aria-live="polite"></output>
@@ -1271,7 +1275,33 @@
     const undoButton = document.querySelector('[data-fabric-undo]');
     const redoButton = document.querySelector('[data-fabric-redo]');
     let history = [], historyIndex = -1, restoringHistory = false, historyTimer = null;
+    let assetUploadFile = null, fontUploadFile = null, assetUploading = false, fontUploading = false, libraryLoading = false;
+    const logLibraryError = (kind, stage, error, context = {}) => console.error(`[CanvasEditor] ${kind} ${stage}`, { ...context, error });
     const setLibraryStatus = (kind, message) => { const output = document.querySelector(`[data-fabric-${kind}-status]`); if (output) output.textContent = message || ''; };
+    const setUploadFilename = (kind, file) => {
+      const output = document.querySelector(`[data-fabric-${kind}-filename]`);
+      if (output) output.textContent = file ? file.name : (kind === 'font' ? 'No font selected.' : 'No element selected.');
+    };
+    const syncUploadButtons = () => {
+      const assetButton = document.querySelector('[data-fabric-asset-submit]');
+      const fontButton = document.querySelector('[data-fabric-font-submit]');
+      const license = document.querySelector('[data-fabric-font-license]')?.checked;
+      if (assetButton) assetButton.disabled = assetUploading || !assetUploadFile || !globalThis.VisualCloud?.isSignedIn?.();
+      if (fontButton) fontButton.disabled = fontUploading || !fontUploadFile || !license || !globalThis.VisualCloud?.isSignedIn?.();
+    };
+    const withRetryRefresh = (kind, message) => {
+      setLibraryStatus(kind, message);
+      const output = document.querySelector(`[data-fabric-${kind}-status]`);
+      if (!output || output.querySelector('button')) return;
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = 'Retry Library Refresh';
+      retry.addEventListener('click', () => refreshLibraries().catch(error => {
+        logLibraryError(kind, 'retry-refresh-failed', error);
+        setLibraryStatus(kind, error.message || 'Library refresh failed again.');
+      }));
+      output.append(' ', retry);
+    };
     const applyCustomFont = async font => {
       const active = getActive(editor.canvas);
       if (!isTextObject(active)) throw new Error('Select a text object before applying a font.');
@@ -1291,38 +1321,71 @@
       const list = document.querySelector('[data-fabric-font-list]');
       if (!list) return;
       list.replaceChildren();
+      if ((libraryLoading || fontUploading) && !userFonts.length) {
+        list.textContent = fontUploading ? 'Uploading font…' : 'Loading library…';
+        return;
+      }
       userFonts.forEach(font => {
         const row = document.createElement('div'); row.className = 'fabric-library-row';
-        const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = font.display_name; apply.style.fontFamily = font.family_name; apply.addEventListener('click', () => applyCustomFont(font).catch(error => setLibraryStatus('font', error.message)));
-        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Font display name', font.display_name); if (!name) return; await globalThis.VisualFonts.renameFont(font.id, name); await refreshLibraries(); });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${font.display_name}? Existing cards will use a fallback font.`)) return; await globalThis.VisualFonts.deleteFont(font.id); await refreshLibraries(); });
-        row.append(apply, rename, remove); list.append(row);
+        const preview = document.createElement('span'); preview.className = 'fabric-font-preview'; preview.textContent = font.display_name; preview.style.fontFamily = font.family_name;
+        const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'Apply'; apply.addEventListener('click', () => applyCustomFont(font).catch(error => { logLibraryError('font', 'apply-failed', error, { id: font.id }); setLibraryStatus('font', error.message); }));
+        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Font display name', font.display_name); if (!name) return; try { await globalThis.VisualFonts.renameFont(font.id, name); await refreshLibraries(); } catch (error) { logLibraryError('font', 'rename-failed', error, { id: font.id }); setLibraryStatus('font', error.message); } });
+        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${font.display_name}? Existing cards will use a fallback font.`)) return; try { await globalThis.VisualFonts.deleteFont(font.id); await refreshLibraries(); } catch (error) { logLibraryError('font', 'delete-failed', error, { id: font.id }); setLibraryStatus('font', error.message); } });
+        row.append(preview, apply, rename, remove); list.append(row);
       });
-      if (!userFonts.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No custom fonts yet.' : 'Sign in to use reusable fonts.';
+      if (!userFonts.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No custom fonts uploaded yet.' : 'Sign in to use reusable fonts.';
     };
     const renderAssetLibrary = async () => {
       const list = document.querySelector('[data-fabric-asset-list]');
       if (!list) return;
       list.replaceChildren();
+      if ((libraryLoading || assetUploading) && !userAssets.length) {
+        list.textContent = assetUploading ? 'Uploading element…' : 'Loading library…';
+        return;
+      }
       const search = document.querySelector('[data-fabric-asset-search]')?.value.trim().toLowerCase() || '';
       const category = document.querySelector('[data-fabric-asset-filter]')?.value || '';
       const matches = userAssets.filter(asset => (!search || String(asset.name).toLowerCase().includes(search)) && (!category || asset.category === category));
       for (const asset of matches) {
         const card = document.createElement('div'); card.className = 'fabric-library-card';
-        const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; globalThis.VisualAssets.getAssetUrl(asset).then(url => { image.src = url; }).catch(() => { image.hidden = true; });
-        const insert = document.createElement('button'); insert.type = 'button'; insert.textContent = asset.name; insert.addEventListener('click', () => addLibraryAsset(editor.canvas, asset).then(() => { pushHistory(); syncInspector(); }).catch(error => setLibraryStatus('asset', error.message)));
-        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Element name', asset.name); if (!name) return; await globalThis.VisualAssets.renameAsset(asset.id, name); await refreshLibraries(); });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${asset.name}? Placed copies will show as unavailable.`)) return; await globalThis.VisualAssets.deleteAsset(asset.id); await refreshLibraries(); });
-        card.append(image, insert, rename, remove); list.append(card);
+        const image = document.createElement('img'); image.alt = asset.name || 'Reusable element thumbnail'; image.loading = 'lazy'; globalThis.VisualAssets.getAssetUrl(asset).then(url => { image.src = url; }).catch(error => { image.hidden = true; logLibraryError('asset', 'signed-url-failed', error, { id: asset.id }); });
+        const meta = document.createElement('span'); meta.className = 'fabric-library-meta'; meta.textContent = `${asset.name || 'Untitled'} · ${asset.category || 'element'}`;
+        const insert = document.createElement('button'); insert.type = 'button'; insert.textContent = 'Insert'; insert.addEventListener('click', () => addLibraryAsset(editor.canvas, asset).then(() => { pushHistory(); syncInspector(); }).catch(error => { logLibraryError('asset', 'insert-failed', error, { id: asset.id }); setLibraryStatus('asset', error.message); }));
+        const rename = document.createElement('button'); rename.type = 'button'; rename.textContent = 'Rename'; rename.addEventListener('click', async () => { const name = prompt('Element name', asset.name); if (!name) return; try { await globalThis.VisualAssets.renameAsset(asset.id, name); await refreshLibraries(); } catch (error) { logLibraryError('asset', 'rename-failed', error, { id: asset.id }); setLibraryStatus('asset', error.message); } });
+        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Delete'; remove.addEventListener('click', async () => { if (!confirm(`Delete ${asset.name}? Placed copies will show as unavailable.`)) return; try { await globalThis.VisualAssets.deleteAsset(asset.id); await refreshLibraries(); } catch (error) { logLibraryError('asset', 'delete-failed', error, { id: asset.id }); setLibraryStatus('asset', error.message); } });
+        card.append(image, meta, insert, rename, remove); list.append(card);
       }
-      if (!matches.length) list.textContent = globalThis.VisualCloud?.isSignedIn?.() ? 'No matching reusable elements.' : 'Sign in to use reusable elements.';
+      if (!matches.length && globalThis.VisualCloud?.isSignedIn?.()) list.textContent = (search || category) ? 'No elements match the current search or category filter.' : 'No reusable elements uploaded yet.';
+      if (!matches.length && !globalThis.VisualCloud?.isSignedIn?.()) list.textContent = 'Sign in to use reusable elements.';
     };
     const refreshLibraries = async () => {
-      if (!globalThis.VisualCloud?.isSignedIn?.()) { userAssets = []; userFonts = []; renderFontLibrary(); await renderAssetLibrary(); return; }
-      const [assets, fonts] = await Promise.all([globalThis.VisualAssets?.listAssets?.() || [], globalThis.VisualFonts?.listFonts?.() || []]);
-      userAssets = assets; userFonts = fonts;
-      await Promise.allSettled(userFonts.map(font => globalThis.VisualFonts.loadFont(font)));
+      libraryLoading = true;
+      setLibraryStatus('asset', 'Loading library…');
+      setLibraryStatus('font', 'Loading library…');
       renderFontLibrary(); await renderAssetLibrary();
+      try {
+        if (!globalThis.VisualCloud?.isSignedIn?.()) {
+          userAssets = []; userFonts = [];
+          setLibraryStatus('asset', '');
+          setLibraryStatus('font', '');
+          renderFontLibrary(); await renderAssetLibrary();
+          return;
+        }
+        const [assets, fonts] = await Promise.all([globalThis.VisualAssets?.listAssets?.() || [], globalThis.VisualFonts?.listFonts?.() || []]);
+        userAssets = assets; userFonts = fonts;
+        const fontResults = await Promise.allSettled(userFonts.map(font => globalThis.VisualFonts.loadFont(font)));
+        fontResults.filter(result => result.status === 'rejected').forEach(result => logLibraryError('font', 'fontface-load-failed', result.reason));
+        renderFontLibrary(); await renderAssetLibrary();
+        setLibraryStatus('asset', '');
+        setLibraryStatus('font', '');
+      } catch (error) {
+        logLibraryError('library', 'refresh-failed', error);
+        throw error;
+      } finally {
+        libraryLoading = false;
+        renderFontLibrary(); await renderAssetLibrary();
+        syncUploadButtons();
+      }
     };
     const historyJson = () => JSON.stringify(serializeCanvas(editor.canvas));
     const syncHistoryButtons = () => {
@@ -1513,20 +1576,112 @@
       if (file) editor.addImageFromFile(file).catch(error => adapters.showToast?.(error.message || 'Image upload failed.'));
     });
     document.querySelector('[data-fabric-asset-upload]')?.addEventListener('change', async event => {
-      const file = event.target.files?.[0]; if (!file) return;
+      assetUploadFile = event.target.files?.[0] || null;
+      setUploadFilename('asset', assetUploadFile);
+      syncUploadButtons();
+      if (!assetUploadFile) return setLibraryStatus('asset', '');
       try {
-        setLibraryStatus('asset', 'Uploading…');
-        await globalThis.VisualAssets.uploadAsset(file, { name: document.querySelector('[data-fabric-asset-name]')?.value || file.name, category: document.querySelector('[data-fabric-asset-category]')?.value || 'element' });
-        event.target.value = ''; await refreshLibraries(); setLibraryStatus('asset', 'Element uploaded.');
-      } catch (error) { setLibraryStatus('asset', error.message || 'Upload failed.'); }
+        setLibraryStatus('asset', 'Validating…');
+        await globalThis.VisualAssets.validate(assetUploadFile);
+        setLibraryStatus('asset', 'Ready to upload.');
+      } catch (error) {
+        logLibraryError('asset', 'validation-failed', error, { fileName: assetUploadFile?.name });
+        assetUploadFile = null;
+        event.target.value = '';
+        setUploadFilename('asset', null);
+        setLibraryStatus('asset', error.message || 'Element validation failed.');
+      } finally {
+        syncUploadButtons();
+      }
+    });
+    document.querySelector('[data-fabric-asset-submit]')?.addEventListener('click', async event => {
+      if (!assetUploadFile || assetUploading) return;
+      const fileInput = document.querySelector('[data-fabric-asset-upload]');
+      assetUploading = true;
+      syncUploadButtons();
+      try {
+        const file = assetUploadFile;
+        setLibraryStatus('asset', 'Validating…');
+        await globalThis.VisualAssets.uploadAsset(file, {
+          name: document.querySelector('[data-fabric-asset-name]')?.value || file.name,
+          category: document.querySelector('[data-fabric-asset-category]')?.value || 'element',
+          onStatus: message => setLibraryStatus('asset', message)
+        });
+        assetUploadFile = null;
+        if (fileInput) fileInput.value = '';
+        setUploadFilename('asset', null);
+        try {
+          await refreshLibraries();
+          setLibraryStatus('asset', 'Upload complete.');
+        } catch (refreshError) {
+          logLibraryError('asset', 'refresh-after-upload-failed', refreshError);
+          withRetryRefresh('asset', `Upload complete, but library refresh failed: ${refreshError.message}`);
+        }
+      } catch (error) {
+        logLibraryError('asset', 'upload-failed', error, { fileName: assetUploadFile?.name });
+        setLibraryStatus('asset', error.message || 'Element upload failed.');
+      } finally {
+        assetUploading = false;
+        syncUploadButtons();
+      }
     });
     document.querySelector('[data-fabric-font-upload]')?.addEventListener('change', async event => {
-      const file = event.target.files?.[0]; if (!file) return;
+      fontUploadFile = event.target.files?.[0] || null;
+      setUploadFilename('font', fontUploadFile);
+      syncUploadButtons();
+      if (!fontUploadFile) return setLibraryStatus('font', '');
       try {
-        setLibraryStatus('font', 'Uploading…');
-        await globalThis.VisualFonts.uploadFont(file, { displayName: document.querySelector('[data-fabric-font-name]')?.value || file.name.replace(/\.[^.]+$/, ''), licenseConfirmed: document.querySelector('[data-fabric-font-license]')?.checked });
-        event.target.value = ''; await refreshLibraries(); setLibraryStatus('font', 'Font uploaded.');
-      } catch (error) { setLibraryStatus('font', error.message || 'Upload failed.'); }
+        setLibraryStatus('font', 'Validating…');
+        await globalThis.VisualFonts.validate(fontUploadFile);
+        setLibraryStatus('font', document.querySelector('[data-fabric-font-license]')?.checked ? 'Ready to upload.' : 'Confirm the font license to enable upload.');
+      } catch (error) {
+        logLibraryError('font', 'validation-failed', error, { fileName: fontUploadFile?.name });
+        fontUploadFile = null;
+        event.target.value = '';
+        setUploadFilename('font', null);
+        setLibraryStatus('font', error.message || 'Font validation failed.');
+      } finally {
+        syncUploadButtons();
+      }
+    });
+    document.querySelector('[data-fabric-font-license]')?.addEventListener('change', () => {
+      syncUploadButtons();
+      if (fontUploadFile) setLibraryStatus('font', document.querySelector('[data-fabric-font-license]')?.checked ? 'Ready to upload.' : 'Confirm the font license to enable upload.');
+    });
+    document.querySelector('[data-fabric-font-submit]')?.addEventListener('click', async () => {
+      if (!fontUploadFile || fontUploading) return;
+      const fileInput = document.querySelector('[data-fabric-font-upload]');
+      fontUploading = true;
+      syncUploadButtons();
+      try {
+        const file = fontUploadFile;
+        setLibraryStatus('font', 'Validating…');
+        const font = await globalThis.VisualFonts.uploadFont(file, {
+          displayName: document.querySelector('[data-fabric-font-name]')?.value || file.name.replace(/\.[^.]+$/, ''),
+          licenseConfirmed: document.querySelector('[data-fabric-font-license]')?.checked,
+          onStatus: message => setLibraryStatus('font', message)
+        });
+        setLibraryStatus('font', 'Loading font…');
+        await globalThis.VisualFonts.loadFont(font);
+        fontUploadFile = null;
+        if (fileInput) fileInput.value = '';
+        setUploadFilename('font', null);
+        const licenseBox = document.querySelector('[data-fabric-font-license]');
+        if (licenseBox) licenseBox.checked = false;
+        try {
+          await refreshLibraries();
+          setLibraryStatus('font', 'Upload complete.');
+        } catch (refreshError) {
+          logLibraryError('font', 'refresh-after-upload-failed', refreshError);
+          withRetryRefresh('font', `Upload complete, but library refresh failed: ${refreshError.message}`);
+        }
+      } catch (error) {
+        logLibraryError('font', 'upload-failed', error, { fileName: fontUploadFile?.name });
+        setLibraryStatus('font', error.message || 'Font upload failed.');
+      } finally {
+        fontUploading = false;
+        syncUploadButtons();
+      }
     });
     document.querySelector('[data-fabric-asset-search]')?.addEventListener('input', renderAssetLibrary);
     document.querySelector('[data-fabric-asset-filter]')?.addEventListener('change', renderAssetLibrary);

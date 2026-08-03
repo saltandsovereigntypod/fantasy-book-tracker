@@ -13,8 +13,8 @@
   let appLoaded = false;
   let saveTimer;
   let mode = 'signin';
-  const ASSET_VERSION = '20260802-36';
-  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'canvas-editor.js', 'visual-builder.js'];
+  const ASSET_VERSION = '20260801-24';
+  const APP_SCRIPTS = ['app.js', 'hotfix.js', 'runtime-patches.js', 'investigation-features.js', 'infinite-wall.js', 'mind-map.js', 'dossier-experience.js', 'visual-fields.js', 'visual-assets.js', 'visual-fonts.js', 'visual-builder.js'];
 
   const $ = id => document.getElementById(id);
   const setMessage = text => { if ($('authMessage')) $('authMessage').textContent = text; };
@@ -59,20 +59,28 @@
     setSync('Cloud saved');
   }
 
-  async function uploadVisualAsset(file) {
-    if (!supabase || !user) throw new Error('Sign in before uploading visual assets.');
-    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
-    if (!allowed.has(file?.type)) throw new Error('Choose a PNG, JPG, or WebP image.');
-    if (file.size > 8 * 1024 * 1024) throw new Error('Choose an image smaller than 8 MB.');
-    const extension = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-    const id = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-    const path = `${user.id}/${id}`;
-    const { error } = await supabase.storage.from('visual-assets').upload(path, file, { contentType: file.type, upsert: false });
-    if (error) throw error;
-    const { data } = supabase.storage.from('visual-assets').getPublicUrl(path);
-    return { id: path, url: data.publicUrl };
+  const safeFilename = name => String(name || 'upload').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || 'upload';
+  const requireUser = () => { if (!supabase || !user) throw new Error('Sign in to use your upload library.'); return user; };
+  async function listLibrary(table) { requireUser(); const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false }); if (error) throw error; return data || []; }
+  async function signedUrl(bucket, path) { requireUser(); const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600); if (error) throw error; return data.signedUrl; }
+  async function uploadLibraryFile({ table, bucket, file, id = crypto.randomUUID(), name, record }) {
+    const account = requireUser(), path = `${account.id}/${id}/${safeFilename(file.name)}`;
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) throw uploadError;
+    const row = { id, user_id: account.id, storage_path: path, ...(table === 'visual_assets' ? { name } : { display_name: name }), ...record };
+    const { data, error } = await supabase.from(table).insert(row).select().single();
+    if (error) { await supabase.storage.from(bucket).remove([path]); throw error; }
+    return data;
   }
-
+  async function renameLibraryRecord(table, id, name, column) { requireUser(); const { data, error } = await supabase.from(table).update({ [column]: name, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) throw error; return data; }
+  async function deleteLibraryRecord(table, bucket, id) {
+    requireUser(); const { data: row, error: readError } = await supabase.from(table).select('id,storage_path').eq('id', id).single(); if (readError) throw readError;
+    const { error: storageError } = await supabase.storage.from(bucket).remove([row.storage_path]); if (storageError) throw storageError;
+    const { error: rowError } = await supabase.from(table).delete().eq('id', id); if (rowError) throw new Error(`File removed, but its library record could not be deleted: ${rowError.message}`);
+    return true;
+  }
+  window.VisualCloud = { isSignedIn: () => Boolean(supabase && user), userId: () => user?.id || '', list: listLibrary, signedUrl, uploadLibraryFile, renameLibraryRecord, deleteLibraryRecord };
+  async function uploadVisualAsset(file) { const row = await globalThis.VisualAssets.uploadAsset(file); return { id: row.id, storagePath: row.storage_path, url: await globalThis.VisualAssets.getAssetUrl(row) }; }
   window.uploadVisualAsset = uploadVisualAsset;
 
   function queueSave(raw) {
@@ -136,6 +144,7 @@
       // or overriding one another in a stale order.
       for (const file of APP_SCRIPTS) await loadScript(file);
       if (window.__VISUAL_DEBUG__) console.debug('[VisualBuilder] runtime-ready', { activeRenderer: window.VisualBuilder?.renderBookCard ? 'VisualBuilder.renderBookCard' : 'app.bookCard fallback', cacheVersion: ASSET_VERSION, scriptOrder: [...APP_SCRIPTS], visualBuilderVersion: window.VisualBuilder?.VISUAL_ASSET_VERSION || 'missing' });
+      await Promise.allSettled([window.VisualAssets?.refreshAssetLibrary?.(), window.VisualFonts?.loadAllUserFonts?.()]);
       renderAll();
       bindAppControls();
       closeAuth();
@@ -143,7 +152,6 @@
       finishHydration();
     } catch (error) {
       console.error('Production runtime failed to load:', error);
-      appLoaded = false;
       setMessage('The tracker could not load its latest runtime. Refresh the page.');
       finishHydration();
       openAuth();

@@ -146,27 +146,4 @@ using (user_id = auth.uid());
 -- Replace the example code before running this statement:
 -- insert into public.invite_codes (code, max_uses) values ('YOUR-PRIVATE-CODE', 20);
 
--- Reusable authenticated Visual Builder assets. Object keys are always scoped
--- to the owning user's UUID by supabase-bridge.js.
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('visual-assets', 'visual-assets', true, 8388608, array['image/png','image/jpeg','image/webp'])
-on conflict (id) do update set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
-
-drop policy if exists "Users upload own visual assets" on storage.objects;
-create policy "Users upload own visual assets"
-on storage.objects for insert to authenticated
-with check (bucket_id = 'visual-assets' and (storage.foldername(name))[1] = auth.uid()::text);
-
-drop policy if exists "Users update own visual assets" on storage.objects;
-create policy "Users update own visual assets"
-on storage.objects for update to authenticated
-using (bucket_id = 'visual-assets' and owner_id = auth.uid()::text)
-with check (bucket_id = 'visual-assets' and (storage.foldername(name))[1] = auth.uid()::text);
-
-drop policy if exists "Users delete own visual assets" on storage.objects;
-create policy "Users delete own visual assets"
-on storage.objects for delete to authenticated
-using (bucket_id = 'visual-assets' and owner_id = auth.uid()::text);
+-- Visual asset and custom font libraries are created by migrations/202608030001_private_visual_libraries.sql.

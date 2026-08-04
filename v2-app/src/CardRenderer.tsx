@@ -77,6 +77,7 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   const frameFill = frame?.type === 'shape' ? frame.fill : design.background;
   const visibleBackground = frameFill === '#2b160d' && design.background !== '#2b160d' ? design.background : frameFill;
   const selectedElements = useMemo(() => design.elements.filter((element) => selectedIds.includes(element.id)), [design.elements, selectedIds]);
+  const primaryElement = selectedElements.find((element) => element.id === selectedElementId) ?? selectedElements[0];
   const activeGroupId = selectedElements.length > 1 && selectedElements.every((element) => element.groupId && element.groupId === selectedElements[0].groupId) ? selectedElements[0].groupId : undefined;
 
   useEffect(() => {
@@ -89,6 +90,13 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   }, [selectedElementId]);
 
   function startInteraction() { setGuides({ vertical: [], horizontal: [] }); onInteractionStart?.(); }
+  function finishToolbarInteraction() { window.setTimeout(() => onInteractionEnd?.(), 0); }
+  function commitToolbarChanges(changes: Array<{ id: string; changes: Partial<DesignElement> }>) {
+    if (!changes.length) return;
+    startInteraction();
+    changes.forEach((change) => onChangeElement?.(change.id, change.changes));
+    finishToolbarInteraction();
+  }
 
   function selectElement(element: DesignElement, additive: boolean) {
     if (element.id === 'card-frame') return;
@@ -180,52 +188,48 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
 
   function groupSelection() {
     if (selectedIds.length < 2) return;
-    startInteraction();
     const groupId = `group-${crypto.randomUUID()}`;
-    selectedIds.forEach((id) => onChangeElement?.(id, { groupId }));
-    onInteractionEnd?.();
+    commitToolbarChanges(selectedIds.map((id) => ({ id, changes: { groupId } })));
   }
 
   function ungroupSelection() {
     if (!activeGroupId) return;
-    startInteraction();
-    design.elements.filter((element) => element.groupId === activeGroupId).forEach((element) => onChangeElement?.(element.id, { groupId: undefined }));
-    onInteractionEnd?.();
+    commitToolbarChanges(design.elements.filter((element) => element.groupId === activeGroupId).map((element) => ({ id: element.id, changes: { groupId: undefined } })));
   }
 
   function alignSelection(action: AlignmentAction) {
     if (selectedElements.length < 2) return;
-    startInteraction();
     const left = Math.min(...selectedElements.map((element) => element.x));
     const right = Math.max(...selectedElements.map((element) => element.x + element.width));
     const top = Math.min(...selectedElements.map((element) => element.y));
     const bottom = Math.max(...selectedElements.map((element) => element.y + element.height));
     const centerX = (left + right) / 2;
     const centerY = (top + bottom) / 2;
+    const changes: Array<{ id: string; changes: Partial<DesignElement> }> = [];
 
     if (action === 'distribute-x' && selectedElements.length > 2) {
       const sorted = [...selectedElements].sort((a, b) => a.x - b.x);
       const totalWidth = sorted.reduce((sum, element) => sum + element.width, 0);
       const gap = (right - left - totalWidth) / (sorted.length - 1);
       let cursor = left;
-      sorted.forEach((element) => { onChangeElement?.(element.id, { x: snapValue(cursor) }); cursor += element.width + gap; });
+      sorted.forEach((element) => { changes.push({ id: element.id, changes: { x: snapValue(cursor) } }); cursor += element.width + gap; });
     } else if (action === 'distribute-y' && selectedElements.length > 2) {
       const sorted = [...selectedElements].sort((a, b) => a.y - b.y);
       const totalHeight = sorted.reduce((sum, element) => sum + element.height, 0);
       const gap = (bottom - top - totalHeight) / (sorted.length - 1);
       let cursor = top;
-      sorted.forEach((element) => { onChangeElement?.(element.id, { y: snapValue(cursor) }); cursor += element.height + gap; });
+      sorted.forEach((element) => { changes.push({ id: element.id, changes: { y: snapValue(cursor) } }); cursor += element.height + gap; });
     } else {
       selectedElements.forEach((element) => {
-        if (action === 'left') onChangeElement?.(element.id, { x: snapValue(left) });
-        if (action === 'center-x') onChangeElement?.(element.id, { x: snapValue(centerX - element.width / 2) });
-        if (action === 'right') onChangeElement?.(element.id, { x: snapValue(right - element.width) });
-        if (action === 'top') onChangeElement?.(element.id, { y: snapValue(top) });
-        if (action === 'center-y') onChangeElement?.(element.id, { y: snapValue(centerY - element.height / 2) });
-        if (action === 'bottom') onChangeElement?.(element.id, { y: snapValue(bottom - element.height) });
+        if (action === 'left') changes.push({ id: element.id, changes: { x: snapValue(left) } });
+        if (action === 'center-x') changes.push({ id: element.id, changes: { x: snapValue(centerX - element.width / 2) } });
+        if (action === 'right') changes.push({ id: element.id, changes: { x: snapValue(right - element.width) } });
+        if (action === 'top') changes.push({ id: element.id, changes: { y: snapValue(top) } });
+        if (action === 'center-y') changes.push({ id: element.id, changes: { y: snapValue(centerY - element.height / 2) } });
+        if (action === 'bottom') changes.push({ id: element.id, changes: { y: snapValue(bottom - element.height) } });
       });
     }
-    onInteractionEnd?.();
+    commitToolbarChanges(changes);
   }
 
   function renderContent(element: DesignElement) {
@@ -245,11 +249,17 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
 
   return <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: visibleBackground }} data-card-size={size}>
     {mode === 'editor' && <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>
-      <div className="card-style-group">
+      {selectedIds.length === 0 && <div className="card-style-group">
         <strong>Card style</strong>
         <label>Background<input type="color" value={visibleBackground} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { fill: event.target.value })} /></label>
         <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
-      </div>
+      </div>}
+      {selectedIds.length === 1 && primaryElement && <div className="object-toolbar-group">
+        <strong>{primaryElement.type}</strong>
+        <button type="button" className={primaryElement.locked ? 'is-active' : ''} onClick={() => commitToolbarChanges([{ id: primaryElement.id, changes: { locked: !primaryElement.locked } }])}>{primaryElement.locked ? 'Unlock' : 'Lock'}</button>
+        <button type="button" className={primaryElement.flipX ? 'is-active' : ''} onClick={() => commitToolbarChanges([{ id: primaryElement.id, changes: { flipX: !primaryElement.flipX } }])}>Flip H</button>
+        <button type="button" className={primaryElement.flipY ? 'is-active' : ''} onClick={() => commitToolbarChanges([{ id: primaryElement.id, changes: { flipY: !primaryElement.flipY } }])}>Flip V</button>
+      </div>}
       {selectedIds.length > 1 && <div className="selection-toolbar-group">
         <strong>{selectedIds.length} selected</strong>
         <button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : 'Group'}</button>

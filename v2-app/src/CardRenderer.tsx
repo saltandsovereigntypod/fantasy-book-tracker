@@ -62,19 +62,7 @@ function elementStyle(element: DesignElement, scale: number): React.CSSPropertie
 }
 
 function textStyle(element: TextElement, scale: number): React.CSSProperties {
-  return {
-    fontFamily: element.fontFamily,
-    fontSize: element.fontSize * scale,
-    fontWeight: element.fontWeight,
-    fontStyle: element.fontStyle,
-    textDecoration: element.textDecoration,
-    color: element.color,
-    textAlign: element.textAlign,
-    lineHeight: element.lineHeight,
-    overflow: 'hidden',
-    overflowWrap: 'anywhere',
-    whiteSpace: 'pre-wrap',
-  };
+  return { fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: element.fontWeight, fontStyle: element.fontStyle, textDecoration: element.textDecoration, color: element.color, textAlign: element.textAlign, lineHeight: element.lineHeight, overflow: 'hidden', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' };
 }
 
 function angleFromPoint(clientX: number, clientY: number, centerX: number, centerY: number) { return Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI; }
@@ -115,7 +103,11 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     refreshFonts();
     document.fonts.ready.then(refreshFonts).catch(() => undefined);
     document.fonts.addEventListener('loadingdone', refreshFonts);
-    return () => document.fonts.removeEventListener('loadingdone', refreshFonts);
+    window.addEventListener('empyrean-font-library-changed', refreshFonts);
+    return () => {
+      document.fonts.removeEventListener('loadingdone', refreshFonts);
+      window.removeEventListener('empyrean-font-library-changed', refreshFonts);
+    };
   }, []);
 
   useEffect(() => {
@@ -135,9 +127,7 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     changes.forEach((change) => onChangeElement?.(change.id, change.changes));
     finishToolbarInteraction();
   }
-  function commitPrimary(changes: Partial<DesignElement>) {
-    if (primaryElement) commitToolbarChanges([{ id: primaryElement.id, changes }]);
-  }
+  function commitPrimary(changes: Partial<DesignElement>) { if (primaryElement) commitToolbarChanges([{ id: primaryElement.id, changes }]); }
 
   function selectElement(element: DesignElement, additive: boolean) {
     if (element.id === 'card-frame') return;
@@ -152,15 +142,14 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   }
 
   function beginMove(event: React.PointerEvent<HTMLDivElement>, element: DesignElement) {
-    if (mode !== 'editor' || element.locked || element.id === 'card-frame') return;
+    if (mode !== 'editor' || element.id === 'card-frame') return;
     event.preventDefault(); event.stopPropagation();
     if (event.shiftKey) { selectElement(element, true); return; }
     selectElement(element, false);
+    if (element.locked) return;
     startInteraction();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const ids = element.groupId
-      ? design.elements.filter((item) => item.groupId === element.groupId).map((item) => item.id)
-      : selectedIds.includes(element.id) && selectedIds.length > 1 ? selectedIds : [element.id];
+    const ids = element.groupId ? design.elements.filter((item) => item.groupId === element.groupId).map((item) => item.id) : selectedIds.includes(element.id) && selectedIds.length > 1 ? selectedIds : [element.id];
     const members = design.elements.filter((item) => ids.includes(item.id)).map((item) => ({ id: item.id, x: item.x, y: item.y }));
     interaction.current = { kind: 'move', pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, element: { ...element }, members };
   }
@@ -230,12 +219,10 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     const groupId = `group-${crypto.randomUUID()}`;
     commitToolbarChanges(selectedIds.map((id) => ({ id, changes: { groupId } })));
   }
-
   function ungroupSelection() {
     if (!activeGroupId) return;
     commitToolbarChanges(design.elements.filter((element) => element.groupId === activeGroupId).map((element) => ({ id: element.id, changes: { groupId: undefined } })));
   }
-
   function alignSelection(action: AlignmentAction) {
     if (selectedElements.length < 2) return;
     const left = Math.min(...selectedElements.map((element) => element.x));
@@ -270,15 +257,32 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     commitToolbarChanges(changes);
   }
 
+  function duplicatePrimary() {
+    if (!primaryElement || primaryElement.id === 'card-frame') return;
+    startInteraction();
+    const duplicate = { ...primaryElement, id: `element-${crypto.randomUUID()}`, x: primaryElement.x + 16, y: primaryElement.y + 16, locked: false, groupId: undefined } as DesignElement;
+    design.elements.push(duplicate);
+    onChangeElement?.(duplicate.id, {});
+    onSelectElement?.(duplicate.id);
+    setSelectedIds([duplicate.id]);
+    finishToolbarInteraction();
+  }
+
+  function deleteSelection() {
+    const removable = selectedIds.filter((id) => id !== 'card-frame');
+    if (!removable.length) return;
+    startInteraction();
+    design.elements.splice(0, design.elements.length, ...design.elements.filter((element) => !removable.includes(element.id)));
+    onChangeElement?.('card-frame', {});
+    setSelectedIds([]);
+    finishToolbarInteraction();
+  }
+
   function replacePrimaryImage(file: File | undefined) {
     if (!file || !file.type.startsWith('image/') || primaryElement?.type !== 'image' || primaryElement.binding) return;
     const reader = new FileReader();
     reader.onload = () => { if (typeof reader.result === 'string') commitPrimary({ src: reader.result } as Partial<DesignElement>); };
     reader.readAsDataURL(file);
-  }
-
-  function dispatchEditorKey(key: string, options: KeyboardEventInit = {}) {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...options }));
   }
 
   function renderSingleToolbar() {
@@ -292,7 +296,7 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
         <button type="button" className={primaryElement.fontStyle === 'italic' ? 'is-active' : ''} onClick={() => commitPrimary({ fontStyle: primaryElement.fontStyle === 'italic' ? 'normal' : 'italic' } as Partial<DesignElement>)}><i>I</i></button>
         <button type="button" className={primaryElement.textDecoration === 'underline' ? 'is-active' : ''} onClick={() => commitPrimary({ textDecoration: primaryElement.textDecoration === 'underline' ? 'none' : 'underline' } as Partial<DesignElement>)}><u>U</u></button>
         <button type="button" className={primaryElement.textDecoration === 'line-through' ? 'is-active' : ''} onClick={() => commitPrimary({ textDecoration: primaryElement.textDecoration === 'line-through' ? 'none' : 'line-through' } as Partial<DesignElement>)}><s>S</s></button>
-        <select aria-label="Text alignment" value={primaryElement.textAlign ?? 'left'} onChange={(event) => commitPrimary({ textAlign: event.target.value as 'left' | 'center' | 'right' } as Partial<DesignElement>)}><option value="left">Align left</option><option value="center">Align center</option><option value="right">Align right</option></select>
+        <select aria-label="Text alignment" value={primaryElement.textAlign ?? 'left'} onChange={(event) => commitPrimary({ textAlign: event.target.value as 'left' | 'center' | 'right' } as Partial<DesignElement>)}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
       </>}
       {primaryElement.type === 'image' && <>
         {!primaryElement.binding && <label className="toolbar-upload-button">Replace<input type="file" accept="image/*" onChange={(event) => { replacePrimaryImage(event.target.files?.[0]); event.target.value = ''; }} /></label>}
@@ -300,8 +304,8 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
         <label className="toolbar-compact-number">Radius<input type="number" min="0" max="999" value={primaryElement.borderRadius ?? 0} onChange={(event) => commitPrimary({ borderRadius: Number(event.target.value) } as Partial<DesignElement>)} /></label>
       </>}
       {primaryElement.type === 'shape' && <>
-        <label className="toolbar-color" title="Fill color"><span>Fill</span><input type="color" value={primaryElement.fill === 'transparent' ? '#000000' : primaryElement.fill} onChange={(event) => commitPrimary({ fill: event.target.value } as Partial<DesignElement>)} /></label>
-        <label className="toolbar-color" title="Border color"><span>Border</span><input type="color" value={primaryElement.stroke ?? '#75451f'} onChange={(event) => commitPrimary({ stroke: event.target.value } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-color"><span>Fill</span><input type="color" value={primaryElement.fill === 'transparent' ? '#000000' : primaryElement.fill} onChange={(event) => commitPrimary({ fill: event.target.value } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-color"><span>Border</span><input type="color" value={primaryElement.stroke ?? '#75451f'} onChange={(event) => commitPrimary({ stroke: event.target.value } as Partial<DesignElement>)} /></label>
         <label className="toolbar-compact-number">Width<input type="number" min="0" max="30" value={primaryElement.strokeWidth ?? 0} onChange={(event) => commitPrimary({ strokeWidth: Number(event.target.value) } as Partial<DesignElement>)} /></label>
         <label className="toolbar-compact-number">Radius<input type="number" min="0" max="999" value={primaryElement.borderRadius ?? 0} onChange={(event) => commitPrimary({ borderRadius: Number(event.target.value) } as Partial<DesignElement>)} /></label>
       </>}
@@ -314,12 +318,12 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
         <label className="toolbar-color"><span>Track</span><input type="color" value={primaryElement.trackColor} onChange={(event) => commitPrimary({ trackColor: event.target.value } as Partial<DesignElement>)} /></label>
         <label className="toolbar-color"><span>Fill</span><input type="color" value={primaryElement.fillColor} onChange={(event) => commitPrimary({ fillColor: event.target.value } as Partial<DesignElement>)} /></label>
       </>}
-      <label className="toolbar-opacity" title="Opacity"><span>Opacity</span><input type="range" min="0" max="1" step="0.05" value={primaryElement.opacity ?? 1} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onPointerCancel={finishToolbarInteraction} onChange={(event) => onChangeElement?.(primaryElement.id, { opacity: Number(event.target.value) })} /></label>
+      <label className="toolbar-opacity"><span>Opacity</span><input type="range" min="0" max="1" step="0.05" value={primaryElement.opacity ?? 1} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onPointerCancel={finishToolbarInteraction} onChange={(event) => onChangeElement?.(primaryElement.id, { opacity: Number(event.target.value) })} /></label>
       <button type="button" className={primaryElement.locked ? 'is-active' : ''} onClick={() => commitPrimary({ locked: !primaryElement.locked })}>{primaryElement.locked ? 'Unlock' : 'Lock'}</button>
       <button type="button" className={primaryElement.flipX ? 'is-active' : ''} onClick={() => commitPrimary({ flipX: !primaryElement.flipX })}>Flip H</button>
       <button type="button" className={primaryElement.flipY ? 'is-active' : ''} onClick={() => commitPrimary({ flipY: !primaryElement.flipY })}>Flip V</button>
-      <button type="button" title="Duplicate" onClick={() => dispatchEditorKey('d', { ctrlKey: true })}>Duplicate</button>
-      <button type="button" className="toolbar-danger" title="Delete" onClick={() => dispatchEditorKey('Delete')}>Delete</button>
+      <button type="button" onClick={duplicatePrimary}>Duplicate</button>
+      <button type="button" className="toolbar-danger" onClick={deleteSelection}>Delete</button>
     </div>;
   }
 
@@ -338,36 +342,25 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     return <div className="design-element-content" style={{ color: element.color, fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: 700, lineHeight: 1.35 }}><strong>{element.label}</strong><RatingGlyphs value={value} icon={element.icon} emptyIcon={element.emptyIcon} /><small>{value} of 5</small></div>;
   }
 
-  return <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: visibleBackground }} data-card-size={size}>
-    {mode === 'editor' && <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>
-      {selectedIds.length === 0 && <div className="card-style-group">
-        <strong>Card style</strong>
-        <label>Background<input type="color" value={visibleBackground} onFocus={startInteraction} onBlur={finishToolbarInteraction} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onChange={(event) => onChangeElement?.('card-frame', { fill: event.target.value })} /></label>
-        <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={finishToolbarInteraction} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
-      </div>}
-      {selectedIds.length === 1 && renderSingleToolbar()}
-      {selectedIds.length > 1 && <div className="selection-toolbar-group">
-        <strong>{selectedIds.length} selected</strong>
-        <button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : 'Group'}</button>
-        <button type="button" title="Align left" onClick={() => alignSelection('left')}>⇤</button>
-        <button type="button" title="Align horizontal centers" onClick={() => alignSelection('center-x')}>↔</button>
-        <button type="button" title="Align right" onClick={() => alignSelection('right')}>⇥</button>
-        <button type="button" title="Align top" onClick={() => alignSelection('top')}>↥</button>
-        <button type="button" title="Align vertical centers" onClick={() => alignSelection('center-y')}>↕</button>
-        <button type="button" title="Align bottom" onClick={() => alignSelection('bottom')}>↧</button>
-        <button type="button" title="Distribute horizontally" disabled={selectedIds.length < 3} onClick={() => alignSelection('distribute-x')}>H</button>
-        <button type="button" title="Distribute vertically" disabled={selectedIds.length < 3} onClick={() => alignSelection('distribute-y')}>V</button>
-      </div>}
-    </div>}
-    {mode === 'editor' && guides.vertical.map((position) => <div key={`v-${position}`} className="alignment-guide alignment-guide--vertical" style={{ left: position * scale }} />)}
-    {mode === 'editor' && guides.horizontal.map((position) => <div key={`h-${position}`} className="alignment-guide alignment-guide--horizontal" style={{ top: position * scale }} />)}
-    {design.elements.map((element) => {
-      const selected = mode === 'editor' && selectedIds.includes(element.id);
-      const primary = selectedElementId === element.id;
-      return <div key={element.id} className={`design-element design-element--${element.type}${selected ? ' is-selected' : ''}${selected && !primary ? ' is-secondary-selected' : ''}${element.locked ? ' is-locked' : ''}`} style={elementStyle(element, scale)} onPointerDown={mode === 'editor' ? (event) => beginMove(event, element) : undefined} onPointerMove={mode === 'editor' ? continueInteraction : undefined} onPointerUp={mode === 'editor' ? endInteraction : undefined} onPointerCancel={mode === 'editor' ? endInteraction : undefined}>
-        {renderContent(element)}
-        {primary && selected && !element.locked && <div className="selection-controls" aria-hidden="true"><button className="rotation-handle" tabIndex={-1} onPointerDown={(event) => beginRotate(event, element)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />{(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, element, handle)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />)}</div>}
-      </div>;
-    })}
+  const toolbar = mode === 'editor' ? <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>
+    {selectedIds.length === 0 && <div className="card-style-group"><strong>Card style</strong><label>Background<input type="color" value={visibleBackground} onFocus={startInteraction} onBlur={finishToolbarInteraction} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onChange={(event) => onChangeElement?.('card-frame', { fill: event.target.value })} /></label><label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={finishToolbarInteraction} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label></div>}
+    {selectedIds.length === 1 && renderSingleToolbar()}
+    {selectedIds.length > 1 && <div className="selection-toolbar-group"><strong>{selectedIds.length} selected</strong><button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : 'Group'}</button><button type="button" title="Align left" onClick={() => alignSelection('left')}>⇤</button><button type="button" title="Align horizontal centers" onClick={() => alignSelection('center-x')}>↔</button><button type="button" title="Align right" onClick={() => alignSelection('right')}>⇥</button><button type="button" title="Align top" onClick={() => alignSelection('top')}>↥</button><button type="button" title="Align vertical centers" onClick={() => alignSelection('center-y')}>↕</button><button type="button" title="Align bottom" onClick={() => alignSelection('bottom')}>↧</button><button type="button" title="Distribute horizontally" disabled={selectedIds.length < 3} onClick={() => alignSelection('distribute-x')}>H</button><button type="button" title="Distribute vertically" disabled={selectedIds.length < 3} onClick={() => alignSelection('distribute-y')}>V</button><button type="button" className="toolbar-danger" onClick={deleteSelection}>Delete</button></div>}
+  </div> : null;
+
+  return <div className="card-editor-shell" style={{ width: outputWidth }}>
+    {toolbar}
+    <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: visibleBackground }} data-card-size={size}>
+      {mode === 'editor' && guides.vertical.map((position) => <div key={`v-${position}`} className="alignment-guide alignment-guide--vertical" style={{ left: position * scale }} />)}
+      {mode === 'editor' && guides.horizontal.map((position) => <div key={`h-${position}`} className="alignment-guide alignment-guide--horizontal" style={{ top: position * scale }} />)}
+      {design.elements.map((element) => {
+        const selected = mode === 'editor' && selectedIds.includes(element.id);
+        const primary = selectedElementId === element.id;
+        return <div key={element.id} className={`design-element design-element--${element.type}${selected ? ' is-selected' : ''}${selected && !primary ? ' is-secondary-selected' : ''}${element.locked ? ' is-locked' : ''}`} style={elementStyle(element, scale)} onPointerDown={mode === 'editor' ? (event) => beginMove(event, element) : undefined} onPointerMove={mode === 'editor' ? continueInteraction : undefined} onPointerUp={mode === 'editor' ? endInteraction : undefined} onPointerCancel={mode === 'editor' ? endInteraction : undefined}>
+          {renderContent(element)}
+          {primary && selected && !element.locked && <div className="selection-controls" aria-hidden="true"><button className="rotation-handle" tabIndex={-1} onPointerDown={(event) => beginRotate(event, element)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />{(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, element, handle)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />)}</div>}
+        </div>;
+      })}
+    </div>
   </div>;
 }

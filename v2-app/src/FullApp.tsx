@@ -8,6 +8,7 @@ import { saveWorkspaceDraft, WORKSPACE_DRAFT_EVENT, type WorkspaceDraft } from '
 import { getAuthSnapshot, signIn, signOut, signUp, supabase } from './supabase';
 import type { CardSize } from './domain';
 import './full-app.css';
+import './full-app-enhancements.css';
 
 type AppView = 'dashboard' | 'library' | 'editor' | 'theories' | 'wall' | 'mindmap' | 'profile';
 type NavView = Exclude<AppView, 'editor'>;

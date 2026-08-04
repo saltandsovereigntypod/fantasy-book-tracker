@@ -28,9 +28,25 @@ function boundValue(book: BookRecord, element: DesignElement): string | number {
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
-function ratingGlyphs(value: number, icon: string, emptyIcon: string): string {
-  const rounded = Math.max(0, Math.min(5, Math.round(value)));
-  return `${icon.repeat(rounded)}${emptyIcon.repeat(5 - rounded)}`;
+function RatingGlyphs({ value, icon, emptyIcon }: { value: number; icon: string; emptyIcon: string }) {
+  const safeValue = Math.max(0, Math.min(5, value));
+  return (
+    <span className="rating-glyph-row" aria-label={`${safeValue} of 5`}>
+      {Array.from({ length: 5 }, (_, index) => {
+        const fill = Math.max(0, Math.min(1, safeValue - index));
+        return (
+          <span className="rating-glyph-slot" key={index}>
+            <span className="rating-glyph-empty">{emptyIcon}</span>
+            {fill > 0 && (
+              <span className="rating-glyph-fill" style={{ width: `${fill * 100}%` }}>
+                <span>{icon}</span>
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 function elementStyle(element: DesignElement, scale: number): React.CSSProperties {
@@ -234,7 +250,7 @@ export function CardRenderer({
     return (
       <div className="design-element-content" style={{ color: element.color, fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: 700, lineHeight: 1.35 }}>
         <strong>{element.label}</strong>
-        <div>{ratingGlyphs(value, element.icon, element.emptyIcon)}</div>
+        <RatingGlyphs value={value} icon={element.icon} emptyIcon={element.emptyIcon} />
         <small>{value} of 5</small>
       </div>
     );

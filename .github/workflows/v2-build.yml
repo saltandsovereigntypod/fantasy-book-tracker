@@ -1,0 +1,35 @@
+name: V2 Build
+
+on:
+  push:
+    branches: [v2]
+    paths:
+      - 'v2-app/**'
+      - '.github/workflows/v2-build.yml'
+  pull_request:
+    paths:
+      - 'v2-app/**'
+      - '.github/workflows/v2-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: v2-app/package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Build V2
+        run: npm run build

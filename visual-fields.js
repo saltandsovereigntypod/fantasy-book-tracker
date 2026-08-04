@@ -25,7 +25,6 @@
     { id: 'linkedTheoryIds', label: 'Theories count', category: 'Connections', path: 'linkedTheoryIds', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 130, defaultHeight: 48 },
     { id: 'linkedWallIds', label: 'Walls count', category: 'Connections', path: 'linkedWallIds', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 130, defaultHeight: 48 },
     { id: 'bookConnections', label: 'Relationships count', category: 'Connections', path: 'bookConnections', type: 'count', role: 'metadata', moduleType: 'counter', defaultWidth: 160, defaultHeight: 48 },
-    { id: '$actions', label: 'Action buttons', category: 'Actions', path: '$actions', type: 'actions', role: 'actions', moduleType: 'actions', defaultWidth: 260, defaultHeight: 62 },
     { id: 'customTracker', label: 'Custom tracker', category: 'Custom', path: 'customTracker', type: 'custom', role: 'custom-slider', moduleType: 'custom-slider', defaultWidth: 190, defaultHeight: 72 }
   ];
 
@@ -46,7 +45,6 @@
   function resolve(record = {}, fieldOrPath = '') {
     const field = typeof fieldOrPath === 'object' ? fieldOrPath : fieldById(fieldOrPath) || { id: fieldOrPath, path: fieldOrPath };
     const id = field.id, path = field.path || id;
-    if (id === '$actions') return '$actions';
     if (id === 'rating') return record.ratings?.overall ?? record.ratings?.rating ?? record.rating ?? 0;
     if (id === 'spice') return record.ratings?.spice ?? record.spice ?? 0;
     if (id === 'impact') return record.ratings?.impact ?? record.impact ?? 0;
@@ -72,7 +70,6 @@
     const field = typeof fieldOrPath === 'object' ? fieldOrPath : fieldById(fieldOrPath) || { id: fieldOrPath, path: fieldOrPath };
     const value = resolve(record, field);
     if (field.type === 'image') return imageUrl(value);
-    if (field.type === 'actions') return 'Action buttons';
     if (field.type === 'custom') return typeof value === 'object' ? value.name || 'Custom tracker' : String(value || 'Custom tracker');
     if (field.type === 'date') return value ? new Date(value).toLocaleDateString() : '';
     if (field.type === 'count') return String(Array.isArray(value) ? value.length : Number(value || 0));

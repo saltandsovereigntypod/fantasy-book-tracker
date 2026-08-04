@@ -5,6 +5,18 @@ import type { BookFieldPath, BookRecord, CardDesign, CardSize, DesignElement } f
 import { FIELD_LABELS } from './domain';
 import './styles.css';
 
+const RATING_ICON_PRESETS = [
+  { label: 'Stars', icon: '★', emptyIcon: '☆' },
+  { label: 'Hearts', icon: '♥', emptyIcon: '♡' },
+  { label: 'Diamonds', icon: '◆', emptyIcon: '◇' },
+  { label: 'Circles', icon: '●', emptyIcon: '○' },
+  { label: 'Squares', icon: '■', emptyIcon: '□' },
+  { label: 'Triangles', icon: '▲', emptyIcon: '△' },
+  { label: 'Sparkles', icon: '✦', emptyIcon: '✧' },
+  { label: 'Spades', icon: '♠', emptyIcon: '♤' },
+  { label: 'Clubs', icon: '♣', emptyIcon: '♧' },
+] as const;
+
 function hasBinding(design: CardDesign, path: BookFieldPath) {
   return design.elements.some((element) => element.binding === path);
 }
@@ -18,14 +30,15 @@ function createBoundElement(path: BookFieldPath, index: number): DesignElement {
     return { id: `element-${crypto.randomUUID()}`, type: 'progress', binding: path, x: 150, y, width: 220, height: 9, trackColor: '#75451f', fillColor: '#bd662f', borderRadius: 999 };
   }
   if (path === 'rating' || path === 'spice' || path === 'impact') {
+    const preset = path === 'rating' ? RATING_ICON_PRESETS[0] : path === 'spice' ? RATING_ICON_PRESETS[5] : RATING_ICON_PRESETS[1];
     return {
       id: `element-${crypto.randomUUID()}`,
       type: 'rating',
       binding: path,
       metric: path,
       label: FIELD_LABELS[path],
-      icon: path === 'rating' ? '★' : path === 'spice' ? '🔥' : '♥',
-      emptyIcon: path === 'rating' ? '☆' : path === 'spice' ? '·' : '♡',
+      icon: preset.icon,
+      emptyIcon: preset.emptyIcon,
       x: 150,
       y,
       width: 150,
@@ -112,19 +125,20 @@ export default function App() {
   function moveSelectedLayer(direction: 'forward' | 'backward' | 'front' | 'back') {
     if (!selectedElementId) return;
     setDesign((current) => {
-      const elements = [...current.elements];
-      const index = elements.findIndex((element) => element.id === selectedElementId);
+      const protectedBase = current.elements.filter((element) => element.id === 'card-frame');
+      const movable = current.elements.filter((element) => element.id !== 'card-frame');
+      const index = movable.findIndex((element) => element.id === selectedElementId);
       if (index < 0) return current;
-      const [element] = elements.splice(index, 1);
+      const [element] = movable.splice(index, 1);
       const nextIndex = direction === 'front'
-        ? elements.length
+        ? movable.length
         : direction === 'back'
           ? 0
           : direction === 'forward'
-            ? Math.min(elements.length, index + 1)
+            ? Math.min(movable.length, index + 1)
             : Math.max(0, index - 1);
-      elements.splice(nextIndex, 0, element);
-      return { ...current, elements };
+      movable.splice(nextIndex, 0, element);
+      return { ...current, elements: [...protectedBase, ...movable] };
     });
   }
 
@@ -242,6 +256,17 @@ export default function App() {
                 )}
                 {selectedElement.type === 'rating' && (
                   <>
+                    <label>Rating symbols
+                      <select
+                        value={`${selectedElement.icon}|${selectedElement.emptyIcon}`}
+                        onChange={(event) => {
+                          const preset = RATING_ICON_PRESETS.find((item) => `${item.icon}|${item.emptyIcon}` === event.target.value);
+                          if (preset) updateSelected({ icon: preset.icon, emptyIcon: preset.emptyIcon } as Partial<DesignElement>);
+                        }}
+                      >
+                        {RATING_ICON_PRESETS.map((preset) => <option key={preset.label} value={`${preset.icon}|${preset.emptyIcon}`}>{preset.icon}{preset.emptyIcon} · {preset.label}</option>)}
+                      </select>
+                    </label>
                     <label>Rating color<input type="color" value={selectedElement.color} onChange={(event) => updateSelected({ color: event.target.value } as Partial<DesignElement>)} /></label>
                     <label>Font size<input type="range" min="8" max="36" value={selectedElement.fontSize} onChange={(event) => updateSelected({ fontSize: Number(event.target.value) } as Partial<DesignElement>)} /></label>
                   </>

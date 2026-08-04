@@ -29,6 +29,8 @@ export interface WorkspaceDraft {
   updatedAt: string;
 }
 
+export const WORKSPACE_DRAFT_EVENT = 'empyrean-v2-workspace-draft';
+
 type LibraryItem = FontLibraryItem | UploadLibraryItem;
 type StoreName = 'fonts' | 'uploads' | 'workspace';
 
@@ -99,6 +101,7 @@ export async function loadWorkspaceDraft(): Promise<WorkspaceDraft | null> {
 export async function saveWorkspaceDraft(book: BookRecord, design: CardDesign): Promise<void> {
   const draft: WorkspaceDraft = { id: 'active', book, design, updatedAt: new Date().toISOString() };
   await withStore<IDBValidKey>('workspace', 'readwrite', (store) => store.put(draft));
+  window.dispatchEvent(new CustomEvent<WorkspaceDraft>(WORKSPACE_DRAFT_EVENT, { detail: draft }));
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {

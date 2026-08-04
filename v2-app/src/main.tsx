@@ -4,7 +4,9 @@ import FullApp from './FullApp';
 import './creative-libraries.css';
 import './stage-controls.css';
 import './editor-shell.css';
+import './editor-toolbar-dock.css';
 import './editor-shell';
+import './editor-toolbar-dock';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

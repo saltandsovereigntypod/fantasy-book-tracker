@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '20260804-2';
+  const VERSION = '20260804-3';
   let editorCover = null;
 
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -20,7 +20,9 @@
   }
 
   function ratingText(path, value) {
-    const numeric = clamp(value, 0, 5), full = Math.floor(numeric), half = numeric - full >= .5 && full < 5;
+    const numeric = clamp(value, 0, 5);
+    const full = Math.floor(numeric);
+    const half = numeric - full >= 0.5 && full < 5;
     const label = path === 'spice' ? 'Spice' : path === 'impact' ? 'Emotional impact' : 'Overall rating';
     const fullGlyph = path === 'spice' ? '🔥' : path === 'impact' ? '♥' : '★';
     const emptyGlyph = path === 'spice' ? '·' : path === 'impact' ? '♡' : '☆';
@@ -52,27 +54,39 @@
       if (!object) return [];
       if (removableIds.has(object.id) || ['actions', 'action-button'].includes(object.cardRole) || ['future-actions', 'book-actions'].includes(object.semanticGroup) || looksLikeLegacyActions(object)) return [];
       if (Array.isArray(object.objects)) object.objects = cleanObjects(object.objects);
+
       const path = object.dataBinding?.path || object.sliderConfig?.path || '';
       const type = String(object.type || '').toLowerCase();
 
-      if (path === 'coverUrl' || object.id === 'cover') {
-        if (coverUrl && (type === 'image' || object.src || object.dataBinding?.path === 'coverUrl')) {
-          cover ||= {
-            src: coverUrl,
-            left: number(object.left, 22),
-            top: number(object.top, 22),
-            width: number(object.width, 108) * number(object.scaleX, 1),
-            height: number(object.height, 162) * number(object.scaleY, 1),
-            angle: number(object.angle, 0)
-          };
-          return [{
-            type: 'Rect', id: `${object.id || 'cover'}-safe-placeholder`, name: 'Cover placeholder', cardRole: 'cover',
-            left: number(object.left, 22), top: number(object.top, 22), width: number(object.width, 108), height: number(object.height, 162),
-            scaleX: number(object.scaleX, 1), scaleY: number(object.scaleY, 1), angle: number(object.angle, 0),
-            fill: 'rgba(255,255,255,.025)', stroke: 'rgba(255,255,255,.14)', strokeWidth: 1, rx: 10, ry: 10,
-            selectable: object.selectable !== false, evented: object.evented !== false
-          }];
-        }
+      if ((path === 'coverUrl' || object.id === 'cover') && coverUrl && (type === 'image' || object.src)) {
+        cover ||= {
+          src: coverUrl,
+          left: number(object.left, 22),
+          top: number(object.top, 22),
+          width: number(object.width, 108) * number(object.scaleX, 1),
+          height: number(object.height, 162) * number(object.scaleY, 1),
+          angle: number(object.angle, 0)
+        };
+        return [{
+          type: 'Rect',
+          id: `${object.id || 'cover'}-safe-placeholder`,
+          name: 'Cover placeholder',
+          cardRole: 'cover',
+          left: number(object.left, 22),
+          top: number(object.top, 22),
+          width: number(object.width, 108),
+          height: number(object.height, 162),
+          scaleX: number(object.scaleX, 1),
+          scaleY: number(object.scaleY, 1),
+          angle: number(object.angle, 0),
+          fill: 'rgba(255,255,255,.025)',
+          stroke: 'rgba(255,255,255,.14)',
+          strokeWidth: 1,
+          rx: 10,
+          ry: 10,
+          selectable: object.selectable !== false,
+          evented: object.evented !== false
+        }];
       }
 
       if (path === 'status' && 'text' in object) object.text = statusLabel(recordValue(record, path));
@@ -87,28 +101,36 @@
 
     scene.objects = cleanObjects(scene.objects);
     const all = [];
-    const visit = object => { all.push(object); (object.objects || []).forEach(visit); };
+    const visit = object => {
+      all.push(object);
+      (object.objects || []).forEach(visit);
+    };
     (scene.objects || []).forEach(visit);
+
     const track = all.find(object => object.id === 'progress-track' || (object.sliderConfig?.path === 'progress' && object.sliderConfig?.role === 'track'));
     const fill = all.find(object => object.id === 'progress-fill' || (object.sliderConfig?.path === 'progress' && object.sliderConfig?.role === 'fill'));
     const progress = clamp(recordValue(record, 'progress'), 0, 100);
+
     if (fill) {
       const trackWidth = number(fill.sliderConfig?.trackWidth, number(track?.width, 248));
       fill.sliderConfig = { ...(fill.sliderConfig || {}), path: 'progress', role: 'fill', max: 100, trackWidth };
       fill.width = trackWidth * progress / 100;
       fill.scaleX = 1;
     }
-    if (track) track.sliderConfig = { ...(track.sliderConfig || {}), path: 'progress', role: 'track', max: 100, trackWidth: number(track.width, 248) };
+    if (track) {
+      track.sliderConfig = { ...(track.sliderConfig || {}), path: 'progress', role: 'track', max: 100, trackWidth: number(track.width, 248) };
+    }
+
     scene.__repairCover = cover;
     scene.__repairVersion = VERSION;
     return scene;
   }
 
-  function addCoverOverlay(viewport, cover, designWidth, designHeight, editor = false) {
-    if (!viewport || !cover?.src) return;
-    viewport.querySelectorAll(editor ? '.fabric-editor-cover-overlay' : '.fabric-cover-overlay').forEach(node => node.remove());
+  function addEditorCoverOverlay(frame, cover, designWidth, designHeight) {
+    if (!frame || !cover?.src) return;
+    frame.querySelectorAll('.fabric-editor-cover-overlay').forEach(node => node.remove());
     const image = document.createElement('img');
-    image.className = editor ? 'fabric-editor-cover-overlay' : 'fabric-cover-overlay';
+    image.className = 'fabric-editor-cover-overlay';
     image.alt = '';
     image.src = cover.src;
     image.style.left = `${cover.left / designWidth * 100}%`;
@@ -118,40 +140,23 @@
     image.style.transform = `rotate(${number(cover.angle, 0)}deg)`;
     image.style.transformOrigin = 'center';
     image.onerror = () => image.remove();
-    viewport.appendChild(image);
+    frame.appendChild(image);
   }
 
-  function installCanvasRepairs() {
+  function installSafeRepairs() {
     const api = globalThis.CanvasEditor;
     if (!api || api.__uiRepairInstalled) return false;
+
     const originalResolve = api.resolveBookCardScene?.bind(api);
-    const originalRegister = api.registerRenderScene?.bind(api);
-    const originalRender = api.renderSavedCanvas?.bind(api);
     const originalOpen = api.openBookCardEditor?.bind(api);
-    const renderMeta = new Map();
 
+    // Deliberately do not wrap registerRenderScene or renderSavedCanvas.
+    // The original Canvas Editor must exclusively own registry keys and lookups.
     if (originalResolve) {
-      api.resolveBookCardScene = (record = {}, template = {}, preferences = {}, options = {}) => sanitizeScene(originalResolve(record, template, preferences, options), record);
-      api.resolveCardScene = (template = {}, record = {}, options = {}) => api.resolveBookCardScene(record, template, options.visible || {}, options);
-    }
-
-    if (originalRegister) {
-      api.registerRenderScene = (scene, meta = {}) => {
-        const clean = sanitizeScene(scene, meta.record || {});
-        const key = originalRegister(clean, meta);
-        renderMeta.set(key, { cover: clean.__repairCover || null, width: number(clean.width, 420), height: number(clean.height, 380) });
-        return key;
-      };
-    }
-
-    if (originalRender) {
-      api.renderSavedCanvas = async (element, options = {}) => {
-        await originalRender(element, options);
-        const key = element?.dataset?.fabricSceneKey;
-        const meta = key ? renderMeta.get(key) : null;
-        const viewport = element?.closest('.fabric-card-viewport');
-        if (meta?.cover && viewport) addCoverOverlay(viewport, meta.cover, meta.width, meta.height, false);
-      };
+      api.resolveBookCardScene = (record = {}, template = {}, preferences = {}, options = {}) =>
+        sanitizeScene(originalResolve(record, template, preferences, options), record);
+      api.resolveCardScene = (template = {}, record = {}, options = {}) =>
+        api.resolveBookCardScene(record, template, options.visible || {}, options);
     }
 
     if (originalOpen) {
@@ -177,7 +182,7 @@
     frame.style.position = 'relative';
     const width = number(canvas.dataset.designWidth || canvas.width, 420);
     const height = number(canvas.dataset.designHeight || canvas.height, 380);
-    addCoverOverlay(frame, editorCover, width, height, true);
+    addEditorCoverOverlay(frame, editorCover, width, height);
   }
 
   function ensureModalClose() {
@@ -216,16 +221,27 @@
     });
   }
 
-  const timer = setInterval(() => { if (installCanvasRepairs()) clearInterval(timer); }, 25);
+  const timer = setInterval(() => {
+    if (installSafeRepairs()) clearInterval(timer);
+  }, 25);
   setTimeout(() => clearInterval(timer), 20000);
+
   const observer = new MutationObserver(() => {
     ensureModalClose();
     addTrailingBookTile();
     injectEditorCover();
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { ensureModalClose(); addTrailingBookTile(); });
-  else { ensureModalClose(); addTrailingBookTile(); }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      ensureModalClose();
+      addTrailingBookTile();
+    });
+  } else {
+    ensureModalClose();
+    addTrailingBookTile();
+  }
 
   globalThis.UiRepair = { VERSION, sanitizeScene };
 })();

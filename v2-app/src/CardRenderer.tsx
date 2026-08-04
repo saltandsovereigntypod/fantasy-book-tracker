@@ -16,6 +16,7 @@ interface CardRendererProps {
 
 type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 type MoveMember = { id: string; x: number; y: number };
+type AlignmentAction = 'left' | 'center-x' | 'right' | 'top' | 'center-y' | 'bottom' | 'distribute-x' | 'distribute-y';
 type Interaction =
   | { kind: 'move'; pointerId: number; startClientX: number; startClientY: number; element: DesignElement; members: MoveMember[] }
   | { kind: 'resize'; pointerId: number; startClientX: number; startClientY: number; element: DesignElement; handle: ResizeHandle }
@@ -73,8 +74,14 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   const [guides, setGuides] = useState<Guides>({ vertical: [], horizontal: [] });
   const [selectedIds, setSelectedIds] = useState<string[]>(selectedElementId ? [selectedElementId] : []);
   const frame = design.elements.find((element) => element.id === 'card-frame');
+  const frameFill = frame?.type === 'shape' ? frame.fill : design.background;
+  const visibleBackground = frameFill === '#2b160d' && design.background !== '#2b160d' ? design.background : frameFill;
   const selectedElements = useMemo(() => design.elements.filter((element) => selectedIds.includes(element.id)), [design.elements, selectedIds]);
   const activeGroupId = selectedElements.length > 1 && selectedElements.every((element) => element.groupId && element.groupId === selectedElements[0].groupId) ? selectedElements[0].groupId : undefined;
+
+  useEffect(() => {
+    if (frame?.type === 'shape' && frame.fill === '#2b160d' && design.background !== '#2b160d') onChangeElement?.('card-frame', { fill: design.background });
+  }, [design.background, frame?.type === 'shape' ? frame.fill : undefined]);
 
   useEffect(() => {
     if (!selectedElementId) setSelectedIds([]);
@@ -186,6 +193,41 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     onInteractionEnd?.();
   }
 
+  function alignSelection(action: AlignmentAction) {
+    if (selectedElements.length < 2) return;
+    startInteraction();
+    const left = Math.min(...selectedElements.map((element) => element.x));
+    const right = Math.max(...selectedElements.map((element) => element.x + element.width));
+    const top = Math.min(...selectedElements.map((element) => element.y));
+    const bottom = Math.max(...selectedElements.map((element) => element.y + element.height));
+    const centerX = (left + right) / 2;
+    const centerY = (top + bottom) / 2;
+
+    if (action === 'distribute-x' && selectedElements.length > 2) {
+      const sorted = [...selectedElements].sort((a, b) => a.x - b.x);
+      const totalWidth = sorted.reduce((sum, element) => sum + element.width, 0);
+      const gap = (right - left - totalWidth) / (sorted.length - 1);
+      let cursor = left;
+      sorted.forEach((element) => { onChangeElement?.(element.id, { x: snapValue(cursor) }); cursor += element.width + gap; });
+    } else if (action === 'distribute-y' && selectedElements.length > 2) {
+      const sorted = [...selectedElements].sort((a, b) => a.y - b.y);
+      const totalHeight = sorted.reduce((sum, element) => sum + element.height, 0);
+      const gap = (bottom - top - totalHeight) / (sorted.length - 1);
+      let cursor = top;
+      sorted.forEach((element) => { onChangeElement?.(element.id, { y: snapValue(cursor) }); cursor += element.height + gap; });
+    } else {
+      selectedElements.forEach((element) => {
+        if (action === 'left') onChangeElement?.(element.id, { x: snapValue(left) });
+        if (action === 'center-x') onChangeElement?.(element.id, { x: snapValue(centerX - element.width / 2) });
+        if (action === 'right') onChangeElement?.(element.id, { x: snapValue(right - element.width) });
+        if (action === 'top') onChangeElement?.(element.id, { y: snapValue(top) });
+        if (action === 'center-y') onChangeElement?.(element.id, { y: snapValue(centerY - element.height / 2) });
+        if (action === 'bottom') onChangeElement?.(element.id, { y: snapValue(bottom - element.height) });
+      });
+    }
+    onInteractionEnd?.();
+  }
+
   function renderContent(element: DesignElement) {
     if (element.type === 'shape') {
       const fill = element.id === 'card-frame' ? 'transparent' : element.fill;
@@ -201,10 +243,25 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     return <div className="design-element-content" style={{ color: element.color, fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: 700, lineHeight: 1.35 }}><strong>{element.label}</strong><RatingGlyphs value={value} icon={element.icon} emptyIcon={element.emptyIcon} /><small>{value} of 5</small></div>;
   }
 
-  return <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: design.background }} data-card-size={size}>
+  return <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: visibleBackground }} data-card-size={size}>
     {mode === 'editor' && <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>
-      <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
-      {selectedIds.length > 1 && <button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : `Group ${selectedIds.length}`}</button>}
+      <div className="card-style-group">
+        <strong>Card style</strong>
+        <label>Background<input type="color" value={visibleBackground} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { fill: event.target.value })} /></label>
+        <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
+      </div>
+      {selectedIds.length > 1 && <div className="selection-toolbar-group">
+        <strong>{selectedIds.length} selected</strong>
+        <button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : 'Group'}</button>
+        <button type="button" title="Align left" onClick={() => alignSelection('left')}>⇤</button>
+        <button type="button" title="Align horizontal centers" onClick={() => alignSelection('center-x')}>↔</button>
+        <button type="button" title="Align right" onClick={() => alignSelection('right')}>⇥</button>
+        <button type="button" title="Align top" onClick={() => alignSelection('top')}>↥</button>
+        <button type="button" title="Align vertical centers" onClick={() => alignSelection('center-y')}>↕</button>
+        <button type="button" title="Align bottom" onClick={() => alignSelection('bottom')}>↧</button>
+        <button type="button" title="Distribute horizontally" disabled={selectedIds.length < 3} onClick={() => alignSelection('distribute-x')}>H</button>
+        <button type="button" title="Distribute vertically" disabled={selectedIds.length < 3} onClick={() => alignSelection('distribute-y')}>V</button>
+      </div>}
     </div>}
     {mode === 'editor' && guides.vertical.map((position) => <div key={`v-${position}`} className="alignment-guide alignment-guide--vertical" style={{ left: position * scale }} />)}
     {mode === 'editor' && guides.horizontal.map((position) => <div key={`h-${position}`} className="alignment-guide alignment-guide--horizontal" style={{ top: position * scale }} />)}

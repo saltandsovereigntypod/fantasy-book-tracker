@@ -22,7 +22,12 @@ export const defaultDesign: CardDesign = {
   width: 420,
   height: 380,
   background: '#2b160d',
-  version: 1,
+  version: 2,
+  actions: [
+    { id: 'action-profile', action: 'profile', label: 'Profile', icon: '◫', variant: 'primary', background: '#a64f24', color: '#ffffff', borderColor: '#d0783c', borderRadius: 9, fontSize: 14, visibleOn: ['small', 'medium', 'large'] },
+    { id: 'action-edit', action: 'edit', label: 'Edit', icon: '✦', variant: 'secondary', background: '#2b160d', color: '#f7ead2', borderColor: '#75451f', borderRadius: 9, fontSize: 14, visibleOn: ['small', 'medium', 'large'] },
+    { id: 'action-favorite', action: 'favorite', label: 'Favorite', icon: '☆', variant: 'ghost', background: 'transparent', color: '#f7ead2', borderColor: '#75451f', borderRadius: 9, fontSize: 14, visibleOn: ['medium', 'large'] },
+  ],
   elements: [
     { id: 'card-frame', type: 'shape', x: 0, y: 0, width: 420, height: 380, fill: '#2b160d', stroke: '#75451f', strokeWidth: 2, borderRadius: 22, locked: true },
     { id: 'cover', type: 'image', binding: 'coverUrl', x: 18, y: 24, width: 112, height: 164, fit: 'cover', borderRadius: 12 },

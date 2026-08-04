@@ -32,6 +32,21 @@ function newAction(action: CardActionType): CardAction {
   };
 }
 
+export function CardActionsPreview({ actions, size, interactive = false, onAction }: { actions: CardAction[] | undefined; size: CardSize; interactive?: boolean; onAction?: (action: CardAction) => void }) {
+  const visible = (actions ?? []).filter((action) => action.visibleOn.includes(size));
+  if (!visible.length) return null;
+  return <div className="v2-runtime-actions" aria-label="Card actions">
+    {visible.map((action) => <button
+      key={action.id}
+      type="button"
+      disabled={!interactive}
+      data-action-type={action.action}
+      onClick={() => interactive && onAction?.(action)}
+      style={{ background: action.background, color: action.color, border: `1px solid ${action.borderColor}`, borderRadius: action.borderRadius, fontSize: action.fontSize }}
+    >{action.icon && <span aria-hidden="true">{action.icon}</span>}{action.label}</button>)}
+  </div>;
+}
+
 export function CardActionsDesigner({ design, onChange }: { design: CardDesign; onChange: (actions: CardAction[]) => void }) {
   const actions = design.actions ?? [];
 

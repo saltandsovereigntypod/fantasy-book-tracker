@@ -34,6 +34,7 @@
 }
 
 .card-style-group,
+.object-toolbar-group,
 .selection-toolbar-group {
   display: flex;
   align-items: center;
@@ -79,18 +80,14 @@
   font-weight: 800;
 }
 
-.card-inline-tools button:hover:not(:disabled) {
+.card-inline-tools button:hover:not(:disabled),
+.card-inline-tools button.is-active {
   border-color: #d0783c;
   background: #75451f;
 }
 
 .card-inline-tools button:disabled {
   opacity: .34;
-}
-
-.selection-toolbar-group {
-  padding-top: 7px;
-  border-top: 1px solid #4b2e1d;
 }
 
 .card-renderer--editor .design-element.is-secondary-selected {

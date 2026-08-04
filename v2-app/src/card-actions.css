@@ -23,12 +23,50 @@
 .card-action-sizes button { padding: 6px 9px; text-transform: capitalize; }
 .card-action-sizes button.is-active { border-color: #d0783c; background: #75451f; }
 
-.v2-runtime-actions { width: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.v2-runtime-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 11px; font-weight: 750; cursor: pointer; }
+.stage-canvas,
+.v2-library-grid > article { position: relative; }
+.v2-runtime-actions--overlay {
+  position: absolute;
+  inset: 0 auto auto 50%;
+  z-index: 12;
+  width: var(--card-output-width, 420px);
+  height: var(--card-output-height, 380px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.v2-library-grid > article > .v2-runtime-actions--overlay {
+  top: 14px;
+}
+.v2-runtime-actions--overlay button {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+.v2-runtime-actions--overlay button:disabled {
+  cursor: default;
+  opacity: 1;
+  pointer-events: none;
+}
+.section-tabs--seven {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.section-tabs--seven button {
+  min-width: 0;
+  padding-inline: 6px;
+  font-size: .78rem;
+}
 
 @media (max-width: 700px) {
   .card-actions-add > div,
   .card-action-fields { grid-template-columns: 1fr; }
-  .v2-runtime-actions { justify-content: stretch; }
-  .v2-runtime-actions button { flex: 1 1 auto; }
+  .section-tabs--seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

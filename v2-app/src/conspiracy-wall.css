@@ -15,6 +15,11 @@
 .wall-board-bar { display: grid; grid-template-columns: minmax(180px, 260px) minmax(240px, 1fr) auto auto auto; align-items: end; gap: 10px; padding: 12px; border: 1px solid var(--v2-border); border-radius: 14px; background: var(--v2-panel); }
 .wall-board-bar select,
 .wall-board-bar input { width: 100%; }
+.wall-zoom-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wall-zoom-bar button:first-child,
+.wall-zoom-bar button:nth-child(3) { width: 38px; padding-inline: 0; }
+.wall-zoom-bar strong { min-width: 58px; text-align: center; }
+.wall-zoom-bar span { margin-left: auto; color: var(--v2-muted); font-size: .75rem; }
 .wall-region-manager { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--v2-border); border-radius: 14px; background: #130b08; }
 .wall-region-manager > p { margin: 0; color: var(--v2-muted); }
 .wall-region-manager article { display: grid; grid-template-columns: minmax(170px, 1fr) minmax(180px, 240px) auto 48px auto; align-items: center; gap: 8px; }
@@ -30,8 +35,9 @@
 .wall-source-results button:hover { background: #2a160e; }
 .wall-source-results span,
 .wall-source-results p { color: var(--v2-muted); font-size: .76rem; }
-.wall-viewport { min-height: 700px; overflow: auto; border: 1px solid var(--v2-border); border-radius: 18px; background: #0d0806; }
-.wall-canvas { position: relative; min-width: 1200px; min-height: 800px; overflow: hidden; background-color: #120b08; background-image: radial-gradient(circle at 1px 1px, rgba(200,168,120,.16) 1px, transparent 0); background-size: 28px 28px; }
+.wall-viewport { min-height: 700px; overflow: auto; border: 1px solid var(--v2-border); border-radius: 18px; background: #0d0806; overscroll-behavior: contain; }
+.wall-zoom-surface { position: relative; }
+.wall-canvas { position: relative; min-width: 1200px; min-height: 800px; overflow: hidden; background-color: #120b08; background-image: radial-gradient(circle at 1px 1px, rgba(200,168,120,.16) 1px, transparent 0); background-size: 28px 28px; will-change: transform; }
 .wall-region { position: absolute; z-index: 2; box-sizing: border-box; border: 2px dashed #6f4427; border-radius: 18px; cursor: grab; touch-action: none; }
 .wall-region:active { cursor: grabbing; }
 .wall-region > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px dashed currentColor; color: #dbc5a5; }
@@ -78,5 +84,6 @@
   .wall-board-bar,
   .wall-region-manager article { grid-template-columns: 1fr; }
   .wall-region-manager article input[type="color"] { width: 100%; }
+  .wall-zoom-bar span { width: 100%; margin-left: 0; }
   .wall-viewport { min-height: 620px; }
 }

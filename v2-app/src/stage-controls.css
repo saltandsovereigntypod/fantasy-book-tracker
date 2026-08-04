@@ -21,6 +21,54 @@
   padding: 3px;
 }
 
+.card-inline-tools {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid #75451f;
+  border-radius: 11px;
+  background: rgba(20, 11, 7, .96);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.card-inline-tools label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #dbc5a5;
+  font-size: .72rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.card-inline-tools input[type='color'] {
+  width: 34px;
+  min-height: 28px;
+  padding: 2px;
+}
+
+.card-inline-tools button {
+  border: 1px solid #a64f24;
+  border-radius: 8px;
+  padding: 6px 9px;
+  color: #fff7ea;
+  background: #75451f;
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.card-renderer--editor .design-element.is-secondary-selected {
+  outline-color: #45d4ff;
+  outline-style: dashed;
+}
+
 @media (max-width: 760px) {
   .stage-heading,
   .stage-controls {
@@ -29,5 +77,9 @@
 
   .stage-controls {
     flex-direction: column;
+  }
+
+  .card-inline-tools {
+    bottom: calc(100% + 8px);
   }
 }

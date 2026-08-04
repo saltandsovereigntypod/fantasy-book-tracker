@@ -1,3 +1,5 @@
+import type { BookRecord, CardDesign } from './domain';
+
 export type UploadKind = 'photo' | 'element';
 
 export interface FontLibraryItem {
@@ -20,11 +22,18 @@ export interface UploadLibraryItem {
   createdAt: string;
 }
 
+export interface WorkspaceDraft {
+  id: 'active';
+  book: BookRecord;
+  design: CardDesign;
+  updatedAt: string;
+}
+
 type LibraryItem = FontLibraryItem | UploadLibraryItem;
-type StoreName = 'fonts' | 'uploads';
+type StoreName = 'fonts' | 'uploads' | 'workspace';
 
 const DATABASE_NAME = 'empyrean-v2-library';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -33,6 +42,7 @@ function openDatabase(): Promise<IDBDatabase> {
       const database = request.result;
       if (!database.objectStoreNames.contains('fonts')) database.createObjectStore('fonts', { keyPath: 'id' });
       if (!database.objectStoreNames.contains('uploads')) database.createObjectStore('uploads', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('workspace')) database.createObjectStore('workspace', { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open the asset library.'));
@@ -67,18 +77,28 @@ async function withStore<T>(storeName: StoreName, mode: IDBTransactionMode, acti
   }
 }
 
-export async function listLibraryItems<T extends LibraryItem>(storeName: StoreName): Promise<T[]> {
+export async function listLibraryItems<T extends LibraryItem>(storeName: 'fonts' | 'uploads'): Promise<T[]> {
   const items = await withStore<T[]>(storeName, 'readonly', (store) => store.getAll() as IDBRequest<T[]>);
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function saveLibraryItem<T extends LibraryItem>(storeName: StoreName, item: T): Promise<T> {
+export async function saveLibraryItem<T extends LibraryItem>(storeName: 'fonts' | 'uploads', item: T): Promise<T> {
   await withStore<IDBValidKey>(storeName, 'readwrite', (store) => store.put(item));
   return item;
 }
 
-export async function removeLibraryItem(storeName: StoreName, id: string): Promise<void> {
+export async function removeLibraryItem(storeName: 'fonts' | 'uploads', id: string): Promise<void> {
   await withStore<undefined>(storeName, 'readwrite', (store) => store.delete(id) as IDBRequest<undefined>);
+}
+
+export async function loadWorkspaceDraft(): Promise<WorkspaceDraft | null> {
+  const item = await withStore<WorkspaceDraft | undefined>('workspace', 'readonly', (store) => store.get('active') as IDBRequest<WorkspaceDraft | undefined>);
+  return item ?? null;
+}
+
+export async function saveWorkspaceDraft(book: BookRecord, design: CardDesign): Promise<void> {
+  const draft: WorkspaceDraft = { id: 'active', book, design, updatedAt: new Date().toISOString() };
+  await withStore<IDBValidKey>('workspace', 'readwrite', (store) => store.put(draft));
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {
@@ -91,6 +111,8 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export async function loadFontFace(item: FontLibraryItem): Promise<void> {
+  const existing = Array.from(document.fonts).some((face) => face.family === item.family);
+  if (existing) return;
   const face = new FontFace(item.family, `url(${item.dataUrl})`);
   await face.load();
   document.fonts.add(face);

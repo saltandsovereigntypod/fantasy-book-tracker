@@ -136,7 +136,10 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   }
 
   function renderContent(element: DesignElement) {
-    if (element.type === 'shape') return <div className="design-element-content" style={{ background: element.fill, border: element.stroke ? `${(element.strokeWidth ?? 1) * scale}px solid ${element.stroke}` : undefined, borderRadius: (element.borderRadius ?? 0) * scale }} />;
+    if (element.type === 'shape') {
+      const fill = element.id === 'card-frame' ? 'transparent' : element.fill;
+      return <div className="design-element-content" style={{ background: fill, border: element.stroke ? `${(element.strokeWidth ?? 1) * scale}px solid ${element.stroke}` : undefined, borderRadius: (element.borderRadius ?? 0) * scale }} />;
+    }
     if (element.type === 'image') {
       const source = element.binding ? String(boundValue(book, element) || '') : element.src || '';
       return source ? <img className="design-element-content" src={source} alt="" draggable={false} style={{ objectFit: element.fit ?? 'cover', borderRadius: (element.borderRadius ?? 0) * scale }} /> : <div className="design-element-content design-element-placeholder" style={{ borderRadius: (element.borderRadius ?? 0) * scale, borderWidth: scale, fontSize: 12 * scale }}>{element.binding ? 'Cover' : 'Image'}</div>;

@@ -80,12 +80,16 @@ export default function App() {
     setSelectedElementId(element.id);
   }
 
-  function updateSelected(changes: Partial<DesignElement>) {
-    if (!selectedElementId) return;
+  function updateElement(id: string, changes: Partial<DesignElement>) {
     setDesign((current) => ({
       ...current,
-      elements: current.elements.map((element) => element.id === selectedElementId ? { ...element, ...changes } as DesignElement : element),
+      elements: current.elements.map((element) => element.id === id ? { ...element, ...changes } as DesignElement : element),
     }));
+  }
+
+  function updateSelected(changes: Partial<DesignElement>) {
+    if (!selectedElementId) return;
+    updateElement(selectedElementId, changes);
   }
 
   function removeSelected() {
@@ -164,7 +168,15 @@ export default function App() {
             <span>{cardSize} output · browser-native text</span>
           </div>
           <div className="stage-canvas">
-            <CardRenderer book={book} design={design} size={cardSize} mode="editor" selectedElementId={selectedElementId} onSelectElement={setSelectedElementId} />
+            <CardRenderer
+              book={book}
+              design={design}
+              size={cardSize}
+              mode="editor"
+              selectedElementId={selectedElementId}
+              onSelectElement={setSelectedElementId}
+              onChangeElement={updateElement}
+            />
           </div>
         </section>
 

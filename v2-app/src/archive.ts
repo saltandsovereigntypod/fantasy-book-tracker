@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js';
-import type { BookNote, BookRecord, BookRelationship, CardDesign, EvidenceNote, InvestigationRevision, ReadingSession, SuspicionRecord, TheoryRecord, WallCardRecord, WallRecord } from './domain';
+import type { BookNote, BookRecord, BookRelationship, CardDesign, EvidenceNote, InvestigationRevision, ReadingSession, SuspicionRecord, TheoryRecord, WallCardRecord, WallRecord, WallRegionRecord, WallRegionRule } from './domain';
 import { defaultDesign } from './defaults';
 import { supabase } from './supabase';
 
@@ -37,16 +37,57 @@ function normalizeEvidence(values: unknown): EvidenceNote[] { const now = new Da
 function normalizeHistory(values: unknown): InvestigationRevision[] { return Array.isArray(values) ? values.map((value) => { const revision = value && typeof value === 'object' ? value as Partial<InvestigationRevision> : {}; const status = revision.status === 'confirmed' || revision.status === 'disproven' || revision.status === 'dormant' || revision.status === 'resolved' || revision.status === 'dismissed' ? revision.status : 'open'; return { id: String(revision.id || crypto.randomUUID()), editedAt: String(revision.editedAt || new Date().toISOString()), title: String(revision.title || ''), body: String(revision.body || ''), confidence: Math.max(0, Math.min(100, Number(revision.confidence) || 0)), status, bookIds: normalizeStrings(revision.bookIds) }; }) : []; }
 function normalizeTheories(values: unknown): TheoryRecord[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const theory = value && typeof value === 'object' ? value as Partial<TheoryRecord> : {}; const status = theory.status === 'confirmed' || theory.status === 'disproven' || theory.status === 'dormant' ? theory.status : 'open'; return { id: String(theory.id || crypto.randomUUID()), title: String(theory.title || 'Untitled theory'), statement: String(theory.statement || ''), status, confidence: Math.max(0, Math.min(100, Number(theory.confidence) || 0)), bookIds: normalizeStrings(theory.bookIds), evidence: normalizeEvidence(theory.evidence), history: normalizeHistory(theory.history), createdAt: String(theory.createdAt || now), updatedAt: String(theory.updatedAt || theory.createdAt || now) }; }) : []; }
 function normalizeSuspicions(values: unknown): SuspicionRecord[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const suspicion = value && typeof value === 'object' ? value as Partial<SuspicionRecord> : {}; const status = suspicion.status === 'resolved' || suspicion.status === 'dismissed' ? suspicion.status : 'open'; return { id: String(suspicion.id || crypto.randomUUID()), title: String(suspicion.title || 'Untitled suspicion'), details: String(suspicion.details || ''), status, confidence: Math.max(0, Math.min(100, Number(suspicion.confidence) || 0)), bookIds: normalizeStrings(suspicion.bookIds), evidence: normalizeEvidence(suspicion.evidence), history: normalizeHistory(suspicion.history), createdAt: String(suspicion.createdAt || now), updatedAt: String(suspicion.updatedAt || suspicion.createdAt || now) }; }) : []; }
+function normalizeRegionRule(value: unknown): WallRegionRule {
+  return value === 'any' || value === 'book' || value === 'theory' || value === 'suspicion' || value === 'open-investigation' || value === 'resolved-investigation' ? value : 'manual';
+}
 function normalizeWalls(values: unknown): WallRecord[] {
   const now = new Date().toISOString();
   return Array.isArray(values) ? values.map((value) => {
     const wall = value && typeof value === 'object' ? value as Partial<WallRecord> : {};
-    const cards = Array.isArray(wall.cards) ? wall.cards.map((entry) => {
+    const regions: WallRegionRecord[] = Array.isArray(wall.regions) ? wall.regions.map((entry) => {
+      const region = entry && typeof entry === 'object' ? entry as Partial<WallRegionRecord> : {};
+      return {
+        id: String(region.id || crypto.randomUUID()),
+        title: String(region.title || 'Untitled region'),
+        x: Number.isFinite(Number(region.x)) ? Number(region.x) : 40,
+        y: Number.isFinite(Number(region.y)) ? Number(region.y) : 40,
+        width: Math.max(260, Number(region.width) || 520),
+        height: Math.max(220, Number(region.height) || 380),
+        color: String(region.color || '#6f4427'),
+        rule: normalizeRegionRule(region.rule),
+        autoSort: Boolean(region.autoSort),
+        createdAt: String(region.createdAt || now),
+        updatedAt: String(region.updatedAt || region.createdAt || now),
+      };
+    }) : [];
+    const cards: WallCardRecord[] = Array.isArray(wall.cards) ? wall.cards.map((entry) => {
       const card = entry && typeof entry === 'object' ? entry as Partial<WallCardRecord> : {};
       const sourceType = card.sourceType === 'theory' || card.sourceType === 'suspicion' ? card.sourceType : 'book';
-      return { id: String(card.id || crypto.randomUUID()), sourceType, sourceId: String(card.sourceId || ''), x: Number(card.x) || 80, y: Number(card.y) || 80, note: card.note ? String(card.note) : undefined, color: card.color ? String(card.color) : undefined, createdAt: String(card.createdAt || now), updatedAt: String(card.updatedAt || card.createdAt || now) };
+      return {
+        id: String(card.id || crypto.randomUUID()),
+        sourceType,
+        sourceId: String(card.sourceId || ''),
+        x: Number.isFinite(Number(card.x)) ? Number(card.x) : 80,
+        y: Number.isFinite(Number(card.y)) ? Number(card.y) : 80,
+        width: Math.max(170, Number(card.width) || 230),
+        height: Math.max(150, Number(card.height) || 260),
+        note: card.note ? String(card.note) : undefined,
+        color: String(card.color || '#a64f24'),
+        regionId: card.regionId && regions.some((region) => region.id === card.regionId) ? String(card.regionId) : undefined,
+        createdAt: String(card.createdAt || now),
+        updatedAt: String(card.updatedAt || card.createdAt || now),
+      };
     }).filter((card) => card.sourceId) : [];
-    return { id: String(wall.id || crypto.randomUUID()), title: String(wall.title || 'Primary Conspiracy Wall'), cards, createdAt: String(wall.createdAt || now), updatedAt: String(wall.updatedAt || wall.createdAt || now) };
+    return {
+      id: String(wall.id || crypto.randomUUID()),
+      title: String(wall.title || 'Primary Conspiracy Wall'),
+      cards,
+      regions,
+      canvasWidth: Math.max(1200, Number(wall.canvasWidth) || 1800),
+      canvasHeight: Math.max(800, Number(wall.canvasHeight) || 1100),
+      createdAt: String(wall.createdAt || now),
+      updatedAt: String(wall.updatedAt || wall.createdAt || now),
+    };
   }) : [];
 }
 function normalizeDesign(value: Partial<CardDesign> | undefined): CardDesign { const source = value || defaultDesign; const { actions: _actions, ...cleanSource } = source as Partial<CardDesign> & { actions?: unknown }; return { ...structuredClone(defaultDesign), ...structuredClone(cleanSource), width: 420, height: 380, elements: Array.isArray(source.elements) ? structuredClone(source.elements) : structuredClone(defaultDesign.elements), version: Math.max(4, Number(source.version) || 1) }; }

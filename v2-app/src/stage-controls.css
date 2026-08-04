@@ -6,42 +6,55 @@
   flex-wrap: wrap;
 }
 
+/* The card's editable colors now live together in the floating Card Style toolbar. */
 .card-background-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #dbc5a5;
-  font-size: .76rem;
-  font-weight: 750;
+  display: none;
 }
 
-.card-background-control input[type='color'] {
-  width: 42px;
-  min-height: 34px;
-  padding: 3px;
+.stage-canvas {
+  padding-top: 118px;
 }
 
 .card-inline-tools {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 12px);
+  bottom: calc(100% + 22px);
   z-index: 1000;
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 8px;
-  padding: 7px 9px;
+  width: max-content;
+  max-width: min(680px, calc(100vw - 72px));
+  padding: 9px 11px;
   border: 1px solid #75451f;
-  border-radius: 11px;
-  background: rgba(20, 11, 7, .96);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  border-radius: 13px;
+  background: rgba(20, 11, 7, .98);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .52);
   transform: translateX(-50%);
   pointer-events: auto;
+}
+
+.card-style-group,
+.selection-toolbar-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.card-inline-tools strong {
+  margin-right: 2px;
+  color: #f7ead2;
+  font-size: .7rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .card-inline-tools label {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   color: #dbc5a5;
   font-size: .72rem;
   font-weight: 750;
@@ -49,19 +62,35 @@
 }
 
 .card-inline-tools input[type='color'] {
-  width: 34px;
-  min-height: 28px;
+  width: 38px;
+  min-height: 30px;
   padding: 2px;
+  border-radius: 7px;
 }
 
 .card-inline-tools button {
-  border: 1px solid #a64f24;
+  min-width: 34px;
+  border: 1px solid #75451f;
   border-radius: 8px;
-  padding: 6px 9px;
+  padding: 6px 8px;
   color: #fff7ea;
-  background: #75451f;
+  background: #2b160d;
   font-size: .72rem;
   font-weight: 800;
+}
+
+.card-inline-tools button:hover:not(:disabled) {
+  border-color: #d0783c;
+  background: #75451f;
+}
+
+.card-inline-tools button:disabled {
+  opacity: .34;
+}
+
+.selection-toolbar-group {
+  padding-top: 7px;
+  border-top: 1px solid #4b2e1d;
 }
 
 .card-renderer--editor .design-element.is-secondary-selected {
@@ -79,7 +108,12 @@
     flex-direction: column;
   }
 
+  .stage-canvas {
+    padding-top: 142px;
+  }
+
   .card-inline-tools {
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + 16px);
+    max-width: calc(100vw - 44px);
   }
 }

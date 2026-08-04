@@ -1,6 +1,22 @@
 export type CardSize = 'small' | 'medium' | 'large';
 export type ReadingStatus = 'want' | 'reading' | 'paused' | 'completed' | 'dnf';
 export type BookFieldPath = 'title' | 'author' | 'series' | 'status' | 'progress' | 'rating' | 'spice' | 'impact' | 'reaction' | 'coverUrl';
+export type CardActionType = 'profile' | 'edit' | 'favorite' | 'progress' | 'add-note' | 'start-reading' | 'finish-reading' | 'archive' | 'delete';
+export type CardActionVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+
+export interface CardAction {
+  id: string;
+  action: CardActionType;
+  label: string;
+  icon?: string;
+  variant: CardActionVariant;
+  background: string;
+  color: string;
+  borderColor: string;
+  borderRadius: number;
+  fontSize: number;
+  visibleOn: CardSize[];
+}
 
 export interface BookNote {
   id: string;
@@ -124,6 +140,7 @@ export interface CardDesign {
   height: 380;
   background: string;
   elements: DesignElement[];
+  actions: CardAction[];
   version: number;
 }
 

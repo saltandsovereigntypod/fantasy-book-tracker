@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
+import FullApp from './FullApp';
 import './creative-libraries.css';
 import './stage-controls.css';
 import './editor-shell.css';
@@ -11,6 +11,6 @@ if (!root) throw new Error('V2 application root was not found.');
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <FullApp />
   </StrictMode>,
 );

@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js';
-import type { BookNote, BookRecord, BookRelationship, CardDesign, ReadingSession } from './domain';
+import type { BookNote, BookRecord, BookRelationship, CardDesign, EvidenceNote, ReadingSession, SuspicionRecord, TheoryRecord } from './domain';
 import { defaultDesign } from './defaults';
 import { supabase } from './supabase';
 
@@ -23,8 +23,8 @@ export interface V2ArchiveState {
   version: 1;
   profile: V2Profile;
   books: V2BookRecord[];
-  theories: unknown[];
-  suspicions: unknown[];
+  theories: TheoryRecord[];
+  suspicions: SuspicionRecord[];
   walls: unknown[];
   mindMapNodes: unknown[];
   updatedAt: string;
@@ -59,6 +59,26 @@ function normalizeRelationships(values: unknown): BookRelationship[] {
   const now = new Date().toISOString();
   return Array.isArray(values) ? values.map((value) => { const relationship = value && typeof value === 'object' ? value as Partial<BookRelationship> : {}; return { id: String(relationship.id || crypto.randomUUID()), targetBookId: String(relationship.targetBookId || ''), type: String(relationship.type || ''), explanation: relationship.explanation ? String(relationship.explanation) : undefined, notes: relationship.notes ? String(relationship.notes) : undefined, createdAt: String(relationship.createdAt || now), updatedAt: String(relationship.updatedAt || relationship.createdAt || now) }; }).filter((relationship) => relationship.targetBookId && relationship.type) : [];
 }
+function normalizeEvidence(values: unknown): EvidenceNote[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => { const evidence = value && typeof value === 'object' ? value as Partial<EvidenceNote> : {}; return { id: String(evidence.id || crypto.randomUUID()), text: String(evidence.text || ''), createdAt: String(evidence.createdAt || now) }; }).filter((item) => item.text) : [];
+}
+function normalizeTheories(values: unknown): TheoryRecord[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const theory = value && typeof value === 'object' ? value as Partial<TheoryRecord> : {};
+    const status = theory.status === 'confirmed' || theory.status === 'disproven' || theory.status === 'dormant' ? theory.status : 'open';
+    return { id: String(theory.id || crypto.randomUUID()), title: String(theory.title || 'Untitled theory'), statement: String(theory.statement || ''), status, confidence: Math.max(0, Math.min(100, Number(theory.confidence) || 0)), bookIds: normalizeStrings(theory.bookIds), evidence: normalizeEvidence(theory.evidence), createdAt: String(theory.createdAt || now), updatedAt: String(theory.updatedAt || theory.createdAt || now) };
+  }) : [];
+}
+function normalizeSuspicions(values: unknown): SuspicionRecord[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const suspicion = value && typeof value === 'object' ? value as Partial<SuspicionRecord> : {};
+    const status = suspicion.status === 'resolved' || suspicion.status === 'dismissed' ? suspicion.status : 'open';
+    return { id: String(suspicion.id || crypto.randomUUID()), title: String(suspicion.title || 'Untitled suspicion'), details: String(suspicion.details || ''), status, confidence: Math.max(0, Math.min(100, Number(suspicion.confidence) || 0)), bookIds: normalizeStrings(suspicion.bookIds), evidence: normalizeEvidence(suspicion.evidence), createdAt: String(suspicion.createdAt || now), updatedAt: String(suspicion.updatedAt || suspicion.createdAt || now) };
+  }) : [];
+}
 function normalizeDesign(value: Partial<CardDesign> | undefined): CardDesign {
   const source = value || defaultDesign;
   const { actions: _actions, ...cleanSource } = source as Partial<CardDesign> & { actions?: unknown };
@@ -74,7 +94,7 @@ function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord {
 export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState {
   const source = value && typeof value === 'object' ? value as Partial<V2ArchiveState> : {};
   const base = freshArchive(user);
-  return { ...base, ...source, version: 1, profile: { ...base.profile, ...(source.profile || {}) }, books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [], theories: Array.isArray(source.theories) ? source.theories : [], suspicions: Array.isArray(source.suspicions) ? source.suspicions : [], walls: Array.isArray(source.walls) ? source.walls : [], mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [], updatedAt: String(source.updatedAt || base.updatedAt) };
+  return { ...base, ...source, version: 1, profile: { ...base.profile, ...(source.profile || {}) }, books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [], theories: normalizeTheories(source.theories), suspicions: normalizeSuspicions(source.suspicions), walls: Array.isArray(source.walls) ? source.walls : [], mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [], updatedAt: String(source.updatedAt || base.updatedAt) };
 }
 export function loadLocalArchive(user?: User | null): V2ArchiveState { try { const raw = localStorage.getItem(LOCAL_KEY); return raw ? normalizeArchive(JSON.parse(raw), user) : freshArchive(user); } catch { return freshArchive(user); } }
 export function saveLocalArchive(state: V2ArchiveState): void { localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }

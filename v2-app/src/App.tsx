@@ -136,7 +136,7 @@ export default function App() {
   }
   function duplicateSelected() {
     if (!selectedElement || selectedElement.id === 'card-frame') return;
-    const duplicate = { ...selectedElement, id: `element-${crypto.randomUUID()}`, x: selectedElement.x + 16, y: selectedElement.y + 16, locked: false } as DesignElement;
+    const duplicate = { ...selectedElement, id: `element-${crypto.randomUUID()}`, x: selectedElement.x + 16, y: selectedElement.y + 16, locked: false, groupId: undefined } as DesignElement;
     addCreativeElement(duplicate);
   }
   function moveSelectedLayer(direction: 'forward' | 'backward' | 'front' | 'back') {
@@ -176,13 +176,16 @@ export default function App() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      const modifier = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (modifier && event.shiftKey && key === 'z') { event.preventDefault(); redo(); return; }
+      if (modifier && key === 'y') { event.preventDefault(); redo(); return; }
+      if (modifier && key === 'z') { event.preventDefault(); undo(); return; }
+
       const target = event.target as HTMLElement | null;
       if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
-      const modifier = event.metaKey || event.ctrlKey;
       if (event.key === 'Escape') { event.preventDefault(); setSelectedElementId(null); return; }
-      if (modifier && event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); return; }
-      if (modifier && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); return; }
-      if (modifier && event.key.toLowerCase() === 'd' && selectedElement) { event.preventDefault(); duplicateSelected(); return; }
+      if (modifier && key === 'd' && selectedElement) { event.preventDefault(); duplicateSelected(); return; }
       if ((event.key === 'Delete' || event.key === 'Backspace') && selectedElement) { event.preventDefault(); removeSelected(); return; }
       if (!selectedElement || selectedElement.locked || !event.key.startsWith('Arrow')) return;
       event.preventDefault();
@@ -226,7 +229,13 @@ export default function App() {
         </aside>
 
         <section className="design-stage" onPointerDown={() => setSelectedElementId(null)}>
-          <div className="stage-heading"><div><p className="eyebrow">Design</p><h2>Live card</h2></div><span>{cardSize} output · autosaved locally</span></div>
+          <div className="stage-heading">
+            <div><p className="eyebrow">Design</p><h2>Live card</h2></div>
+            <div className="stage-controls">
+              <label className="card-background-control">Card background<input type="color" value={design.background} onChange={(event) => recordDesign((current) => ({ ...current, background: event.target.value }))} /></label>
+              <span>{cardSize} output · autosaved locally</span>
+            </div>
+          </div>
           <div className="stage-canvas"><CardRenderer book={book} design={design} size={cardSize} mode="editor" selectedElementId={selectedElementId} onSelectElement={setSelectedElementId} onChangeElement={(id, changes) => updateElement(id, changes)} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} /></div>
         </section>
 

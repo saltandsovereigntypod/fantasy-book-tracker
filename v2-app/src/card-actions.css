@@ -77,55 +77,14 @@
   font-size: .78rem;
 }
 
-.v2-view--editor .app-header.is-editor-toolbar-host {
-  position: sticky;
-  top: 0;
-  z-index: 240;
-  min-height: 78px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 24px;
-  background: rgba(18, 10, 7, .98);
-  backdrop-filter: blur(12px);
+.editor-context-dock .card-action-inline-tools {
+  min-width: max-content;
 }
-.v2-view--editor .app-header.is-editor-toolbar-host > div:first-child:not(.editor-context-dock) { display: none; }
-.v2-view--editor .app-header.is-editor-toolbar-host .editor-context-dock {
-  min-width: 0;
+.editor-context-dock .card-action-inline-tools .object-toolbar-group {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.v2-view--editor .app-header.is-editor-toolbar-host .editor-context-dock::-webkit-scrollbar { display: none; }
-.v2-view--editor .app-header.is-editor-toolbar-host .editor-context-dock .card-inline-tools {
-  position: static;
-  inset: auto;
-  width: max-content;
-  max-width: none;
-  margin: 0;
-  transform: none;
-  box-shadow: none;
-  border-radius: 12px;
-}
-.v2-view--editor .app-header.is-editor-toolbar-host .header-actions {
-  flex: 0 0 auto;
-  margin-left: auto;
-}
-.v2-view--editor .app-header.is-editor-toolbar-host[data-action-selected="true"] .editor-context-dock .card-inline-tools:not(.card-action-inline-tools) { display: none; }
-.v2-view--editor .app-header.is-editor-toolbar-host[data-action-selected="false"] .editor-context-dock .card-action-inline-tools { display: none; }
-.v2-view--editor .stage-canvas > .card-inline-tools { visibility: hidden; height: 0; margin: 0; padding: 0; overflow: hidden; }
-
-@media (max-width: 1100px) {
-  .v2-view--editor .app-header.is-editor-toolbar-host {
-    grid-template-columns: 1fr;
-  }
-  .v2-view--editor .app-header.is-editor-toolbar-host .header-actions {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
+  gap: 8px;
 }
 
 @media (max-width: 700px) {
@@ -133,5 +92,4 @@
   .card-action-fields { grid-template-columns: 1fr; }
   .section-tabs--seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .toolbar-action-label { width: 110px; }
-  .v2-view--editor .app-header.is-editor-toolbar-host { padding: 10px 14px; }
 }

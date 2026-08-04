@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import Workspace from './App';
+import { BookProfileDrawer } from './BookProfileDrawer';
 import { CardRenderer } from './CardRenderer';
 import { freshArchive, loadCloudArchive, saveCloudArchive, type V2ArchiveState, type V2BookRecord } from './archive';
 import { defaultBook, defaultDesign } from './defaults';
 import { saveWorkspaceDraft, WORKSPACE_DRAFT_EVENT, type WorkspaceDraft } from './library';
 import { getAuthSnapshot, signIn, signOut, signUp, supabase } from './supabase';
-import type { CardSize } from './domain';
+import type { CardSize, ReadingStatus } from './domain';
 import './full-app.css';
 import './full-app-enhancements.css';
 
 type AppView = 'dashboard' | 'library' | 'editor' | 'theories' | 'wall' | 'mindmap' | 'profile';
 type NavView = Exclude<AppView, 'editor'>;
 type AuthMode = 'signin' | 'signup';
+type LibrarySort = 'updated' | 'title' | 'author' | 'progress' | 'rating';
+type LibraryFilter = 'active' | ReadingStatus | 'favorites' | 'archived';
 
 const NAV_ITEMS: Array<{ id: NavView; label: string; icon: string }> = [
   { id: 'dashboard', label: 'Command Hall', icon: '⌂' },
@@ -128,6 +131,11 @@ export default function FullApp() {
     setView('editor');
   }
 
+  async function saveBook(nextBook: V2BookRecord) {
+    const current = archiveRef.current;
+    await persistArchive({ ...current, books: current.books.map((book) => book.id === nextBook.id ? nextBook : book) });
+  }
+
   async function deleteBook(bookId: string) {
     const selected = archiveRef.current.books.find((book) => book.id === bookId);
     if (!selected || !window.confirm(`Permanently delete “${selected.title}”? This cannot be undone.`)) return;
@@ -157,7 +165,7 @@ export default function FullApp() {
       {error && <div className="v2-app-error" role="alert">{error}<button onClick={() => setError('')}>×</button></div>}
       <section className={`v2-view v2-view--${view}`}>
         {view === 'dashboard' && <Dashboard archive={archive} onNavigate={setView} onNewBook={openNewBook} onProfile={setProfileBookId} />}
-        {view === 'library' && <Library archive={archive} onNewBook={openNewBook} onEditBook={openBook} onProfile={setProfileBookId} onDeleteBook={deleteBook} />}
+        {view === 'library' && <Library archive={archive} onNewBook={openNewBook} onEditBook={openBook} onProfile={setProfileBookId} onDeleteBook={deleteBook} onSaveBook={saveBook} />}
         {view === 'editor' && <Workspace key={editorKey} />}
         {view === 'theories' && <ComingSoon title="Theories" body="Theories, suspicions, evidence links, and book relationships are the next investigation module." />}
         {view === 'wall' && <ComingSoon title="Conspiracy Wall" body="The V2 wall will use the same typed archive and connection records as books and theories." />}
@@ -166,7 +174,7 @@ export default function FullApp() {
       </section>
     </main>
 
-    {profileBook && <BookProfileDrawer book={profileBook} archive={archive} onClose={() => setProfileBookId(null)} onEdit={() => openBook(profileBook.id)} onDelete={() => deleteBook(profileBook.id)} />}
+    {profileBook && <BookProfileDrawer book={profileBook} archive={archive} onClose={() => setProfileBookId(null)} onEdit={() => openBook(profileBook.id)} onDelete={() => deleteBook(profileBook.id)} onSave={saveBook} />}
   </div>;
 }
 
@@ -190,20 +198,30 @@ function AuthScreen({ error, onError }: { error: string; onError: (value: string
 
 function Dashboard({ archive, onNavigate, onNewBook, onProfile }: { archive: V2ArchiveState; onNavigate: (view: AppView) => void; onNewBook: () => Promise<void>; onProfile: (id: string) => void }) {
   const activeBooks = archive.books.filter((book) => book.status === 'reading' && !book.archived);
-  const completed = archive.books.filter((book) => book.status === 'completed').length;
-  return <div className="v2-dashboard"><section className="v2-hero"><div><p>Private Reading Command</p><h2>Every chapter leaves evidence.</h2><span>Track the books, preserve the theories, and build the card exactly the way you want it.</span><div><button onClick={() => onNewBook()}>Add or Design a Book</button><button onClick={() => onNavigate('library')}>Open Library</button></div></div><strong>✦</strong></section><div className="v2-metric-grid"><article><span>Total Books</span><strong>{archive.books.length}</strong></article><article><span>Currently Reading</span><strong>{activeBooks.length}</strong></article><article><span>Completed</span><strong>{completed}</strong></article><article><span>Open Theories</span><strong>{archive.theories.length}</strong></article></div><section className="v2-dashboard-panel"><header><h3>Active Reading</h3><button onClick={() => onNavigate('library')}>View all</button></header>{activeBooks.length ? <div className="v2-mini-books">{activeBooks.slice(0, 3).map((book) => <button type="button" key={book.id} onClick={() => onProfile(book.id)}><strong>{book.title}</strong><span>{book.author || 'Unknown author'}</span><small>{book.progress}% complete</small></button>)}</div> : <p>No active books yet. The editor is ready when you are.</p>}</section></div>;
+  const completed = archive.books.filter((book) => book.status === 'completed' && !book.archived).length;
+  return <div className="v2-dashboard"><section className="v2-hero"><div><p>Private Reading Command</p><h2>Every chapter leaves evidence.</h2><span>Track the books, preserve the theories, and build the card exactly the way you want it.</span><div><button onClick={() => onNewBook()}>Add or Design a Book</button><button onClick={() => onNavigate('library')}>Open Library</button></div></div><strong>✦</strong></section><div className="v2-metric-grid"><article><span>Total Books</span><strong>{archive.books.filter((book) => !book.archived).length}</strong></article><article><span>Currently Reading</span><strong>{activeBooks.length}</strong></article><article><span>Completed</span><strong>{completed}</strong></article><article><span>Open Theories</span><strong>{archive.theories.length}</strong></article></div><section className="v2-dashboard-panel"><header><h3>Active Reading</h3><button onClick={() => onNavigate('library')}>View all</button></header>{activeBooks.length ? <div className="v2-mini-books">{activeBooks.slice(0, 3).map((book) => <button type="button" key={book.id} onClick={() => onProfile(book.id)}><strong>{book.title}</strong><span>{book.author || 'Unknown author'}</span><small>{book.progress}% complete</small></button>)}</div> : <p>No active books yet. The editor is ready when you are.</p>}</section></div>;
 }
 
-function Library({ archive, onNewBook, onEditBook, onProfile, onDeleteBook }: { archive: V2ArchiveState; onNewBook: () => Promise<void>; onEditBook: (id: string) => Promise<void>; onProfile: (id: string) => void; onDeleteBook: (id: string) => Promise<void> }) {
+function Library({ archive, onNewBook, onEditBook, onProfile, onDeleteBook, onSaveBook }: { archive: V2ArchiveState; onNewBook: () => Promise<void>; onEditBook: (id: string) => Promise<void>; onProfile: (id: string) => void; onDeleteBook: (id: string) => Promise<void>; onSaveBook: (book: V2BookRecord) => Promise<void> }) {
   const [query, setQuery] = useState('');
   const [size, setSize] = useState<CardSize>('medium');
-  const books = useMemo(() => archive.books.filter((book) => !book.archived && `${book.title} ${book.author} ${book.series}`.toLowerCase().includes(query.toLowerCase())), [archive.books, query]);
-  return <div className="v2-library"><header><div><h2>Book Library</h2><p>The same renderer used in the editor powers every saved card.</p></div><button onClick={() => onNewBook()}>Add Book</button></header><div className="v2-library-controls"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search books" /><select value={size} onChange={(event) => setSize(event.target.value as CardSize)}><option value="small">Small cards</option><option value="medium">Medium cards</option><option value="large">Large cards</option></select></div>{books.length ? <div className={`v2-library-grid is-${size}`}>{books.map((book) => <article key={book.id}><CardRenderer book={book} design={book.design} size={size} /><footer><button onClick={() => onProfile(book.id)}>Profile</button><button onClick={() => onEditBook(book.id)}>Edit</button><button className="is-danger" onClick={() => onDeleteBook(book.id)}>Delete</button></footer></article>)}</div> : <div className="v2-empty-state"><span>▤</span><h3>No books found</h3><p>Create your first book in the V2 workspace.</p><button onClick={() => onNewBook()}>Add Book</button></div>}</div>;
-}
+  const [filter, setFilter] = useState<LibraryFilter>('active');
+  const [sort, setSort] = useState<LibrarySort>('updated');
 
-function BookProfileDrawer({ book, archive, onClose, onEdit, onDelete }: { book: V2BookRecord; archive: V2ArchiveState; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
-  const relationshipNames = book.relationships.map((relationship) => archive.books.find((item) => item.id === relationship.targetBookId)?.title || 'Missing book');
-  return <div className="v2-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className="v2-book-drawer" aria-label={`${book.title} profile`}><header><div><p>Book Profile</p><h2>{book.title}</h2><span>{book.author || 'Unknown author'}{book.series ? ` · ${book.series}` : ''}</span></div><button onClick={onClose} aria-label="Close profile">×</button></header><div className="v2-book-drawer__actions"><button onClick={onEdit}>Edit Book & Card</button><button className="is-danger" onClick={onDelete}>Delete</button></div><section className="v2-book-drawer__metrics"><span><small>Status</small><strong>{book.status}</strong></span><span><small>Progress</small><strong>{book.progress}%</strong></span><span><small>Overall</small><strong>{book.rating} / 5</strong></span><span><small>Spice</small><strong>{book.spice} / 5</strong></span><span><small>Impact</small><strong>{book.impact} / 5</strong></span></section><section><h3>About</h3><p>{book.about || 'No about section has been added yet.'}</p></section><section><h3>Summary</h3><p>{book.summary || 'No summary has been added yet.'}</p></section><section><h3>Genres & Tags</h3><div className="v2-profile-chips">{[...book.genres, ...book.tags].map((value) => <span key={value}>{value}</span>)}{!book.genres.length && !book.tags.length && <p>No genres or tags yet.</p>}</div></section><section><h3>Reading History</h3><p>{book.readingSessions.length ? `${book.readingSessions.length} reading session${book.readingSessions.length === 1 ? '' : 's'} recorded.` : 'No reading sessions recorded yet.'}</p></section><section><h3>Notes</h3>{book.notes.length ? book.notes.map((note) => <article key={note.id}>{note.text}</article>) : <p>No personal notes yet.</p>}</section><section><h3>Investigation Connections</h3><ul><li>{book.theoryIds.length} linked theories</li><li>{book.suspicionIds.length} linked suspicions</li><li>{book.wallCardIds.length} Wall connections</li><li>{book.mindMapNodeIds.length} Mind Map nodes</li><li>{relationshipNames.length} book relationships{relationshipNames.length ? `: ${relationshipNames.join(', ')}` : ''}</li></ul></section></aside></div>;
+  const books = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return archive.books
+      .filter((book) => {
+        if (filter === 'active' && book.archived) return false;
+        if (filter === 'archived' && !book.archived) return false;
+        if (filter === 'favorites' && (!book.favorite || book.archived)) return false;
+        if (['want', 'reading', 'paused', 'completed', 'dnf'].includes(filter) && (book.status !== filter || book.archived)) return false;
+        return !normalizedQuery || `${book.title} ${book.author} ${book.series} ${book.genres.join(' ')} ${book.tags.join(' ')}`.toLowerCase().includes(normalizedQuery);
+      })
+      .sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'author' ? a.author.localeCompare(b.author) : sort === 'progress' ? b.progress - a.progress : sort === 'rating' ? b.rating - a.rating : b.updatedAt.localeCompare(a.updatedAt));
+  }, [archive.books, filter, query, sort]);
+
+  return <div className="v2-library"><header><div><h2>Book Library</h2><p>The same renderer used in the editor powers every saved card.</p></div><button onClick={() => onNewBook()}>Add Book</button></header><div className="v2-library-controls v2-library-controls--expanded"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, authors, genres, or tags" /><select value={filter} onChange={(event) => setFilter(event.target.value as LibraryFilter)}><option value="active">All active books</option><option value="reading">Currently reading</option><option value="want">Want to read</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="dnf">DNF</option><option value="favorites">Favorites</option><option value="archived">Archived</option></select><select value={sort} onChange={(event) => setSort(event.target.value as LibrarySort)}><option value="updated">Recently updated</option><option value="title">Title A–Z</option><option value="author">Author A–Z</option><option value="progress">Highest progress</option><option value="rating">Highest rated</option></select><select value={size} onChange={(event) => setSize(event.target.value as CardSize)}><option value="small">Small cards</option><option value="medium">Medium cards</option><option value="large">Large cards</option></select></div>{books.length ? <div className={`v2-library-grid is-${size}`}>{books.map((book) => <article key={book.id}><CardRenderer book={book} design={book.design} size={size} /><footer><button onClick={() => onProfile(book.id)}>Profile</button><button onClick={() => onEditBook(book.id)}>Edit</button><button onClick={() => onSaveBook({ ...book, favorite: !book.favorite })}>{book.favorite ? '★' : '☆'}</button><button className="is-danger" onClick={() => onDeleteBook(book.id)}>Delete</button></footer></article>)}</div> : <div className="v2-empty-state"><span>▤</span><h3>No books found</h3><p>Adjust the filters or create another book.</p><button onClick={() => onNewBook()}>Add Book</button></div>}</div>;
 }
 
 function Profile({ archive, onSave }: { archive: V2ArchiveState; onSave: (next: V2ArchiveState) => void }) {

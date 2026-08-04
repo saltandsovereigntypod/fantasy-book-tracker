@@ -24,6 +24,19 @@ type Interaction =
 
 interface Guides { vertical: number[]; horizontal: number[]; }
 
+const SYSTEM_FONTS = ['Inter', 'Libre Baskerville', 'Georgia', 'Arial', 'Trebuchet MS', 'Courier New'];
+const RATING_PRESETS = [
+  { label: 'Stars', icon: '★', emptyIcon: '☆' },
+  { label: 'Hearts', icon: '♥', emptyIcon: '♡' },
+  { label: 'Diamonds', icon: '◆', emptyIcon: '◇' },
+  { label: 'Circles', icon: '●', emptyIcon: '○' },
+  { label: 'Squares', icon: '■', emptyIcon: '□' },
+  { label: 'Triangles', icon: '▲', emptyIcon: '△' },
+  { label: 'Sparkles', icon: '✦', emptyIcon: '✧' },
+  { label: 'Spades', icon: '♠', emptyIcon: '♤' },
+  { label: 'Clubs', icon: '♣', emptyIcon: '♧' },
+] as const;
+
 function boundValue(book: BookRecord, element: DesignElement): string | number {
   if (!element.binding) return element.type === 'text' ? element.text ?? '' : '';
   const value = book[element.binding];
@@ -49,7 +62,19 @@ function elementStyle(element: DesignElement, scale: number): React.CSSPropertie
 }
 
 function textStyle(element: TextElement, scale: number): React.CSSProperties {
-  return { fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: element.fontWeight, fontStyle: element.fontStyle, color: element.color, textAlign: element.textAlign, lineHeight: element.lineHeight, overflow: 'hidden', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' };
+  return {
+    fontFamily: element.fontFamily,
+    fontSize: element.fontSize * scale,
+    fontWeight: element.fontWeight,
+    fontStyle: element.fontStyle,
+    textDecoration: element.textDecoration,
+    color: element.color,
+    textAlign: element.textAlign,
+    lineHeight: element.lineHeight,
+    overflow: 'hidden',
+    overflowWrap: 'anywhere',
+    whiteSpace: 'pre-wrap',
+  };
 }
 
 function angleFromPoint(clientX: number, clientY: number, centerX: number, centerY: number) { return Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI; }
@@ -73,12 +98,25 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   const interaction = useRef<Interaction | null>(null);
   const [guides, setGuides] = useState<Guides>({ vertical: [], horizontal: [] });
   const [selectedIds, setSelectedIds] = useState<string[]>(selectedElementId ? [selectedElementId] : []);
+  const [availableFonts, setAvailableFonts] = useState<string[]>(SYSTEM_FONTS);
   const frame = design.elements.find((element) => element.id === 'card-frame');
   const frameFill = frame?.type === 'shape' ? frame.fill : design.background;
   const visibleBackground = frameFill === '#2b160d' && design.background !== '#2b160d' ? design.background : frameFill;
   const selectedElements = useMemo(() => design.elements.filter((element) => selectedIds.includes(element.id)), [design.elements, selectedIds]);
   const primaryElement = selectedElements.find((element) => element.id === selectedElementId) ?? selectedElements[0];
   const activeGroupId = selectedElements.length > 1 && selectedElements.every((element) => element.groupId && element.groupId === selectedElements[0].groupId) ? selectedElements[0].groupId : undefined;
+
+  useEffect(() => {
+    const refreshFonts = () => {
+      const families = new Set(SYSTEM_FONTS);
+      document.fonts.forEach((font) => families.add(font.family.replace(/^['"]|['"]$/g, '')));
+      setAvailableFonts(Array.from(families));
+    };
+    refreshFonts();
+    document.fonts.ready.then(refreshFonts).catch(() => undefined);
+    document.fonts.addEventListener('loadingdone', refreshFonts);
+    return () => document.fonts.removeEventListener('loadingdone', refreshFonts);
+  }, []);
 
   useEffect(() => {
     if (frame?.type === 'shape' && frame.fill === '#2b160d' && design.background !== '#2b160d') onChangeElement?.('card-frame', { fill: design.background });
@@ -96,6 +134,9 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     startInteraction();
     changes.forEach((change) => onChangeElement?.(change.id, change.changes));
     finishToolbarInteraction();
+  }
+  function commitPrimary(changes: Partial<DesignElement>) {
+    if (primaryElement) commitToolbarChanges([{ id: primaryElement.id, changes }]);
   }
 
   function selectElement(element: DesignElement, additive: boolean) {
@@ -146,14 +187,12 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
       const dx = (event.clientX - active.startClientX) / scale;
       const dy = (event.clientY - active.startClientY) / scale;
       const primary = active.members.find((member) => member.id === active.element.id) ?? active.members[0];
-      let x = primary.x + dx;
-      let y = primary.y + dy;
       const movingIds = active.members.map((member) => member.id);
       const others = design.elements.filter((element) => !movingIds.includes(element.id) && element.id !== 'card-frame');
       const xTargets = [0, design.width / 2, design.width, ...others.flatMap((element) => [element.x, element.x + element.width / 2, element.x + element.width])];
       const yTargets = [0, design.height / 2, design.height, ...others.flatMap((element) => [element.y, element.y + element.height / 2, element.y + element.height])];
-      const snappedX = snapAxis(x, active.element.width, xTargets);
-      const snappedY = snapAxis(y, active.element.height, yTargets);
+      const snappedX = snapAxis(primary.x + dx, active.element.width, xTargets);
+      const snappedY = snapAxis(primary.y + dy, active.element.height, yTargets);
       const adjustedDx = snappedX.position - primary.x;
       const adjustedDy = snappedY.position - primary.y;
       setGuides({ vertical: snappedX.guide === null ? [] : [snappedX.guide], horizontal: snappedY.guide === null ? [] : [snappedY.guide] });
@@ -206,7 +245,6 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     const centerX = (left + right) / 2;
     const centerY = (top + bottom) / 2;
     const changes: Array<{ id: string; changes: Partial<DesignElement> }> = [];
-
     if (action === 'distribute-x' && selectedElements.length > 2) {
       const sorted = [...selectedElements].sort((a, b) => a.x - b.x);
       const totalWidth = sorted.reduce((sum, element) => sum + element.width, 0);
@@ -232,6 +270,59 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     commitToolbarChanges(changes);
   }
 
+  function replacePrimaryImage(file: File | undefined) {
+    if (!file || !file.type.startsWith('image/') || primaryElement?.type !== 'image' || primaryElement.binding) return;
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === 'string') commitPrimary({ src: reader.result } as Partial<DesignElement>); };
+    reader.readAsDataURL(file);
+  }
+
+  function dispatchEditorKey(key: string, options: KeyboardEventInit = {}) {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...options }));
+  }
+
+  function renderSingleToolbar() {
+    if (!primaryElement) return null;
+    return <div className="object-toolbar-group">
+      {primaryElement.type === 'text' && <>
+        <select className="toolbar-font-select" aria-label="Font" value={primaryElement.fontFamily} onChange={(event) => commitPrimary({ fontFamily: event.target.value } as Partial<DesignElement>)}>{availableFonts.map((font) => <option key={font} value={font}>{font}</option>)}</select>
+        <label className="toolbar-number-control" title="Font size"><button type="button" onClick={() => commitPrimary({ fontSize: Math.max(8, primaryElement.fontSize - 1) } as Partial<DesignElement>)}>−</button><input type="number" min="8" max="160" value={primaryElement.fontSize} onChange={(event) => commitPrimary({ fontSize: Number(event.target.value) } as Partial<DesignElement>)} /><button type="button" onClick={() => commitPrimary({ fontSize: primaryElement.fontSize + 1 } as Partial<DesignElement>)}>+</button></label>
+        <label className="toolbar-color" title="Text color"><span>A</span><input type="color" value={primaryElement.color} onChange={(event) => commitPrimary({ color: event.target.value } as Partial<DesignElement>)} /></label>
+        <button type="button" className={primaryElement.fontWeight === 700 ? 'is-active' : ''} onClick={() => commitPrimary({ fontWeight: primaryElement.fontWeight === 700 ? 400 : 700 } as Partial<DesignElement>)}><b>B</b></button>
+        <button type="button" className={primaryElement.fontStyle === 'italic' ? 'is-active' : ''} onClick={() => commitPrimary({ fontStyle: primaryElement.fontStyle === 'italic' ? 'normal' : 'italic' } as Partial<DesignElement>)}><i>I</i></button>
+        <button type="button" className={primaryElement.textDecoration === 'underline' ? 'is-active' : ''} onClick={() => commitPrimary({ textDecoration: primaryElement.textDecoration === 'underline' ? 'none' : 'underline' } as Partial<DesignElement>)}><u>U</u></button>
+        <button type="button" className={primaryElement.textDecoration === 'line-through' ? 'is-active' : ''} onClick={() => commitPrimary({ textDecoration: primaryElement.textDecoration === 'line-through' ? 'none' : 'line-through' } as Partial<DesignElement>)}><s>S</s></button>
+        <select aria-label="Text alignment" value={primaryElement.textAlign ?? 'left'} onChange={(event) => commitPrimary({ textAlign: event.target.value as 'left' | 'center' | 'right' } as Partial<DesignElement>)}><option value="left">Align left</option><option value="center">Align center</option><option value="right">Align right</option></select>
+      </>}
+      {primaryElement.type === 'image' && <>
+        {!primaryElement.binding && <label className="toolbar-upload-button">Replace<input type="file" accept="image/*" onChange={(event) => { replacePrimaryImage(event.target.files?.[0]); event.target.value = ''; }} /></label>}
+        <select aria-label="Image fit" value={primaryElement.fit ?? 'cover'} onChange={(event) => commitPrimary({ fit: event.target.value as 'cover' | 'contain' } as Partial<DesignElement>)}><option value="cover">Crop to fill</option><option value="contain">Fit inside</option></select>
+        <label className="toolbar-compact-number">Radius<input type="number" min="0" max="999" value={primaryElement.borderRadius ?? 0} onChange={(event) => commitPrimary({ borderRadius: Number(event.target.value) } as Partial<DesignElement>)} /></label>
+      </>}
+      {primaryElement.type === 'shape' && <>
+        <label className="toolbar-color" title="Fill color"><span>Fill</span><input type="color" value={primaryElement.fill === 'transparent' ? '#000000' : primaryElement.fill} onChange={(event) => commitPrimary({ fill: event.target.value } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-color" title="Border color"><span>Border</span><input type="color" value={primaryElement.stroke ?? '#75451f'} onChange={(event) => commitPrimary({ stroke: event.target.value } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-compact-number">Width<input type="number" min="0" max="30" value={primaryElement.strokeWidth ?? 0} onChange={(event) => commitPrimary({ strokeWidth: Number(event.target.value) } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-compact-number">Radius<input type="number" min="0" max="999" value={primaryElement.borderRadius ?? 0} onChange={(event) => commitPrimary({ borderRadius: Number(event.target.value) } as Partial<DesignElement>)} /></label>
+      </>}
+      {primaryElement.type === 'rating' && <>
+        <select aria-label="Rating symbols" value={`${primaryElement.icon}|${primaryElement.emptyIcon}`} onChange={(event) => { const preset = RATING_PRESETS.find((item) => `${item.icon}|${item.emptyIcon}` === event.target.value); if (preset) commitPrimary({ icon: preset.icon, emptyIcon: preset.emptyIcon } as Partial<DesignElement>); }}>{RATING_PRESETS.map((preset) => <option key={preset.label} value={`${preset.icon}|${preset.emptyIcon}`}>{preset.icon}{preset.emptyIcon} {preset.label}</option>)}</select>
+        <label className="toolbar-color"><span>Color</span><input type="color" value={primaryElement.color} onChange={(event) => commitPrimary({ color: event.target.value } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-compact-number">Size<input type="number" min="8" max="80" value={primaryElement.fontSize} onChange={(event) => commitPrimary({ fontSize: Number(event.target.value) } as Partial<DesignElement>)} /></label>
+      </>}
+      {primaryElement.type === 'progress' && <>
+        <label className="toolbar-color"><span>Track</span><input type="color" value={primaryElement.trackColor} onChange={(event) => commitPrimary({ trackColor: event.target.value } as Partial<DesignElement>)} /></label>
+        <label className="toolbar-color"><span>Fill</span><input type="color" value={primaryElement.fillColor} onChange={(event) => commitPrimary({ fillColor: event.target.value } as Partial<DesignElement>)} /></label>
+      </>}
+      <label className="toolbar-opacity" title="Opacity"><span>Opacity</span><input type="range" min="0" max="1" step="0.05" value={primaryElement.opacity ?? 1} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onPointerCancel={finishToolbarInteraction} onChange={(event) => onChangeElement?.(primaryElement.id, { opacity: Number(event.target.value) })} /></label>
+      <button type="button" className={primaryElement.locked ? 'is-active' : ''} onClick={() => commitPrimary({ locked: !primaryElement.locked })}>{primaryElement.locked ? 'Unlock' : 'Lock'}</button>
+      <button type="button" className={primaryElement.flipX ? 'is-active' : ''} onClick={() => commitPrimary({ flipX: !primaryElement.flipX })}>Flip H</button>
+      <button type="button" className={primaryElement.flipY ? 'is-active' : ''} onClick={() => commitPrimary({ flipY: !primaryElement.flipY })}>Flip V</button>
+      <button type="button" title="Duplicate" onClick={() => dispatchEditorKey('d', { ctrlKey: true })}>Duplicate</button>
+      <button type="button" className="toolbar-danger" title="Delete" onClick={() => dispatchEditorKey('Delete')}>Delete</button>
+    </div>;
+  }
+
   function renderContent(element: DesignElement) {
     if (element.type === 'shape') {
       const fill = element.id === 'card-frame' ? 'transparent' : element.fill;
@@ -251,15 +342,10 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     {mode === 'editor' && <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>
       {selectedIds.length === 0 && <div className="card-style-group">
         <strong>Card style</strong>
-        <label>Background<input type="color" value={visibleBackground} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { fill: event.target.value })} /></label>
-        <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
+        <label>Background<input type="color" value={visibleBackground} onFocus={startInteraction} onBlur={finishToolbarInteraction} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onChange={(event) => onChangeElement?.('card-frame', { fill: event.target.value })} /></label>
+        <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={finishToolbarInteraction} onPointerDown={startInteraction} onPointerUp={finishToolbarInteraction} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
       </div>}
-      {selectedIds.length === 1 && primaryElement && <div className="object-toolbar-group">
-        <strong>{primaryElement.type}</strong>
-        <button type="button" className={primaryElement.locked ? 'is-active' : ''} onClick={() => commitToolbarChanges([{ id: primaryElement.id, changes: { locked: !primaryElement.locked } }])}>{primaryElement.locked ? 'Unlock' : 'Lock'}</button>
-        <button type="button" className={primaryElement.flipX ? 'is-active' : ''} onClick={() => commitToolbarChanges([{ id: primaryElement.id, changes: { flipX: !primaryElement.flipX } }])}>Flip H</button>
-        <button type="button" className={primaryElement.flipY ? 'is-active' : ''} onClick={() => commitToolbarChanges([{ id: primaryElement.id, changes: { flipY: !primaryElement.flipY } }])}>Flip V</button>
-      </div>}
+      {selectedIds.length === 1 && renderSingleToolbar()}
       {selectedIds.length > 1 && <div className="selection-toolbar-group">
         <strong>{selectedIds.length} selected</strong>
         <button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : 'Group'}</button>

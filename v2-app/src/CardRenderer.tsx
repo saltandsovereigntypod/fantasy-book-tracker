@@ -20,36 +20,22 @@ type Interaction =
   | { kind: 'resize'; pointerId: number; startClientX: number; startClientY: number; element: DesignElement; handle: ResizeHandle }
   | { kind: 'rotate'; pointerId: number; centerClientX: number; centerClientY: number; startAngle: number; rotation: number; element: DesignElement };
 
-interface Guides {
-  vertical: number[];
-  horizontal: number[];
-}
+interface Guides { vertical: number[]; horizontal: number[]; }
 
 function boundValue(book: BookRecord, element: DesignElement): string | number {
   if (!element.binding) return element.type === 'text' ? element.text ?? '' : '';
   const value = book[element.binding];
-  if (element.binding === 'status') {
-    return ({ want: 'Want to read', reading: 'Currently reading', paused: 'Paused', completed: 'Completed', dnf: 'DNF' } as const)[book.status];
-  }
+  if (element.binding === 'status') return ({ want: 'Want to read', reading: 'Currently reading', paused: 'Paused', completed: 'Completed', dnf: 'DNF' } as const)[book.status];
   if (element.binding === 'progress' && element.type === 'text') return `${book.progress}%`;
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
 function RatingGlyphs({ value, icon, emptyIcon }: { value: number; icon: string; emptyIcon: string }) {
   const safeValue = Math.max(0, Math.min(5, value));
-  return (
-    <span className="rating-glyph-row" aria-label={`${safeValue} of 5`}>
-      {Array.from({ length: 5 }, (_, index) => {
-        const fill = Math.max(0, Math.min(1, safeValue - index));
-        return (
-          <span className="rating-glyph-slot" key={index}>
-            <span className="rating-glyph-empty">{emptyIcon}</span>
-            {fill > 0 && <span className="rating-glyph-fill" style={{ width: `${fill * 100}%` }}><span>{icon}</span></span>}
-          </span>
-        );
-      })}
-    </span>
-  );
+  return <span className="rating-glyph-row" aria-label={`${safeValue} of 5`}>{Array.from({ length: 5 }, (_, index) => {
+    const fill = Math.max(0, Math.min(1, safeValue - index));
+    return <span className="rating-glyph-slot" key={index}><span className="rating-glyph-empty">{emptyIcon}</span>{fill > 0 && <span className="rating-glyph-fill" style={{ width: `${fill * 100}%` }}><span>{icon}</span></span>}</span>;
+  })}</span>;
 }
 
 function elementStyle(element: DesignElement, scale: number): React.CSSProperties {
@@ -57,172 +43,94 @@ function elementStyle(element: DesignElement, scale: number): React.CSSPropertie
   if (element.rotation) transforms.push(`rotate(${element.rotation}deg)`);
   if (element.flipX) transforms.push('scaleX(-1)');
   if (element.flipY) transforms.push('scaleY(-1)');
-  return {
-    position: 'absolute',
-    left: element.x * scale,
-    top: element.y * scale,
-    width: element.width * scale,
-    height: element.height * scale,
-    transform: transforms.length ? transforms.join(' ') : undefined,
-    transformOrigin: 'center',
-    opacity: element.opacity ?? 1,
-  };
+  return { position: 'absolute', left: element.x * scale, top: element.y * scale, width: element.width * scale, height: element.height * scale, transform: transforms.length ? transforms.join(' ') : undefined, transformOrigin: 'center', opacity: element.opacity ?? 1 };
 }
 
 function textStyle(element: TextElement, scale: number): React.CSSProperties {
-  return {
-    fontFamily: element.fontFamily,
-    fontSize: element.fontSize * scale,
-    fontWeight: element.fontWeight,
-    fontStyle: element.fontStyle,
-    color: element.color,
-    textAlign: element.textAlign,
-    lineHeight: element.lineHeight,
-    overflow: 'hidden',
-    overflowWrap: 'anywhere',
-    whiteSpace: 'pre-wrap',
-  };
+  return { fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: element.fontWeight, fontStyle: element.fontStyle, color: element.color, textAlign: element.textAlign, lineHeight: element.lineHeight, overflow: 'hidden', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' };
 }
 
-function angleFromPoint(clientX: number, clientY: number, centerX: number, centerY: number) {
-  return Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
-}
-
-function normalizeRotation(value: number) {
-  let next = value % 360;
-  if (next > 180) next -= 360;
-  if (next < -180) next += 360;
-  return Math.round(next * 10) / 10;
-}
-
-function snapValue(value: number, grid = 2) {
-  return Math.round(value / grid) * grid;
-}
-
+function angleFromPoint(clientX: number, clientY: number, centerX: number, centerY: number) { return Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI; }
+function normalizeRotation(value: number) { let next = value % 360; if (next > 180) next -= 360; if (next < -180) next += 360; return Math.round(next * 10) / 10; }
+function snapValue(value: number, grid = 2) { return Math.round(value / grid) * grid; }
 function snapAxis(position: number, size: number, targets: number[], threshold = 4) {
   const anchors = [position, position + size / 2, position + size];
   let best: { distance: number; adjustment: number; guide: number } | null = null;
-  for (const anchor of anchors) {
-    for (const target of targets) {
-      const adjustment = target - anchor;
-      const distance = Math.abs(adjustment);
-      if (distance <= threshold && (!best || distance < best.distance)) best = { distance, adjustment, guide: target };
-    }
+  for (const anchor of anchors) for (const target of targets) {
+    const adjustment = target - anchor;
+    const distance = Math.abs(adjustment);
+    if (distance <= threshold && (!best || distance < best.distance)) best = { distance, adjustment, guide: target };
   }
   return best ? { position: position + best.adjustment, guide: best.guide } : { position, guide: null };
 }
 
-export function CardRenderer({
-  book,
-  design,
-  size,
-  mode = 'library',
-  selectedElementId,
-  onSelectElement,
-  onChangeElement,
-  onInteractionStart,
-  onInteractionEnd,
-}: CardRendererProps) {
+export function CardRenderer({ book, design, size, mode = 'library', selectedElementId, onSelectElement, onChangeElement, onInteractionStart, onInteractionEnd }: CardRendererProps) {
   const outputWidth = CARD_WIDTHS[size];
   const scale = outputWidth / design.width;
   const outputHeight = design.height * scale;
   const interaction = useRef<Interaction | null>(null);
   const [guides, setGuides] = useState<Guides>({ vertical: [], horizontal: [] });
 
-  function startInteraction() {
-    setGuides({ vertical: [], horizontal: [] });
-    onInteractionStart?.();
-  }
-
+  function startInteraction() { setGuides({ vertical: [], horizontal: [] }); onInteractionStart?.(); }
   function beginMove(event: React.PointerEvent<HTMLDivElement>, element: DesignElement) {
     if (mode !== 'editor' || element.locked) return;
-    event.preventDefault();
-    event.stopPropagation();
-    onSelectElement?.(element.id);
-    startInteraction();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault(); event.stopPropagation(); onSelectElement?.(element.id); startInteraction(); event.currentTarget.setPointerCapture(event.pointerId);
     interaction.current = { kind: 'move', pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, element: { ...element } };
   }
-
   function beginResize(event: React.PointerEvent<HTMLButtonElement>, element: DesignElement, handle: ResizeHandle) {
-    event.preventDefault();
-    event.stopPropagation();
-    startInteraction();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault(); event.stopPropagation(); startInteraction(); event.currentTarget.setPointerCapture(event.pointerId);
     interaction.current = { kind: 'resize', pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, element: { ...element }, handle };
   }
-
   function beginRotate(event: React.PointerEvent<HTMLButtonElement>, element: DesignElement) {
-    event.preventDefault();
-    event.stopPropagation();
-    const card = event.currentTarget.closest('.card-renderer')?.getBoundingClientRect();
-    if (!card) return;
+    event.preventDefault(); event.stopPropagation();
+    const card = event.currentTarget.closest('.card-renderer')?.getBoundingClientRect(); if (!card) return;
     startInteraction();
     const centerClientX = card.left + (element.x + element.width / 2) * scale;
     const centerClientY = card.top + (element.y + element.height / 2) * scale;
     event.currentTarget.setPointerCapture(event.pointerId);
-    interaction.current = {
-      kind: 'rotate', pointerId: event.pointerId, centerClientX, centerClientY,
-      startAngle: angleFromPoint(event.clientX, event.clientY, centerClientX, centerClientY),
-      rotation: element.rotation ?? 0, element: { ...element },
-    };
+    interaction.current = { kind: 'rotate', pointerId: event.pointerId, centerClientX, centerClientY, startAngle: angleFromPoint(event.clientX, event.clientY, centerClientX, centerClientY), rotation: element.rotation ?? 0, element: { ...element } };
   }
 
   function continueInteraction(event: React.PointerEvent<HTMLElement>) {
-    const active = interaction.current;
-    if (!active || active.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    event.stopPropagation();
-
+    const active = interaction.current; if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault(); event.stopPropagation();
     if (active.kind === 'move') {
       const dx = (event.clientX - active.startClientX) / scale;
       const dy = (event.clientY - active.startClientY) / scale;
-      let x = Math.max(0, Math.min(design.width - active.element.width, active.element.x + dx));
-      let y = Math.max(0, Math.min(design.height - active.element.height, active.element.y + dy));
+      let x = active.element.x + dx;
+      let y = active.element.y + dy;
       const others = design.elements.filter((element) => element.id !== active.element.id && element.id !== 'card-frame');
       const xTargets = [0, design.width / 2, design.width, ...others.flatMap((element) => [element.x, element.x + element.width / 2, element.x + element.width])];
       const yTargets = [0, design.height / 2, design.height, ...others.flatMap((element) => [element.y, element.y + element.height / 2, element.y + element.height])];
       const snappedX = snapAxis(x, active.element.width, xTargets);
       const snappedY = snapAxis(y, active.element.height, yTargets);
-      x = Math.max(0, Math.min(design.width - active.element.width, snappedX.position));
-      y = Math.max(0, Math.min(design.height - active.element.height, snappedY.position));
+      x = snappedX.position; y = snappedY.position;
       setGuides({ vertical: snappedX.guide === null ? [] : [snappedX.guide], horizontal: snappedY.guide === null ? [] : [snappedY.guide] });
       onChangeElement?.(active.element.id, { x: snapValue(x), y: snapValue(y) });
       return;
     }
-
     if (active.kind === 'rotate') {
       const currentAngle = angleFromPoint(event.clientX, event.clientY, active.centerClientX, active.centerClientY);
       onChangeElement?.(active.element.id, { rotation: normalizeRotation(active.rotation + currentAngle - active.startAngle) });
       return;
     }
-
     const dx = (event.clientX - active.startClientX) / scale;
     const dy = (event.clientY - active.startClientY) / scale;
     const start = active.element;
-    let x = start.x;
-    let y = start.y;
-    let width = start.width;
-    let height = start.height;
+    let x = start.x, y = start.y, width = start.width, height = start.height;
     if (active.handle.includes('e')) width = start.width + dx;
     if (active.handle.includes('s')) height = start.height + dy;
     if (active.handle.includes('w')) { width = start.width - dx; x = start.x + dx; }
     if (active.handle.includes('n')) { height = start.height - dy; y = start.y + dy; }
-    const minimumWidth = 18;
-    const minimumHeight = 12;
+    const minimumWidth = 18, minimumHeight = 12;
     if (width < minimumWidth) { if (active.handle.includes('w')) x -= minimumWidth - width; width = minimumWidth; }
     if (height < minimumHeight) { if (active.handle.includes('n')) y -= minimumHeight - height; height = minimumHeight; }
-    x = Math.max(0, Math.min(design.width - minimumWidth, x));
-    y = Math.max(0, Math.min(design.height - minimumHeight, y));
-    width = Math.min(design.width - x, width);
-    height = Math.min(design.height - y, height);
     onChangeElement?.(start.id, { x: snapValue(x), y: snapValue(y), width: snapValue(width), height: snapValue(height) });
   }
 
   function endInteraction(event: React.PointerEvent<HTMLElement>) {
     if (interaction.current?.pointerId !== event.pointerId) return;
-    interaction.current = null;
-    setGuides({ vertical: [], horizontal: [] });
+    interaction.current = null; setGuides({ vertical: [], horizontal: [] });
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
     onInteractionEnd?.();
   }
@@ -231,37 +139,23 @@ export function CardRenderer({
     if (element.type === 'shape') return <div className="design-element-content" style={{ background: element.fill, border: element.stroke ? `${(element.strokeWidth ?? 1) * scale}px solid ${element.stroke}` : undefined, borderRadius: (element.borderRadius ?? 0) * scale }} />;
     if (element.type === 'image') {
       const source = element.binding ? String(boundValue(book, element) || '') : element.src || '';
-      return source
-        ? <img className="design-element-content" src={source} alt="" draggable={false} style={{ objectFit: element.fit ?? 'cover', borderRadius: (element.borderRadius ?? 0) * scale }} />
-        : <div className="design-element-content design-element-placeholder" style={{ borderRadius: (element.borderRadius ?? 0) * scale, borderWidth: scale, fontSize: 12 * scale }}>{element.binding ? 'Cover' : 'Image'}</div>;
+      return source ? <img className="design-element-content" src={source} alt="" draggable={false} style={{ objectFit: element.fit ?? 'cover', borderRadius: (element.borderRadius ?? 0) * scale }} /> : <div className="design-element-content design-element-placeholder" style={{ borderRadius: (element.borderRadius ?? 0) * scale, borderWidth: scale, fontSize: 12 * scale }}>{element.binding ? 'Cover' : 'Image'}</div>;
     }
     if (element.type === 'text') return <div className="design-element-content" style={textStyle(element, scale)}>{String(boundValue(book, element))}</div>;
-    if (element.type === 'progress') {
-      const value = Number(boundValue(book, element)) || 0;
-      return <div className="design-element-content" style={{ background: element.trackColor, borderRadius: (element.borderRadius ?? 0) * scale, overflow: 'hidden' }}><div style={{ width: `${Math.max(0, Math.min(100, value))}%`, height: '100%', background: element.fillColor, borderRadius: 'inherit' }} /></div>;
-    }
+    if (element.type === 'progress') { const value = Number(boundValue(book, element)) || 0; return <div className="design-element-content" style={{ background: element.trackColor, borderRadius: (element.borderRadius ?? 0) * scale, overflow: 'hidden' }}><div style={{ width: `${Math.max(0, Math.min(100, value))}%`, height: '100%', background: element.fillColor, borderRadius: 'inherit' }} /></div>; }
     const value = Number(book[element.metric]) || 0;
     return <div className="design-element-content" style={{ color: element.color, fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: 700, lineHeight: 1.35 }}><strong>{element.label}</strong><RatingGlyphs value={value} icon={element.icon} emptyIcon={element.emptyIcon} /><small>{value} of 5</small></div>;
   }
 
-  return (
-    <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: design.background }} data-card-size={size}>
-      {mode === 'editor' && guides.vertical.map((position) => <div key={`v-${position}`} className="alignment-guide alignment-guide--vertical" style={{ left: position * scale }} />)}
-      {mode === 'editor' && guides.horizontal.map((position) => <div key={`h-${position}`} className="alignment-guide alignment-guide--horizontal" style={{ top: position * scale }} />)}
-      {design.elements.map((element) => {
-        const selected = mode === 'editor' && selectedElementId === element.id;
-        return (
-          <div key={element.id} className={`design-element design-element--${element.type}${selected ? ' is-selected' : ''}${element.locked ? ' is-locked' : ''}`} style={elementStyle(element, scale)} onPointerDown={mode === 'editor' ? (event) => beginMove(event, element) : undefined} onPointerMove={mode === 'editor' ? continueInteraction : undefined} onPointerUp={mode === 'editor' ? endInteraction : undefined} onPointerCancel={mode === 'editor' ? endInteraction : undefined}>
-            {renderContent(element)}
-            {selected && !element.locked && (
-              <div className="selection-controls" aria-hidden="true">
-                <button className="rotation-handle" tabIndex={-1} onPointerDown={(event) => beginRotate(event, element)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />
-                {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, element, handle)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />)}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
+  return <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: design.background }} data-card-size={size}>
+    {mode === 'editor' && guides.vertical.map((position) => <div key={`v-${position}`} className="alignment-guide alignment-guide--vertical" style={{ left: position * scale }} />)}
+    {mode === 'editor' && guides.horizontal.map((position) => <div key={`h-${position}`} className="alignment-guide alignment-guide--horizontal" style={{ top: position * scale }} />)}
+    {design.elements.map((element) => {
+      const selected = mode === 'editor' && selectedElementId === element.id;
+      return <div key={element.id} className={`design-element design-element--${element.type}${selected ? ' is-selected' : ''}${element.locked ? ' is-locked' : ''}`} style={elementStyle(element, scale)} onPointerDown={mode === 'editor' ? (event) => beginMove(event, element) : undefined} onPointerMove={mode === 'editor' ? continueInteraction : undefined} onPointerUp={mode === 'editor' ? endInteraction : undefined} onPointerCancel={mode === 'editor' ? endInteraction : undefined}>
+        {renderContent(element)}
+        {selected && !element.locked && <div className="selection-controls" aria-hidden="true"><button className="rotation-handle" tabIndex={-1} onPointerDown={(event) => beginRotate(event, element)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />{(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, element, handle)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />)}</div>}
+      </div>;
+    })}
+  </div>;
 }

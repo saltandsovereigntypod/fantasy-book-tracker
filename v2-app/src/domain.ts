@@ -29,6 +29,8 @@ interface ElementBase {
   opacity?: number;
   binding?: BookFieldPath;
   locked?: boolean;
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 export interface TextElement extends ElementBase {

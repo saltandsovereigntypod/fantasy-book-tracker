@@ -74,33 +74,6 @@ function measureCard(host: HTMLElement | null): CardBox | null {
   };
 }
 
-function dockEditorToolbars(host: HTMLElement | null, actionSelected: boolean) {
-  const header = document.querySelector<HTMLElement>('.v2-view--editor .app-header');
-  if (!header || !host) return () => undefined;
-  header.classList.add('is-editor-toolbar-host');
-  header.dataset.actionSelected = actionSelected ? 'true' : 'false';
-  let dock = header.querySelector<HTMLElement>('.editor-context-dock');
-  if (!dock) {
-    dock = document.createElement('div');
-    dock.className = 'editor-context-dock';
-    header.prepend(dock);
-  }
-  const moveToolbars = () => {
-    host.querySelectorAll<HTMLElement>('.card-inline-tools').forEach((toolbar) => {
-      if (toolbar.parentElement !== dock) dock?.appendChild(toolbar);
-    });
-  };
-  moveToolbars();
-  const observer = new MutationObserver(moveToolbars);
-  observer.observe(host, { childList: true, subtree: true });
-  return () => {
-    observer.disconnect();
-    header.classList.remove('is-editor-toolbar-host');
-    delete header.dataset.actionSelected;
-    dock?.remove();
-  };
-}
-
 export function CardActionsPreview({ actions = [], size, interactive = false, onAction }: { actions: CardAction[] | undefined; size: CardSize; interactive?: boolean; onAction?: (action: CardAction) => void }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -127,12 +100,6 @@ export function CardActionsPreview({ actions = [], size, interactive = false, on
       window.removeEventListener('resize', refresh);
     };
   }, [size]);
-
-  useEffect(() => {
-    if (!editorMode) return;
-    const host = rootRef.current?.parentElement ?? null;
-    return dockEditorToolbars(host, Boolean(selected));
-  }, [editorMode, selectedId]);
 
   useEffect(() => {
     if (!editorMode) return;

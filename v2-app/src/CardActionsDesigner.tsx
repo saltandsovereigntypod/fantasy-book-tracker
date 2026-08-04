@@ -5,7 +5,15 @@ import { loadWorkspaceDraft, saveWorkspaceDraft } from './library';
 import './card-actions.css';
 
 const ACTION_OPTIONS: Array<{ action: CardActionType; label: string; icon: string; variant: CardAction['variant'] }> = [
-  { action: 'profile', label: 'Profile', icon: '◫', variant: 'primary' }, { action: 'edit', label: 'Edit', icon: '✦', variant: 'secondary' }, { action: 'favorite', label: 'Favorite', icon: '☆', variant: 'ghost' }, { action: 'progress', label: 'Update Progress', icon: '↗', variant: 'secondary' }, { action: 'add-note', label: 'Add Note', icon: '+', variant: 'secondary' }, { action: 'start-reading', label: 'Start Reading', icon: '▶', variant: 'primary' }, { action: 'finish-reading', label: 'Finish Reading', icon: '✓', variant: 'primary' }, { action: 'archive', label: 'Archive', icon: '◇', variant: 'ghost' }, { action: 'delete', label: 'Delete', icon: '×', variant: 'danger' },
+  { action: 'profile', label: 'Profile', icon: '◫', variant: 'primary' },
+  { action: 'edit', label: 'Edit', icon: '✦', variant: 'secondary' },
+  { action: 'favorite', label: 'Favorite', icon: '☆', variant: 'ghost' },
+  { action: 'progress', label: 'Update Progress', icon: '↗', variant: 'secondary' },
+  { action: 'add-note', label: 'Add Note', icon: '+', variant: 'secondary' },
+  { action: 'start-reading', label: 'Start Reading', icon: '▶', variant: 'primary' },
+  { action: 'finish-reading', label: 'Finish Reading', icon: '✓', variant: 'primary' },
+  { action: 'archive', label: 'Archive', icon: '◇', variant: 'ghost' },
+  { action: 'delete', label: 'Delete', icon: '×', variant: 'danger' },
 ];
 
 type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -13,10 +21,32 @@ type DragState =
   | { kind: 'move'; pointerId: number; startX: number; startY: number; action: CardAction }
   | { kind: 'resize'; pointerId: number; startX: number; startY: number; action: CardAction; handle: ResizeHandle };
 
+type CardBox = { left: number; top: number; width: number; height: number };
+
 function newAction(action: CardActionType, index: number): CardAction {
   const option = ACTION_OPTIONS.find((item) => item.action === action) ?? ACTION_OPTIONS[0];
-  const danger = option.variant === 'danger'; const primary = option.variant === 'primary';
-  return { id: `action-${crypto.randomUUID()}`, action, label: option.label, icon: option.icon, variant: option.variant, x: 18 + (index % 3) * 126, y: 346 - Math.floor(index / 3) * 34, width: 112, height: 28, background: danger ? '#351411' : primary ? '#a64f24' : option.variant === 'ghost' ? 'transparent' : '#2b160d', color: danger ? '#ffd0c9' : '#f7ead2', borderColor: danger ? '#7f352f' : primary ? '#d0783c' : '#75451f', borderRadius: 9, fontFamily: 'Inter', fontSize: 12, fontWeight: 700, textAlign: 'center', visibleOn: ['small', 'medium', 'large'] };
+  const danger = option.variant === 'danger';
+  const primary = option.variant === 'primary';
+  return {
+    id: `action-${crypto.randomUUID()}`,
+    action,
+    label: option.label,
+    icon: option.icon,
+    variant: option.variant,
+    x: 18 + (index % 3) * 126,
+    y: 346 - Math.floor(index / 3) * 34,
+    width: 112,
+    height: 28,
+    background: danger ? '#351411' : primary ? '#a64f24' : option.variant === 'ghost' ? 'transparent' : '#2b160d',
+    color: danger ? '#ffd0c9' : '#f7ead2',
+    borderColor: danger ? '#7f352f' : primary ? '#d0783c' : '#75451f',
+    borderRadius: 9,
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: 700,
+    textAlign: 'center',
+    visibleOn: ['small', 'medium', 'large'],
+  };
 }
 
 async function persistActionDesign(actions: CardAction[]) {
@@ -30,23 +60,87 @@ function notifyActionChange(actions: CardAction[]) {
   window.dispatchEvent(new CustomEvent('empyrean-action-design-change', { detail: actions }));
 }
 
+function measureCard(host: HTMLElement | null): CardBox | null {
+  if (!host) return null;
+  const card = host.querySelector<HTMLElement>('.card-renderer');
+  if (!card) return null;
+  const hostRect = host.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  return {
+    left: cardRect.left - hostRect.left + host.scrollLeft,
+    top: cardRect.top - hostRect.top + host.scrollTop,
+    width: cardRect.width,
+    height: cardRect.height,
+  };
+}
+
+function dockEditorToolbars(host: HTMLElement | null, actionSelected: boolean) {
+  const header = document.querySelector<HTMLElement>('.v2-view--editor .app-header');
+  if (!header || !host) return () => undefined;
+  header.classList.add('is-editor-toolbar-host');
+  header.dataset.actionSelected = actionSelected ? 'true' : 'false';
+  let dock = header.querySelector<HTMLElement>('.editor-context-dock');
+  if (!dock) {
+    dock = document.createElement('div');
+    dock.className = 'editor-context-dock';
+    header.prepend(dock);
+  }
+  const moveToolbars = () => {
+    host.querySelectorAll<HTMLElement>('.card-inline-tools').forEach((toolbar) => {
+      if (toolbar.parentElement !== dock) dock?.appendChild(toolbar);
+    });
+  };
+  moveToolbars();
+  const observer = new MutationObserver(moveToolbars);
+  observer.observe(host, { childList: true, subtree: true });
+  return () => {
+    observer.disconnect();
+    header.classList.remove('is-editor-toolbar-host');
+    delete header.dataset.actionSelected;
+    dock?.remove();
+  };
+}
+
 export function CardActionsPreview({ actions = [], size, interactive = false, onAction }: { actions: CardAction[] | undefined; size: CardSize; interactive?: boolean; onAction?: (action: CardAction) => void }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<DragState | null>(null);
   const [, setRevision] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const dragRef = useRef<DragState | null>(null);
+  const [cardBox, setCardBox] = useState<CardBox | null>(null);
   const editorMode = !interactive;
   const outputWidth = CARD_WIDTHS[size];
   const scale = outputWidth / 420;
-  const outputHeight = 380 * scale;
-  const visible = useMemo(() => actions.filter((action) => action.visibleOn.includes(size)), [actions, size, selectedId]);
+  const visible = useMemo(() => actions.filter((action) => action.visibleOn.includes(size)), [actions, size]);
   const selected = actions.find((action) => action.id === selectedId) ?? null;
 
   useEffect(() => {
-    function deselect(event: PointerEvent) {
+    const host = rootRef.current?.parentElement ?? null;
+    const refresh = () => setCardBox(measureCard(host));
+    refresh();
+    const observer = new ResizeObserver(refresh);
+    const card = host?.querySelector<HTMLElement>('.card-renderer');
+    if (host) observer.observe(host);
+    if (card) observer.observe(card);
+    window.addEventListener('resize', refresh);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', refresh);
+    };
+  }, [size]);
+
+  useEffect(() => {
+    if (!editorMode) return;
+    const host = rootRef.current?.parentElement ?? null;
+    return dockEditorToolbars(host, Boolean(selected));
+  }, [editorMode, selectedId]);
+
+  useEffect(() => {
+    if (!editorMode) return;
+    const deselect = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
-      if (!target?.closest('.v2-runtime-actions--overlay, .card-action-inline-tools')) setSelectedId(null);
-    }
-    if (editorMode) document.addEventListener('pointerdown', deselect);
+      if (!target?.closest('.v2-runtime-actions--overlay, .card-action-inline-tools, .card-actions-designer')) setSelectedId(null);
+    };
+    document.addEventListener('pointerdown', deselect);
     return () => document.removeEventListener('pointerdown', deselect);
   }, [editorMode]);
 
@@ -63,14 +157,16 @@ export function CardActionsPreview({ actions = [], size, interactive = false, on
 
   function beginMove(event: React.PointerEvent<HTMLButtonElement>, action: CardAction) {
     if (!editorMode) return;
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     setSelectedId(action.id);
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { kind: 'move', pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, action: { ...action } };
   }
 
   function beginResize(event: React.PointerEvent<HTMLButtonElement>, action: CardAction, handle: ResizeHandle) {
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     setSelectedId(action.id);
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { kind: 'resize', pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, action: { ...action }, handle };
@@ -79,14 +175,18 @@ export function CardActionsPreview({ actions = [], size, interactive = false, on
   function continueDrag(event: React.PointerEvent<HTMLElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     const dx = (event.clientX - drag.startX) / scale;
     const dy = (event.clientY - drag.startY) / scale;
     if (drag.kind === 'move') {
       updateAction(drag.action.id, { x: Math.round(drag.action.x + dx), y: Math.round(drag.action.y + dy) }, false);
       return;
     }
-    let x = drag.action.x, y = drag.action.y, width = drag.action.width, height = drag.action.height;
+    let x = drag.action.x;
+    let y = drag.action.y;
+    let width = drag.action.width;
+    let height = drag.action.height;
     if (drag.handle.includes('e')) width = drag.action.width + dx;
     if (drag.handle.includes('s')) height = drag.action.height + dy;
     if (drag.handle.includes('w')) { width = drag.action.width - dx; x = drag.action.x + dx; }
@@ -135,10 +235,9 @@ export function CardActionsPreview({ actions = [], size, interactive = false, on
     </div>
   </div> : null;
 
-  if (!visible.length && !actionToolbar) return null;
-  return <>
+  return <div className="card-actions-layer-root" ref={rootRef}>
     {actionToolbar}
-    <div className={`v2-runtime-actions v2-runtime-actions--overlay${editorMode ? ' is-editor' : ''}${selected ? ' has-selection' : ''}`} style={{ width: outputWidth, height: outputHeight }} aria-label="Card actions">
+    {cardBox && <div className={`v2-runtime-actions v2-runtime-actions--overlay${editorMode ? ' is-editor' : ''}${selected ? ' has-selection' : ''}`} style={{ left: cardBox.left, top: cardBox.top, width: cardBox.width, height: cardBox.height }} aria-label="Card actions">
       {visible.map((action) => {
         const isSelected = editorMode && selectedId === action.id;
         return <div key={action.id} className={`card-action-canvas-item${isSelected ? ' is-selected' : ''}`} style={{ left: action.x * scale, top: action.y * scale, width: action.width * scale, height: action.height * scale }}>
@@ -146,8 +245,8 @@ export function CardActionsPreview({ actions = [], size, interactive = false, on
           {isSelected && <div className="selection-controls" aria-hidden="true">{(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, action, handle)} onPointerMove={continueDrag} onPointerUp={endDrag} onPointerCancel={endDrag} />)}</div>}
         </div>;
       })}
-    </div>
-  </>;
+    </div>}
+  </div>;
 }
 
 export function CardActionsDesigner({ design, onChange }: { design: CardDesign; onChange: (actions: CardAction[]) => void }) {
@@ -163,14 +262,14 @@ export function CardActionsDesigner({ design, onChange }: { design: CardDesign; 
   function toggleSize(action: CardAction, size: CardSize) { update(action.id, { visibleOn: action.visibleOn.includes(size) ? action.visibleOn.filter((item) => item !== size) : [...action.visibleOn, size] }); }
   return <div className="card-actions-designer">
     <section className="card-actions-add"><h3>Add an action</h3><div>{ACTION_OPTIONS.map((option) => <button key={option.action} type="button" disabled={actions.some((item) => item.action === option.action)} onClick={() => onChange([...actions, newAction(option.action, actions.length)])}><span>{option.icon}</span>{option.label}</button>)}</div></section>
-    <section className="card-actions-list"><h3>On-card actions</h3><p className="card-actions-hint">Select and drag buttons directly on the card. This panel remains available for precise values.</p>{!actions.length && <p>No actions are placed on this card.</p>}{actions.map((action, index) => <article key={action.id}>
+    <section className="card-actions-list"><h3>On-card actions</h3><p className="card-actions-hint">Select, drag, and resize buttons directly on the card. Use these controls for precise values.</p>{!actions.length && <p>No actions are placed on this card.</p>}{actions.map((action, index) => <article key={action.id}>
       <header><strong>{action.icon} {action.label}</strong><div><button type="button" disabled={index === 0} onClick={() => move(index, -1)}>↑</button><button type="button" disabled={index === actions.length - 1} onClick={() => move(index, 1)}>↓</button><button className="is-danger" type="button" onClick={() => onChange(actions.filter((item) => item.id !== action.id))}>Remove</button></div></header>
       <div className="card-action-fields">
         <label>Label<input value={action.label} onChange={(event) => update(action.id, { label: event.target.value })} /></label><label>Icon<input value={action.icon ?? ''} maxLength={4} onChange={(event) => update(action.id, { icon: event.target.value })} /></label>
         <label>X<input type="number" value={action.x} onChange={(event) => update(action.id, { x: Number(event.target.value) || 0 })} /></label><label>Y<input type="number" value={action.y} onChange={(event) => update(action.id, { y: Number(event.target.value) || 0 })} /></label>
         <label>Width<input type="number" min="24" value={action.width} onChange={(event) => update(action.id, { width: Math.max(24, Number(event.target.value) || 24) })} /></label><label>Height<input type="number" min="18" value={action.height} onChange={(event) => update(action.id, { height: Math.max(18, Number(event.target.value) || 18) })} /></label>
-        <label>Font<select value={action.fontFamily} onChange={(event) => update(action.id, { fontFamily: event.target.value })}><option>Inter</option><option>Libre Baskerville</option><option>Georgia</option><option>Arial</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label>Font size<input type="number" min="8" max="48" value={action.fontSize} onChange={(event) => update(action.id, { fontSize: Number(event.target.value) || 12 })} /></label>
-        <label>Font weight<select value={action.fontWeight} onChange={(event) => update(action.id, { fontWeight: Number(event.target.value) })}><option value="400">Regular</option><option value="600">Semi-bold</option><option value="700">Bold</option><option value="800">Extra bold</option></select></label><label>Alignment<select value={action.textAlign} onChange={(event) => update(action.id, { textAlign: event.target.value as CardAction['textAlign'] })}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+        <label>Font<select value={action.fontFamily} onChange={(event) => update(action.id, { fontFamily: event.target.value })}><option>Inter</option><option>Libre Baskerville</option><option>Georgia</option><option>Arial</option><option>Trebuchet MS</option><option>Courier New</option></select></label><label>Font size<input type="number" min="8" max="80" value={action.fontSize} onChange={(event) => update(action.id, { fontSize: Number(event.target.value) || 12 })} /></label>
+        <label>Weight<select value={action.fontWeight} onChange={(event) => update(action.id, { fontWeight: Number(event.target.value) })}><option value="400">Regular</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Extra bold</option></select></label><label>Align<select value={action.textAlign} onChange={(event) => update(action.id, { textAlign: event.target.value as CardAction['textAlign'] })}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
         <label>Background<input type="color" value={action.background === 'transparent' ? '#100906' : action.background} onChange={(event) => update(action.id, { background: event.target.value })} /></label><label>Text<input type="color" value={action.color} onChange={(event) => update(action.id, { color: event.target.value })} /></label><label>Border<input type="color" value={action.borderColor} onChange={(event) => update(action.id, { borderColor: event.target.value })} /></label><label>Radius<input type="number" min="0" max="999" value={action.borderRadius} onChange={(event) => update(action.id, { borderRadius: Number(event.target.value) || 0 })} /></label>
       </div>
       <div className="card-action-sizes"><span>Visible on</span>{(['small', 'medium', 'large'] as CardSize[]).map((cardSize) => <button key={cardSize} type="button" className={action.visibleOn.includes(cardSize) ? 'is-active' : ''} onClick={() => toggleSize(action, cardSize)}>{cardSize}</button>)}</div>

@@ -1,10 +1,15 @@
 export type CardSize = 'small' | 'medium' | 'large';
 export type ReadingStatus = 'want' | 'reading' | 'paused' | 'completed' | 'dnf';
 export type BookFieldPath = 'title' | 'author' | 'series' | 'status' | 'progress' | 'rating' | 'spice' | 'impact' | 'reaction' | 'coverUrl';
+export type TheoryStatus = 'open' | 'confirmed' | 'disproven' | 'dormant';
+export type SuspicionStatus = 'open' | 'resolved' | 'dismissed';
 
 export interface BookNote { id: string; text: string; createdAt: string; updatedAt: string; }
 export interface ReadingSession { id: string; startedAt: string; completedAt?: string; startProgress: number; endProgress: number; pagesRead?: number; minutesRead?: number; notes?: string; }
 export interface BookRelationship { id: string; targetBookId: string; type: string; explanation?: string; notes?: string; createdAt: string; updatedAt: string; }
+export interface EvidenceNote { id: string; text: string; createdAt: string; }
+export interface TheoryRecord { id: string; title: string; statement: string; status: TheoryStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; createdAt: string; updatedAt: string; }
+export interface SuspicionRecord { id: string; title: string; details: string; status: SuspicionStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; createdAt: string; updatedAt: string; }
 
 export interface BookRecord {
   id: string; title: string; author: string; series: string; status: ReadingStatus; progress: number; rating: number; spice: number; impact: number; reaction: string; coverUrl: string;

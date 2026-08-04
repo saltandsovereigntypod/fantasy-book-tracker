@@ -5,8 +5,6 @@ import type { BookFieldPath, BookRecord, CardDesign, CardSize, DesignElement } f
 import { FIELD_LABELS } from './domain';
 import './styles.css';
 
-const fieldOrder: BookFieldPath[] = ['title', 'author', 'series', 'coverUrl', 'status', 'progress', 'rating', 'spice', 'impact', 'reaction'];
-
 function hasBinding(design: CardDesign, path: BookFieldPath) {
   return design.elements.some((element) => element.binding === path);
 }
@@ -98,6 +96,38 @@ export default function App() {
     setSelectedElementId(null);
   }
 
+  function duplicateSelected() {
+    if (!selectedElement) return;
+    const duplicate = {
+      ...selectedElement,
+      id: `element-${crypto.randomUUID()}`,
+      x: Math.min(design.width - selectedElement.width, selectedElement.x + 16),
+      y: Math.min(design.height - selectedElement.height, selectedElement.y + 16),
+      locked: false,
+    } as DesignElement;
+    setDesign((current) => ({ ...current, elements: [...current.elements, duplicate] }));
+    setSelectedElementId(duplicate.id);
+  }
+
+  function moveSelectedLayer(direction: 'forward' | 'backward' | 'front' | 'back') {
+    if (!selectedElementId) return;
+    setDesign((current) => {
+      const elements = [...current.elements];
+      const index = elements.findIndex((element) => element.id === selectedElementId);
+      if (index < 0) return current;
+      const [element] = elements.splice(index, 1);
+      const nextIndex = direction === 'front'
+        ? elements.length
+        : direction === 'back'
+          ? 0
+          : direction === 'forward'
+            ? Math.min(elements.length, index + 1)
+            : Math.max(0, index - 1);
+      elements.splice(nextIndex, 0, element);
+      return { ...current, elements };
+    });
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -183,14 +213,68 @@ export default function App() {
         <aside className="panel inspector-panel">
           <div className="panel-heading"><p className="eyebrow">Inspector</p><h2>{selectedElement ? selectedElement.id : 'Nothing selected'}</h2></div>
           {selectedElement ? (
-            <div className="field-stack">
-              <label>X<input type="number" value={selectedElement.x} onChange={(event) => updateSelected({ x: Number(event.target.value) })} /></label>
-              <label>Y<input type="number" value={selectedElement.y} onChange={(event) => updateSelected({ y: Number(event.target.value) })} /></label>
-              <label>Width<input type="number" value={selectedElement.width} onChange={(event) => updateSelected({ width: Number(event.target.value) })} /></label>
-              <label>Height<input type="number" value={selectedElement.height} onChange={(event) => updateSelected({ height: Number(event.target.value) })} /></label>
-              <label>Rotation<input type="range" min="-180" max="180" value={selectedElement.rotation ?? 0} onChange={(event) => updateSelected({ rotation: Number(event.target.value) })} /></label>
-              <label>Opacity<input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => updateSelected({ opacity: Number(event.target.value) })} /></label>
-              {'fontSize' in selectedElement && <label>Font size<input type="range" min="8" max="72" value={selectedElement.fontSize} onChange={(event) => updateSelected({ fontSize: Number(event.target.value) } as Partial<DesignElement>)} /></label>}
+            <div className="field-stack inspector-stack">
+              <section className="inspector-group">
+                <h3>Geometry</h3>
+                <div className="two-column-controls">
+                  <label>X<input type="number" value={selectedElement.x} onChange={(event) => updateSelected({ x: Number(event.target.value) })} /></label>
+                  <label>Y<input type="number" value={selectedElement.y} onChange={(event) => updateSelected({ y: Number(event.target.value) })} /></label>
+                  <label>Width<input type="number" value={selectedElement.width} onChange={(event) => updateSelected({ width: Number(event.target.value) })} /></label>
+                  <label>Height<input type="number" value={selectedElement.height} onChange={(event) => updateSelected({ height: Number(event.target.value) })} /></label>
+                </div>
+                <label>Rotation<input type="range" min="-180" max="180" value={selectedElement.rotation ?? 0} onChange={(event) => updateSelected({ rotation: Number(event.target.value) })} /></label>
+                <label>Opacity<input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => updateSelected({ opacity: Number(event.target.value) })} /></label>
+              </section>
+
+              <section className="inspector-group">
+                <h3>Appearance</h3>
+                {selectedElement.type === 'text' && (
+                  <>
+                    <label>Text color<input type="color" value={selectedElement.color} onChange={(event) => updateSelected({ color: event.target.value } as Partial<DesignElement>)} /></label>
+                    <label>Font family<select value={selectedElement.fontFamily} onChange={(event) => updateSelected({ fontFamily: event.target.value } as Partial<DesignElement>)}><option>Inter</option><option>Libre Baskerville</option><option>Georgia</option><option>Arial</option><option>Trebuchet MS</option><option>Courier New</option></select></label>
+                    <label>Font size<input type="range" min="8" max="72" value={selectedElement.fontSize} onChange={(event) => updateSelected({ fontSize: Number(event.target.value) } as Partial<DesignElement>)} /></label>
+                    <label>Alignment<select value={selectedElement.textAlign ?? 'left'} onChange={(event) => updateSelected({ textAlign: event.target.value as 'left' | 'center' | 'right' } as Partial<DesignElement>)}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+                    <div className="quick-action-grid">
+                      <button className={selectedElement.fontWeight === 700 ? 'is-active' : ''} onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === 700 ? 400 : 700 } as Partial<DesignElement>)}>Bold</button>
+                      <button className={selectedElement.fontStyle === 'italic' ? 'is-active' : ''} onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' } as Partial<DesignElement>)}>Italic</button>
+                    </div>
+                  </>
+                )}
+                {selectedElement.type === 'rating' && (
+                  <>
+                    <label>Rating color<input type="color" value={selectedElement.color} onChange={(event) => updateSelected({ color: event.target.value } as Partial<DesignElement>)} /></label>
+                    <label>Font size<input type="range" min="8" max="36" value={selectedElement.fontSize} onChange={(event) => updateSelected({ fontSize: Number(event.target.value) } as Partial<DesignElement>)} /></label>
+                  </>
+                )}
+                {selectedElement.type === 'shape' && (
+                  <>
+                    <label>Fill<input type="color" value={selectedElement.fill} onChange={(event) => updateSelected({ fill: event.target.value } as Partial<DesignElement>)} /></label>
+                    <label>Border<input type="color" value={selectedElement.stroke ?? '#75451f'} onChange={(event) => updateSelected({ stroke: event.target.value } as Partial<DesignElement>)} /></label>
+                  </>
+                )}
+                {selectedElement.type === 'progress' && (
+                  <>
+                    <label>Track color<input type="color" value={selectedElement.trackColor} onChange={(event) => updateSelected({ trackColor: event.target.value } as Partial<DesignElement>)} /></label>
+                    <label>Fill color<input type="color" value={selectedElement.fillColor} onChange={(event) => updateSelected({ fillColor: event.target.value } as Partial<DesignElement>)} /></label>
+                  </>
+                )}
+                {selectedElement.type === 'image' && (
+                  <label>Image fit<select value={selectedElement.fit ?? 'cover'} onChange={(event) => updateSelected({ fit: event.target.value as 'cover' | 'contain' } as Partial<DesignElement>)}><option value="cover">Crop to fill</option><option value="contain">Fit inside</option></select></label>
+                )}
+              </section>
+
+              <section className="inspector-group">
+                <h3>Layers and object</h3>
+                <div className="quick-action-grid">
+                  <button onClick={() => moveSelectedLayer('back')}>To back</button>
+                  <button onClick={() => moveSelectedLayer('backward')}>Backward</button>
+                  <button onClick={() => moveSelectedLayer('forward')}>Forward</button>
+                  <button onClick={() => moveSelectedLayer('front')}>To front</button>
+                  <button onClick={duplicateSelected}>Duplicate</button>
+                  <button className={selectedElement.locked ? 'is-active' : ''} onClick={() => updateSelected({ locked: !selectedElement.locked })}>{selectedElement.locked ? 'Unlock' : 'Lock'}</button>
+                </div>
+              </section>
+
               <button className="danger-button" onClick={removeSelected}>Remove from design</button>
             </div>
           ) : <p className="muted-copy">Select an element on the card or use an “On card” button in the Book panel.</p>}

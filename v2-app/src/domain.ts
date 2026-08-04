@@ -31,6 +31,7 @@ interface ElementBase {
   locked?: boolean;
   flipX?: boolean;
   flipY?: boolean;
+  groupId?: string;
 }
 
 export interface TextElement extends ElementBase {

@@ -33,7 +33,7 @@ export const defaultDesign: CardDesign = {
     { id: 'progress-label', type: 'text', binding: 'progress', x: 144, y: 198, width: 252, height: 32, fontFamily: 'Inter', fontSize: 16, fontWeight: 700, color: '#f7ead2' },
     { id: 'progress', type: 'progress', binding: 'progress', x: 144, y: 240, width: 252, height: 8, trackColor: '#75451f', fillColor: '#bd662f', borderRadius: 999 },
     { id: 'rating', type: 'rating', binding: 'rating', metric: 'rating', label: 'Overall', icon: '★', emptyIcon: '☆', x: 18, y: 274, width: 112, height: 70, color: '#bd662f', fontFamily: 'Inter', fontSize: 13 },
-    { id: 'spice', type: 'rating', binding: 'spice', metric: 'spice', label: 'Spice', icon: '🔥', emptyIcon: '·', x: 152, y: 274, width: 112, height: 70, color: '#bd662f', fontFamily: 'Inter', fontSize: 13 },
+    { id: 'spice', type: 'rating', binding: 'spice', metric: 'spice', label: 'Spice', icon: '▲', emptyIcon: '△', x: 152, y: 274, width: 112, height: 70, color: '#bd662f', fontFamily: 'Inter', fontSize: 13 },
     { id: 'impact', type: 'rating', binding: 'impact', metric: 'impact', label: 'Impact', icon: '♥', emptyIcon: '♡', x: 286, y: 274, width: 112, height: 70, color: '#bd662f', fontFamily: 'Inter', fontSize: 13 },
     { id: 'reaction', type: 'text', binding: 'reaction', x: 144, y: 253, width: 252, height: 20, fontFamily: 'Libre Baskerville', fontSize: 10, fontStyle: 'italic', color: '#c8a878', textAlign: 'right' },
   ],

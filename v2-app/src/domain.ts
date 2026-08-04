@@ -1,29 +1,6 @@
 export type CardSize = 'small' | 'medium' | 'large';
 export type ReadingStatus = 'want' | 'reading' | 'paused' | 'completed' | 'dnf';
 export type BookFieldPath = 'title' | 'author' | 'series' | 'status' | 'progress' | 'rating' | 'spice' | 'impact' | 'reaction' | 'coverUrl';
-export type CardActionType = 'profile' | 'edit' | 'favorite' | 'progress' | 'add-note' | 'start-reading' | 'finish-reading' | 'archive' | 'delete';
-export type CardActionVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-
-export interface CardAction {
-  id: string;
-  action: CardActionType;
-  label: string;
-  icon?: string;
-  variant: CardActionVariant;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  background: string;
-  color: string;
-  borderColor: string;
-  borderRadius: number;
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: number;
-  textAlign: 'left' | 'center' | 'right';
-  visibleOn: CardSize[];
-}
 
 export interface BookNote { id: string; text: string; createdAt: string; updatedAt: string; }
 export interface ReadingSession { id: string; startedAt: string; completedAt?: string; startProgress: number; endProgress: number; pagesRead?: number; minutesRead?: number; notes?: string; }
@@ -43,7 +20,7 @@ export interface ProgressElement extends ElementBase { type: 'progress'; trackCo
 export interface RatingElement extends ElementBase { type: 'rating'; metric: 'rating' | 'spice' | 'impact'; label: string; icon: string; emptyIcon: string; color: string; fontFamily: string; fontSize: number; }
 export type DesignElement = TextElement | ImageElement | ShapeElement | ProgressElement | RatingElement;
 
-export interface CardDesign { id: string; width: 420; height: 380; background: string; elements: DesignElement[]; actions: CardAction[]; version: number; }
+export interface CardDesign { id: string; width: 420; height: 380; background: string; elements: DesignElement[]; version: number; }
 export interface WorkspaceState { book: BookRecord; design: CardDesign; selectedElementId: string | null; cardSize: CardSize; dirty: boolean; }
 export const CARD_WIDTHS: Record<CardSize, number> = { small: 300, medium: 420, large: 560 };
 export const FIELD_LABELS: Record<BookFieldPath, string> = { title: 'Title', author: 'Author', series: 'Series', status: 'Reading status', progress: 'Progress', rating: 'Overall rating', spice: 'Spice', impact: 'Emotional impact', reaction: 'Reaction', coverUrl: 'Cover image' };

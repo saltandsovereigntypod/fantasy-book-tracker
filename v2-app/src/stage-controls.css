@@ -6,13 +6,12 @@
   flex-wrap: wrap;
 }
 
-/* The card's editable colors now live together in the floating Card Style toolbar. */
 .card-background-control {
   display: none;
 }
 
 .stage-canvas {
-  padding-top: 118px;
+  padding-top: 132px;
 }
 
 .card-inline-tools {
@@ -20,14 +19,12 @@
   left: 50%;
   bottom: calc(100% + 22px);
   z-index: 1000;
-  display: grid;
-  gap: 8px;
   width: max-content;
-  max-width: min(680px, calc(100vw - 72px));
+  max-width: min(980px, calc(100vw - 60px));
   padding: 9px 11px;
   border: 1px solid #75451f;
-  border-radius: 13px;
-  background: rgba(20, 11, 7, .98);
+  border-radius: 15px;
+  background: rgba(20, 11, 7, .985);
   box-shadow: 0 12px 34px rgba(0, 0, 0, .52);
   transform: translateX(-50%);
   pointer-events: auto;
@@ -44,7 +41,7 @@
 }
 
 .card-inline-tools strong {
-  margin-right: 2px;
+  margin-right: 3px;
   color: #f7ead2;
   font-size: .7rem;
   letter-spacing: .06em;
@@ -53,7 +50,7 @@
 }
 
 .card-inline-tools label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   color: #dbc5a5;
@@ -62,18 +59,124 @@
   white-space: nowrap;
 }
 
+.card-inline-tools select,
+.card-inline-tools input[type='number'] {
+  min-height: 32px;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  padding: 5px 8px;
+  color: #fff7ea;
+  background: #21130d;
+  font: inherit;
+}
+
+.card-inline-tools select:focus,
+.card-inline-tools input:focus,
+.card-inline-tools button:focus-visible {
+  outline: 2px solid #d0783c;
+  outline-offset: 1px;
+}
+
+.toolbar-font-select {
+  width: 170px;
+  max-width: 210px;
+}
+
 .card-inline-tools input[type='color'] {
-  width: 38px;
+  width: 36px;
   min-height: 30px;
   padding: 2px;
-  border-radius: 7px;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  background: #21130d;
+}
+
+.toolbar-color {
+  min-height: 32px;
+  padding: 3px 5px 3px 8px;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  background: #21130d;
+}
+
+.toolbar-color span {
+  color: #f7ead2;
+  font-size: .68rem;
+}
+
+.toolbar-number-control {
+  overflow: hidden;
+  gap: 0 !important;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  background: #21130d;
+}
+
+.toolbar-number-control input {
+  width: 54px;
+  min-height: 30px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 4px 2px !important;
+  text-align: center;
+}
+
+.toolbar-number-control button {
+  min-width: 30px !important;
+  min-height: 30px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 4px 7px !important;
+}
+
+.toolbar-compact-number {
+  min-height: 32px;
+  padding-left: 8px;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  background: #21130d;
+}
+
+.toolbar-compact-number input {
+  width: 58px;
+  min-height: 30px !important;
+  border: 0 !important;
+  border-left: 1px solid #4b2e1d !important;
+  border-radius: 0 7px 7px 0 !important;
+}
+
+.toolbar-opacity {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  background: #21130d;
+}
+
+.toolbar-opacity input[type='range'] {
+  width: 82px;
+}
+
+.toolbar-upload-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #75451f;
+  border-radius: 8px;
+  color: #fff7ea !important;
+  background: #2b160d;
+  cursor: pointer;
+}
+
+.toolbar-upload-button input {
+  display: none;
 }
 
 .card-inline-tools button {
   min-width: 34px;
+  min-height: 32px;
   border: 1px solid #75451f;
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 6px 9px;
   color: #fff7ea;
   background: #2b160d;
   font-size: .72rem;
@@ -81,7 +184,8 @@
 }
 
 .card-inline-tools button:hover:not(:disabled),
-.card-inline-tools button.is-active {
+.card-inline-tools button.is-active,
+.toolbar-upload-button:hover {
   border-color: #d0783c;
   background: #75451f;
 }
@@ -90,9 +194,28 @@
   opacity: .34;
 }
 
+.card-inline-tools .toolbar-danger {
+  border-color: #8f382d;
+  color: #ffd9d4;
+}
+
+.card-inline-tools .toolbar-danger:hover {
+  background: #8f382d;
+}
+
 .card-renderer--editor .design-element.is-secondary-selected {
   outline-color: #45d4ff;
   outline-style: dashed;
+}
+
+@media (max-width: 1050px) {
+  .stage-canvas {
+    padding-top: 174px;
+  }
+
+  .card-inline-tools {
+    max-width: calc(100vw - 42px);
+  }
 }
 
 @media (max-width: 760px) {
@@ -106,11 +229,15 @@
   }
 
   .stage-canvas {
-    padding-top: 142px;
+    padding-top: 220px;
   }
 
   .card-inline-tools {
-    bottom: calc(100% + 16px);
-    max-width: calc(100vw - 44px);
+    bottom: calc(100% + 14px);
+    max-width: calc(100vw - 28px);
+  }
+
+  .toolbar-font-select {
+    width: 145px;
   }
 }

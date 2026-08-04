@@ -9,6 +9,7 @@
 .card-actions-add button:disabled { opacity: .42; }
 .card-actions-list { display: grid; gap: 10px; }
 .card-actions-list > p { color: #a98b64; }
+.card-actions-hint { margin: -4px 0 2px; font-size: .78rem; line-height: 1.45; }
 .card-actions-list > article { display: grid; gap: 12px; }
 .card-actions-list article > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .card-actions-list article > header > div { display: flex; gap: 5px; }
@@ -29,16 +30,18 @@
   position: absolute;
   inset: 0 auto auto 50%;
   z-index: 12;
-  width: var(--card-output-width, 420px);
-  height: var(--card-output-height, 380px);
   transform: translateX(-50%);
   pointer-events: none;
 }
-.v2-library-grid > article > .v2-runtime-actions--overlay {
-  top: 14px;
-}
-.v2-runtime-actions--overlay button {
+.v2-library-grid > article > .v2-runtime-actions--overlay { top: 14px; }
+.card-action-canvas-item {
   position: absolute;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+.card-action-canvas-item > button:first-child {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -46,14 +49,23 @@
   white-space: nowrap;
   line-height: 1;
   cursor: pointer;
-  pointer-events: auto;
   box-sizing: border-box;
 }
-.v2-runtime-actions--overlay button:disabled {
-  cursor: default;
-  opacity: 1;
+.v2-runtime-actions--overlay.is-editor .card-action-canvas-item > button:first-child { cursor: move; }
+.card-action-canvas-item.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid #f0b344;
+  border-radius: 4px;
   pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(20, 12, 8, .9);
 }
+.card-action-canvas-item .selection-controls { position: absolute; inset: 0; pointer-events: none; }
+.card-action-canvas-item .resize-handle { pointer-events: auto; }
+.card-action-inline-tools { z-index: 2; }
+.toolbar-action-label { width: 150px; }
+.toolbar-action-icon { width: 48px; text-align: center; }
 .section-tabs--seven {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -69,4 +81,5 @@
   .card-actions-add > div,
   .card-action-fields { grid-template-columns: 1fr; }
   .section-tabs--seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toolbar-action-label { width: 110px; }
 }

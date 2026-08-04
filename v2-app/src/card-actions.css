@@ -24,16 +24,15 @@
 .card-action-sizes button { padding: 6px 9px; text-transform: capitalize; }
 .card-action-sizes button.is-active { border-color: #d0783c; background: #75451f; }
 
+.card-actions-layer-root { display: contents; }
 .stage-canvas,
 .v2-library-grid > article { position: relative; }
 .v2-runtime-actions--overlay {
   position: absolute;
-  inset: 0 auto auto 50%;
-  z-index: 12;
-  transform: translateX(-50%);
+  z-index: 30;
   pointer-events: none;
+  overflow: visible;
 }
-.v2-library-grid > article > .v2-runtime-actions--overlay { top: 14px; }
 .card-action-canvas-item {
   position: absolute;
   pointer-events: auto;
@@ -51,21 +50,22 @@
   cursor: pointer;
   box-sizing: border-box;
 }
-.v2-runtime-actions--overlay.is-editor .card-action-canvas-item > button:first-child { cursor: move; }
+.v2-runtime-actions--overlay.is-editor .card-action-canvas-item > button:first-child { cursor: move; touch-action: none; }
 .card-action-canvas-item.is-selected::after {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -3px;
+  z-index: 2;
   border: 2px solid #f0b344;
-  border-radius: 4px;
+  border-radius: 5px;
   pointer-events: none;
   box-shadow: 0 0 0 1px rgba(20, 12, 8, .9);
 }
-.card-action-canvas-item .selection-controls { position: absolute; inset: 0; pointer-events: none; }
+.card-action-canvas-item .selection-controls { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .card-action-canvas-item .resize-handle { pointer-events: auto; }
-.card-action-inline-tools { z-index: 2; }
 .toolbar-action-label { width: 150px; }
 .toolbar-action-icon { width: 48px; text-align: center; }
+
 .section-tabs--seven {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -77,9 +77,61 @@
   font-size: .78rem;
 }
 
+.v2-view--editor .app-header.is-editor-toolbar-host {
+  position: sticky;
+  top: 0;
+  z-index: 240;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 24px;
+  background: rgba(18, 10, 7, .98);
+  backdrop-filter: blur(12px);
+}
+.v2-view--editor .app-header.is-editor-toolbar-host > div:first-child:not(.editor-context-dock) { display: none; }
+.v2-view--editor .app-header.is-editor-toolbar-host .editor-context-dock {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.v2-view--editor .app-header.is-editor-toolbar-host .editor-context-dock::-webkit-scrollbar { display: none; }
+.v2-view--editor .app-header.is-editor-toolbar-host .editor-context-dock .card-inline-tools {
+  position: static;
+  inset: auto;
+  width: max-content;
+  max-width: none;
+  margin: 0;
+  transform: none;
+  box-shadow: none;
+  border-radius: 12px;
+}
+.v2-view--editor .app-header.is-editor-toolbar-host .header-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.v2-view--editor .app-header.is-editor-toolbar-host[data-action-selected="true"] .editor-context-dock .card-inline-tools:not(.card-action-inline-tools) { display: none; }
+.v2-view--editor .app-header.is-editor-toolbar-host[data-action-selected="false"] .editor-context-dock .card-action-inline-tools { display: none; }
+.v2-view--editor .stage-canvas > .card-inline-tools { visibility: hidden; height: 0; margin: 0; padding: 0; overflow: hidden; }
+
+@media (max-width: 1100px) {
+  .v2-view--editor .app-header.is-editor-toolbar-host {
+    grid-template-columns: 1fr;
+  }
+  .v2-view--editor .app-header.is-editor-toolbar-host .header-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 700px) {
   .card-actions-add > div,
   .card-action-fields { grid-template-columns: 1fr; }
   .section-tabs--seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .toolbar-action-label { width: 110px; }
+  .v2-view--editor .app-header.is-editor-toolbar-host { padding: 10px 14px; }
 }

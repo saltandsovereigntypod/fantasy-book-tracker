@@ -1,0 +1,276 @@
+/* Responsive fixes for the Fabric card editor and rendered card canvases. */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.app-shell {
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  width: 100%;
+  max-width: 100vw;
+  transition: grid-template-columns .2s ease;
+}
+
+.app-shell.sidebar-is-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.sidebar {
+  min-width: 0;
+  transition: width .2s ease, padding .2s ease;
+}
+
+.sidebar-collapse-toggle {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  right: -17px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sidebar-collapse-toggle:hover,
+.sidebar-collapse-toggle:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 82%, var(--accent));
+}
+
+.app-shell.sidebar-is-collapsed .sidebar {
+  padding-inline: 12px;
+}
+
+.app-shell.sidebar-is-collapsed .brand-block {
+  justify-content: center;
+}
+
+.app-shell.sidebar-is-collapsed .brand-block > div:last-child,
+.app-shell.sidebar-is-collapsed .nav-item span:not(:first-child),
+.app-shell.sidebar-is-collapsed .rank-mini > :not(.rank-icon),
+.app-shell.sidebar-is-collapsed .sidebar-footer .ghost-button {
+  display: none;
+}
+
+.app-shell.sidebar-is-collapsed .brand-mark,
+.app-shell.sidebar-is-collapsed .rank-icon {
+  flex: 0 0 auto;
+}
+
+.app-shell.sidebar-is-collapsed .nav-item {
+  justify-content: center;
+  padding-inline: 8px;
+}
+
+.app-shell.sidebar-is-collapsed .nav-item span:first-child {
+  width: auto;
+}
+
+.app-shell.sidebar-is-collapsed .rank-mini {
+  justify-content: center;
+  padding: 8px;
+}
+
+.main-content,
+.view,
+.view.is-visible,
+.toolbar,
+.toolbar-group,
+.book-collection,
+.visual-template-card,
+.visual-card-viewport,
+.fabric-card-viewport {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.main-content {
+  overflow-x: clip;
+}
+
+.view {
+  width: 100%;
+}
+
+/* Let broad desktop control rows wrap instead of forcing horizontal page scroll. */
+.toolbar,
+.toolbar-group,
+.library-toolbar,
+.library-controls,
+.library-filter-row,
+.library-sort-row {
+  flex-wrap: wrap;
+}
+
+.toolbar > *,
+.toolbar-group > *,
+.library-toolbar > *,
+.library-controls > * {
+  min-width: 0;
+}
+
+/* Saved Fabric cards occupy the same responsive card area as untouched cards. */
+.book-collection .visual-template-card,
+.visual-template-card {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.fabric-card-viewport {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--design-width, 420) / var(--design-height, 380);
+  overflow: hidden;
+  border-radius: inherit;
+  contain: layout paint;
+}
+
+.fabric-card-viewport > canvas,
+.fabric-card-viewport > .canvas-container,
+.fabric-card-viewport .lower-canvas,
+.fabric-card-viewport .upper-canvas {
+  position: absolute !important;
+  inset: 0;
+  display: block;
+  max-width: none !important;
+}
+
+.fabric-card-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.fabric-card-action-overlay {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fabric-card-action-overlay button {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+/* The editor should always fit the viewport at 100% browser zoom. */
+.visual-builder-backdrop > .modal {
+  width: min(1600px, calc(100vw - 16px));
+  height: min(960px, calc(100dvh - 16px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+}
+
+.builder-workspace {
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) minmax(210px, 260px);
+  width: 100%;
+  min-width: 0;
+}
+
+.builder-stage-wrap,
+.builder-palette,
+.builder-inspector {
+  min-width: 0;
+}
+
+.builder-stage-wrap {
+  overflow: auto;
+  padding: clamp(12px, 2vw, 24px);
+}
+
+.builder-header,
+.builder-header-actions {
+  min-width: 0;
+}
+
+.builder-header-actions {
+  justify-content: flex-end;
+}
+
+.builder-header-actions button {
+  min-width: 0;
+}
+
+@media (max-width: 1280px) {
+  .app-shell:not(.sidebar-user-expanded) {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .app-shell:not(.sidebar-user-expanded) .sidebar {
+    padding-inline: 12px;
+  }
+
+  .app-shell:not(.sidebar-user-expanded) .brand-block {
+    justify-content: center;
+  }
+
+  .app-shell:not(.sidebar-user-expanded) .brand-block > div:last-child,
+  .app-shell:not(.sidebar-user-expanded) .nav-item span:not(:first-child),
+  .app-shell:not(.sidebar-user-expanded) .rank-mini > :not(.rank-icon),
+  .app-shell:not(.sidebar-user-expanded) .sidebar-footer .ghost-button {
+    display: none;
+  }
+
+  .app-shell:not(.sidebar-user-expanded) .nav-item,
+  .app-shell:not(.sidebar-user-expanded) .rank-mini {
+    justify-content: center;
+  }
+
+  .app-shell:not(.sidebar-user-expanded) .nav-item span:first-child {
+    width: auto;
+  }
+
+  .builder-workspace {
+    grid-template-columns: minmax(160px, 200px) minmax(0, 1fr) minmax(190px, 230px);
+  }
+}
+
+@media (max-width: 1050px) {
+  .builder-workspace {
+    grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  }
+
+  .builder-inspector {
+    grid-column: 1 / -1;
+    max-height: 34vh;
+    border-left: 0;
+    border-top: 1px solid var(--ui-border, var(--border));
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar-collapse-toggle {
+    display: none;
+  }
+
+  .app-shell,
+  .app-shell.sidebar-is-collapsed,
+  .app-shell.sidebar-user-expanded {
+    grid-template-columns: 1fr;
+  }
+
+  .fabric-card-viewport {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .sidebar {
+    transition: none;
+  }
+}

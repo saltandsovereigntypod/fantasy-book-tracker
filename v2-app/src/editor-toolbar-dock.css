@@ -1,0 +1,75 @@
+.app-header.is-context-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: 88px;
+  padding: 12px 22px;
+  background: rgba(15, 9, 6, .98);
+  backdrop-filter: blur(12px);
+}
+.app-header.is-context-header > div:first-child { display: none; }
+.app-header.is-context-header .header-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+}
+.editor-context-dock {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.editor-context-dock:empty::before {
+  content: 'Select an element to edit it';
+  color: #a98b64;
+  font-size: .82rem;
+  font-weight: 700;
+}
+.editor-context-dock .card-inline-tools {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.editor-context-dock .object-toolbar-group,
+.editor-context-dock .selection-toolbar-group,
+.editor-context-dock .card-style-group {
+  min-width: max-content;
+  padding: 8px 10px;
+  border: 1px solid #4b2e1d;
+  border-radius: 12px;
+  background: #170d09;
+}
+.card-editor-shell > .card-inline-tools { display: none !important; }
+
+@media (max-width: 1100px) {
+  .app-header.is-context-header .header-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .app-header.is-context-header .history-controls,
+  .app-header.is-context-header .size-switcher,
+  .app-header.is-context-header .primary-button { grid-row: 2; }
+  .app-header.is-context-header .history-controls { grid-column: 1; }
+  .app-header.is-context-header .size-switcher { grid-column: 2; }
+  .app-header.is-context-header .primary-button { grid-column: 3; }
+  .editor-context-dock { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .app-header.is-context-header { padding: 10px 12px; }
+  .app-header.is-context-header .header-actions { display: flex; flex-wrap: wrap; }
+  .editor-context-dock { order: 1; width: 100%; }
+  .app-header.is-context-header .history-controls,
+  .app-header.is-context-header .size-switcher,
+  .app-header.is-context-header .primary-button { order: 2; }
+}

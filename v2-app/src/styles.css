@@ -47,13 +47,31 @@ input[type='range'] { padding: 0; accent-color: #bd662f; }
 
 .design-stage { min-width: 0; overflow: hidden; }
 .stage-canvas { min-height: calc(100vh - 190px); display: grid; place-items: center; overflow: auto; padding: 34px; background-image: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px); background-size: 20px 20px; }
-.card-renderer { position: relative; flex: 0 0 auto; overflow: hidden; border-radius: 22px; box-shadow: 0 24px 80px rgba(0,0,0,.55); }
-.design-element { user-select: none; }
-.card-renderer--editor .design-element { cursor: pointer; }
-.card-renderer--editor .design-element.is-selected { outline: 2px solid #f4b942; outline-offset: 3px; }
+.card-renderer { position: relative; flex: 0 0 auto; overflow: visible; border-radius: 22px; box-shadow: 0 24px 80px rgba(0,0,0,.55); touch-action: none; }
+.card-renderer::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.025); }
+.design-element { user-select: none; touch-action: none; }
+.design-element-content { width: 100%; height: 100%; }
+.card-renderer--editor .design-element { cursor: grab; }
+.card-renderer--editor .design-element:active { cursor: grabbing; }
+.card-renderer--editor .design-element.is-locked { cursor: not-allowed; }
+.card-renderer--editor .design-element.is-selected { outline: 2px solid #f4b942; outline-offset: 3px; z-index: 100!important; }
 .design-element--image { display: block; }
 .design-element--rating strong, .design-element--rating small { display: block; }
 .design-element--rating small { opacity: .82; }
+.design-element-placeholder { display: grid; place-items: center; border-style: solid; border-color: #75451f; color: #c8a878; background: #1b100a; font-family: Inter, sans-serif; }
+
+.selection-controls { position: absolute; inset: 0; pointer-events: none; }
+.selection-controls button { position: absolute; z-index: 4; width: 12px; height: 12px; padding: 0; border: 2px solid #fff7ea; border-radius: 999px; background: #f4b942; box-shadow: 0 2px 8px rgba(0,0,0,.55); pointer-events: auto; touch-action: none; }
+.resize-handle--nw { left: -8px; top: -8px; cursor: nwse-resize; }
+.resize-handle--n { left: calc(50% - 6px); top: -8px; cursor: ns-resize; }
+.resize-handle--ne { right: -8px; top: -8px; cursor: nesw-resize; }
+.resize-handle--e { right: -8px; top: calc(50% - 6px); cursor: ew-resize; }
+.resize-handle--se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.resize-handle--s { left: calc(50% - 6px); bottom: -8px; cursor: ns-resize; }
+.resize-handle--sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.resize-handle--w { left: -8px; top: calc(50% - 6px); cursor: ew-resize; }
+.rotation-handle { left: calc(50% - 7px); top: -34px; width: 14px!important; height: 14px!important; background: #bd662f!important; cursor: grab; }
+.rotation-handle::after { content: ''; position: absolute; left: 50%; top: 11px; width: 1px; height: 20px; background: #f4b942; transform: translateX(-50%); }
 
 .inspector-panel .field-stack > label { display: grid; gap: 6px; }
 .danger-button { border: 1px solid #9f3b38; border-radius: 10px; padding: 10px; color: #ffd9d7; background: #4d1715; }
@@ -69,6 +87,14 @@ input[type='range'] { padding: 0; accent-color: #bd662f; }
   .header-actions { align-items: stretch; flex-direction: column; }
   .workspace-grid { display: block; padding: 10px; }
   .panel, .design-stage { margin-bottom: 12px; }
-  .stage-canvas { min-height: 520px; padding: 18px; justify-content: start; }
-  .card-renderer { transform-origin: top left; }
+  .stage-canvas { min-height: 520px; padding: 44px 18px 24px; justify-content: start; }
+  .selection-controls button { width: 18px; height: 18px; }
+  .resize-handle--nw { left: -11px; top: -11px; }
+  .resize-handle--n { left: calc(50% - 9px); top: -11px; }
+  .resize-handle--ne { right: -11px; top: -11px; }
+  .resize-handle--e { right: -11px; top: calc(50% - 9px); }
+  .resize-handle--se { right: -11px; bottom: -11px; }
+  .resize-handle--s { left: calc(50% - 9px); bottom: -11px; }
+  .resize-handle--sw { left: -11px; bottom: -11px; }
+  .resize-handle--w { left: -11px; top: calc(50% - 9px); }
 }

@@ -112,7 +112,8 @@ button { font: inherit; }
 .v2-library-grid.is-medium { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
 .v2-library-grid.is-large { grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); }
 .v2-library-grid > article { min-width: 0; display: grid; justify-items: center; gap: 10px; padding: 14px; border: 1px solid var(--v2-border); border-radius: 16px; background: var(--v2-panel); overflow: hidden; }
-.v2-library-grid footer { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+.v2-library-grid footer { width: 100%; display: flex; justify-content: flex-end; align-items: center; }
+.v2-library-grid footer strong { display: none; }
 .v2-library-grid footer button { border: 1px solid var(--v2-border-strong); border-radius: 8px; padding: 7px 10px; color: var(--v2-text); background: #2b160d; }
 .v2-empty-state,
 .v2-coming-soon { min-height: 360px; display: grid; place-items: center; align-content: center; gap: 10px; padding: 30px; border: 1px dashed var(--v2-border-strong); border-radius: 18px; color: var(--v2-muted); text-align: center; }

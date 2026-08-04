@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { V2ArchiveState } from './archive';
 import type { WallCardRecord, WallRecord, WallRegionRecord, WallRegionRule, WallSourceType } from './domain';
 import './conspiracy-wall.css';
@@ -12,6 +12,10 @@ type Interaction =
 type WallSource = { type: WallSourceType; id: string; title: string; subtitle: string; status?: string };
 
 const WALL_KEY = 'empyrean-v2-active-wall';
+const ZOOM_KEY = 'empyrean-v2-wall-zoom';
+const MIN_ZOOM = 0.35;
+const MAX_ZOOM = 2;
+const ZOOM_STEP = 0.1;
 const RULE_LABELS: Record<WallRegionRule, string> = {
   manual: 'Manual only', any: 'Any unassigned card', book: 'Books', theory: 'Theories', suspicion: 'Suspicions',
   'open-investigation': 'Open investigations', 'resolved-investigation': 'Resolved investigations',
@@ -19,6 +23,20 @@ const RULE_LABELS: Record<WallRegionRule, string> = {
 
 function timestamp() { return new Date().toISOString(); }
 function readActiveWall() { try { return localStorage.getItem(WALL_KEY) || ''; } catch { return ''; } }
+function readZoom(wallId: string) {
+  try {
+    const values = JSON.parse(localStorage.getItem(ZOOM_KEY) || '{}') as Record<string, number>;
+    const value = Number(values[wallId]);
+    return Number.isFinite(value) ? Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value)) : 1;
+  } catch { return 1; }
+}
+function saveZoom(wallId: string, zoom: number) {
+  try {
+    const values = JSON.parse(localStorage.getItem(ZOOM_KEY) || '{}') as Record<string, number>;
+    values[wallId] = zoom;
+    localStorage.setItem(ZOOM_KEY, JSON.stringify(values));
+  } catch { /* storage unavailable */ }
+}
 function alphaColor(color: string, alpha = '2e') { return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : '#a64f242e'; }
 function defaultWall(title = 'Primary Conspiracy Wall'): WallRecord {
   const now = timestamp();
@@ -27,16 +45,20 @@ function defaultWall(title = 'Primary Conspiracy Wall'): WallRecord {
 
 export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; onSave: (next: V2ArchiveState) => Promise<void> }) {
   const fallbackRef = useRef<WallRecord>(defaultWall());
+  const viewportRef = useRef<HTMLDivElement>(null);
   const initialId = readActiveWall();
   const [activeWallId, setActiveWallId] = useState(initialId);
   const [search, setSearch] = useState('');
   const [noteCardId, setNoteCardId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [showRegions, setShowRegions] = useState(true);
+  const [zoom, setZoom] = useState(() => readZoom(initialId || 'default'));
   const interactionRef = useRef<Interaction | null>(null);
 
   const wall = archive.walls.find((item) => item.id === activeWallId) ?? archive.walls[0] ?? fallbackRef.current;
   const noteCard = wall.cards.find((card) => card.id === noteCardId) ?? null;
+
+  useEffect(() => { setZoom(readZoom(wall.id)); }, [wall.id]);
 
   const allSources = useMemo<WallSource[]>(() => [
     ...archive.books.map((book) => ({ type: 'book' as const, id: book.id, title: book.title, subtitle: book.author || book.series || 'Book', status: book.status })),
@@ -51,6 +73,24 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
 
   function sourceFor(card: WallCardRecord) { return allSources.find((item) => item.type === card.sourceType && item.id === card.sourceId); }
   function setActive(id: string) { setActiveWallId(id); try { localStorage.setItem(WALL_KEY, id); } catch { /* storage unavailable */ } }
+  function changeZoom(next: number) {
+    const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(next * 100) / 100));
+    setZoom(clamped);
+    saveZoom(wall.id, clamped);
+  }
+  function fitBoard() {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const widthZoom = (viewport.clientWidth - 36) / wall.canvasWidth;
+    const heightZoom = (viewport.clientHeight - 36) / wall.canvasHeight;
+    changeZoom(Math.min(1, widthZoom, heightZoom));
+    viewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+  }
+  function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    changeZoom(zoom + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  }
 
   async function saveWalls(walls: WallRecord[]) { await onSave({ ...archive, walls }); }
   async function saveWall(nextWall: WallRecord) {
@@ -66,10 +106,11 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
   }
   async function duplicateBoard() {
     const now = timestamp();
+    const regionIds = new Map(wall.regions.map((region) => [region.id, crypto.randomUUID()]));
     const next: WallRecord = {
       ...structuredClone(wall), id: crypto.randomUUID(), title: `${wall.title} Copy`, createdAt: now, updatedAt: now,
-      cards: wall.cards.map((card) => ({ ...card, id: crypto.randomUUID(), createdAt: now, updatedAt: now })),
-      regions: wall.regions.map((region) => ({ ...region, id: crypto.randomUUID(), createdAt: now, updatedAt: now })),
+      cards: wall.cards.map((card) => ({ ...card, id: crypto.randomUUID(), regionId: card.regionId ? regionIds.get(card.regionId) : undefined, createdAt: now, updatedAt: now })),
+      regions: wall.regions.map((region) => ({ ...region, id: regionIds.get(region.id)!, createdAt: now, updatedAt: now })),
     };
     await saveWalls([...archive.walls, next]);
     setActive(next.id);
@@ -136,15 +177,16 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
   async function autoSort() { await saveWall(sortedWall(wall)); }
 
   function beginInteraction(event: React.PointerEvent<HTMLElement>, interaction: Interaction) {
-    if ((event.target as HTMLElement).closest('button, input, textarea, select')) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, textarea, select') && !target.closest('.wall-resize-handle')) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     interactionRef.current = interaction;
   }
   function moveInteraction(event: React.PointerEvent<HTMLElement>) {
     const interaction = interactionRef.current;
     if (!interaction) return;
-    const dx = event.clientX - interaction.startX;
-    const dy = event.clientY - interaction.startY;
+    const dx = (event.clientX - interaction.startX) / zoom;
+    const dy = (event.clientY - interaction.startY) / zoom;
     const element = event.currentTarget as HTMLElement;
     if (interaction.kind.endsWith('move')) {
       element.style.left = `${Math.max(0, interaction.x + dx)}px`;
@@ -158,8 +200,8 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
     const interaction = interactionRef.current;
     if (!interaction) return;
     interactionRef.current = null;
-    const dx = event.clientX - interaction.startX;
-    const dy = event.clientY - interaction.startY;
+    const dx = (event.clientX - interaction.startX) / zoom;
+    const dy = (event.clientY - interaction.startY) / zoom;
     if (interaction.kind === 'card-move') updateCard(interaction.id, { x: Math.max(0, Math.round(interaction.x + dx)), y: Math.max(0, Math.round(interaction.y + dy)), regionId: undefined }).catch(console.error);
     if (interaction.kind === 'card-resize') updateCard(interaction.id, { width: Math.max(170, Math.round(interaction.width + dx)), height: Math.max(150, Math.round(interaction.height + dy)) }).catch(console.error);
     if (interaction.kind === 'region-move') updateRegion(interaction.id, { x: Math.max(0, Math.round(interaction.x + dx)), y: Math.max(0, Math.round(interaction.y + dy)) }).catch(console.error);
@@ -181,6 +223,8 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
       <button onClick={addRegion}>+ Add Region</button><button disabled={!wall.regions.some((region) => region.autoSort)} onClick={autoSort}>Auto-sort Board</button><button onClick={() => setShowRegions((value) => !value)}>{showRegions ? 'Hide' : 'Show'} Regions</button>
     </section>
 
+    <section className="wall-zoom-bar" aria-label="Wall zoom controls"><button onClick={() => changeZoom(zoom - ZOOM_STEP)} disabled={zoom <= MIN_ZOOM}>−</button><strong>{Math.round(zoom * 100)}%</strong><button onClick={() => changeZoom(zoom + ZOOM_STEP)} disabled={zoom >= MAX_ZOOM}>+</button><button onClick={() => changeZoom(1)}>100%</button><button onClick={fitBoard}>Fit Board</button><span>Ctrl/Cmd + wheel to zoom</span></section>
+
     {showRegions && <section className="wall-region-manager">
       {wall.regions.length ? wall.regions.map((region) => <article key={region.id}>
         <input aria-label="Region title" value={region.title} onChange={(event) => updateRegion(region.id, { title: event.target.value })} />
@@ -193,7 +237,7 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
 
     <section className="wall-source-panel"><label>Add to wall<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search books, theories, or suspicions…" /></label>{search && <div className="wall-source-results">{sources.length ? sources.map((source) => <button key={`${source.type}-${source.id}`} onClick={() => addCard(source.type, source.id)}><strong>{source.title}</strong><span>{source.type} · {source.subtitle}</span></button>) : <p>No matching items available.</p>}</div>}</section>
 
-    <div className="wall-viewport"><section className="wall-canvas" style={{ width: wall.canvasWidth, height: wall.canvasHeight }}>
+    <div className="wall-viewport" ref={viewportRef} onWheel={handleWheel}><div className="wall-zoom-surface" style={{ width: wall.canvasWidth * zoom, height: wall.canvasHeight * zoom }}><section className="wall-canvas" style={{ width: wall.canvasWidth, height: wall.canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
       {showRegions && wall.regions.map((region) => <article key={region.id} className="wall-region" style={{ left: region.x, top: region.y, width: region.width, height: region.height, borderColor: region.color, backgroundColor: alphaColor(region.color, '12') }} onPointerDown={(event) => beginInteraction(event, { kind: 'region-move', id: region.id, startX: event.clientX, startY: event.clientY, x: region.x, y: region.y })} onPointerMove={moveInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction}>
         <header><strong>{region.title}</strong><span>{RULE_LABELS[region.rule]}{region.autoSort ? ' · auto' : ''}</span></header><button className="wall-resize-handle" aria-label={`Resize ${region.title}`} onPointerDown={(event) => { event.stopPropagation(); beginInteraction(event, { kind: 'region-resize', id: region.id, startX: event.clientX, startY: event.clientY, width: region.width, height: region.height }); }} onPointerMove={moveInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />
       </article>)}
@@ -210,7 +254,7 @@ export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; o
         </article>;
       })}
       {!wall.cards.length && <div className="wall-empty"><span>✣</span><h3>Your wall is empty</h3><p>Search above to pin a book, theory, or suspicion.</p></div>}
-    </section></div>
+    </section></div></div>
 
     {noteCard && <div className="wall-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNoteCardId(null); }}><section className="wall-note-modal" role="dialog" aria-modal="true"><header><div><p>Wall Note</p><h3>{sourceFor(noteCard)?.title}</h3></div><button onClick={() => setNoteCardId(null)}>×</button></header><textarea autoFocus rows={8} value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Record the thread, clue, contradiction, or question this pin represents…" /><footer><button onClick={() => setNoteCardId(null)}>Cancel</button><button className="is-primary" onClick={saveNote}>Save Note</button></footer></section></div>}
   </div>;

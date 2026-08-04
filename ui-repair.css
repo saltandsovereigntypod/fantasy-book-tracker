@@ -1,4 +1,4 @@
-/* Repair pass: modal usability, crisp cards, cover overlays, and trailing add tile. */
+/* Repair pass: modal usability, readable native-width cards, cover overlays, and trailing add tile. */
 .modal-backdrop[aria-hidden="false"] .modal{position:relative}
 .modal-backdrop[aria-hidden="false"] .modal>.modal-close,.modal-backdrop[aria-hidden="false"] .modal .ui-repair-close{position:absolute;z-index:100;top:14px;right:16px;display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:999px;background:transparent;color:var(--ui-text-muted,var(--muted));font-size:32px;line-height:1;cursor:pointer}
 .modal-backdrop[aria-hidden="false"] .modal>.modal-close:hover,.modal-backdrop[aria-hidden="false"] .modal .ui-repair-close:hover{background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text))}
@@ -11,14 +11,44 @@
 .fabric-canvas-frame canvas{width:auto!important;height:auto!important;max-width:none!important;image-rendering:auto}
 .fabric-card-viewport{position:relative;container-type:inline-size}
 .fabric-card-canvas{width:100%!important;height:100%!important;image-rendering:auto}
-.fabric-card-svg{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;pointer-events:none;overflow:hidden}
-.fabric-card-svg svg{display:block;width:100%;height:100%;overflow:visible}
-.fabric-card-canvas.is-vector-replaced{visibility:hidden}
-.fabric-cover-overlay{position:absolute;z-index:2;object-fit:cover;border-radius:2.4%;pointer-events:none;box-shadow:0 0 0 1px var(--ui-border,var(--border));background:var(--ui-surface-soft,var(--panel))}
 .fabric-editor-cover-overlay{position:absolute;z-index:4;object-fit:cover;pointer-events:none;border-radius:10px;box-shadow:0 0 0 1px var(--ui-border,var(--border))}
+
+/*
+ * Saved card scenes are designed at 420px wide. Three-column layouts were shrinking
+ * them below that size, turning 10–12px scene text into unreadably small thumbnails.
+ * Keep desktop cards at their native width instead of scaling the finished canvas down.
+ */
+.book-collection[data-library-layout="cards"]{
+  grid-template-columns:repeat(auto-fit,420px)!important;
+  justify-content:start;
+  align-items:start;
+  overflow-x:auto;
+}
+.book-collection[data-library-layout="cards"]>.visual-template-card,
+.book-collection[data-library-layout="cards"]>.fabric-book-card,
+.book-collection[data-library-layout="cards"]>.book-add-tail{
+  width:420px!important;
+  min-width:420px;
+  max-width:420px;
+}
+.book-collection[data-library-layout="cards"] .fabric-card-viewport{
+  width:420px;
+  max-width:420px;
+}
+
 .book-add-tail{display:grid;place-items:center;min-height:100%;border:1px dashed var(--ui-border-strong,var(--border));border-radius:18px;background:color-mix(in srgb,var(--ui-surface-raised,var(--panel-2)) 78%,transparent);color:var(--ui-text,var(--text));cursor:pointer}
 .book-add-tail:hover,.book-add-tail:focus-visible{border-color:var(--ui-accent,var(--accent));background:var(--ui-surface-raised,var(--panel-2));outline:3px solid color-mix(in srgb,var(--ui-accent,var(--accent)) 35%,transparent)}
 .book-add-tail span{display:grid;place-items:center;width:54px;height:54px;margin:0 auto 12px;border:1px solid var(--ui-border,var(--border));border-radius:16px;font-size:34px}
 .book-add-tail strong{display:block;font:700 1.05rem/1.2 'Libre Baskerville',serif;text-align:center}
 .book-add-tail small{display:block;margin-top:7px;color:var(--ui-text-muted,var(--muted));text-align:center}
-@media(max-width:760px){.book-editor-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}.book-editor-tabs button{width:100%}.fabric-canvas-frame canvas{max-width:100%!important;height:auto!important}}
+
+@media(max-width:760px){
+  .book-editor-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .book-editor-tabs button{width:100%}
+  .fabric-canvas-frame canvas{max-width:100%!important;height:auto!important}
+  .book-collection[data-library-layout="cards"]{grid-template-columns:minmax(0,1fr)!important;overflow-x:hidden}
+  .book-collection[data-library-layout="cards"]>.visual-template-card,
+  .book-collection[data-library-layout="cards"]>.fabric-book-card,
+  .book-collection[data-library-layout="cards"]>.book-add-tail,
+  .book-collection[data-library-layout="cards"] .fabric-card-viewport{width:100%!important;min-width:0;max-width:100%}
+}

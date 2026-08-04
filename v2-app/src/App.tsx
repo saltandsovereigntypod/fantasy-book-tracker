@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CardRenderer } from './CardRenderer';
+import { CreativeLibraries, type CreativeSection } from './CreativeLibraries';
 import { defaultBook, defaultDesign } from './defaults';
 import type { BookFieldPath, BookRecord, CardDesign, CardSize, DesignElement } from './domain';
 import { FIELD_LABELS } from './domain';
+import type { FontLibraryItem } from './library';
 import './styles.css';
 
 const RATING_ICON_PRESETS = [
@@ -17,20 +19,9 @@ const RATING_ICON_PRESETS = [
   { label: 'Clubs', icon: '♣', emptyIcon: '♧' },
 ] as const;
 
-const TEXT_STYLE_PRESETS = [
-  { id: 'epic-title', label: 'Epic title', sample: 'DRAGON RIDER', text: 'Custom title', fontFamily: 'Libre Baskerville', fontSize: 30, fontWeight: 700, color: '#f7ead2', textAlign: 'center' as const, width: 260, height: 68 },
-  { id: 'elegant-serif', label: 'Elegant serif', sample: 'A beautiful passage', text: 'Elegant text', fontFamily: 'Georgia', fontSize: 22, fontWeight: 400, fontStyle: 'italic' as const, color: '#e7d5b7', textAlign: 'center' as const, width: 250, height: 58 },
-  { id: 'chapter-heading', label: 'Chapter heading', sample: 'CHAPTER TWELVE', text: 'CHAPTER TITLE', fontFamily: 'Inter', fontSize: 17, fontWeight: 700, color: '#bd662f', textAlign: 'center' as const, width: 230, height: 40 },
-  { id: 'minimal-label', label: 'Minimal label', sample: 'ARCHIVE NOTE', text: 'LABEL', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: '#c8a878', textAlign: 'left' as const, width: 150, height: 28 },
-  { id: 'gothic-display', label: 'Gothic display', sample: 'THE EMPYREAN', text: 'Gothic title', fontFamily: 'Georgia', fontSize: 27, fontWeight: 700, color: '#f4b942', textAlign: 'center' as const, width: 250, height: 62 },
-  { id: 'pull-quote', label: 'Pull quote', sample: '“We do not break.”', text: '“Add a memorable quote.”', fontFamily: 'Libre Baskerville', fontSize: 18, fontWeight: 400, fontStyle: 'italic' as const, color: '#f7ead2', textAlign: 'center' as const, width: 280, height: 76 },
-  { id: 'typewriter-note', label: 'Typewriter note', sample: 'classified observation', text: 'Add a private note', fontFamily: 'Courier New', fontSize: 14, fontWeight: 400, color: '#dbc5a5', textAlign: 'left' as const, width: 230, height: 52 },
-  { id: 'clean-body', label: 'Clean body', sample: 'Readable supporting text', text: 'Supporting text', fontFamily: 'Inter', fontSize: 15, fontWeight: 400, color: '#f7ead2', textAlign: 'left' as const, width: 230, height: 48 },
-] as const;
+const SYSTEM_FONTS = ['Inter', 'Libre Baskerville', 'Georgia', 'Arial', 'Trebuchet MS', 'Courier New'];
 
-type BookSection = 'details' | 'ratings' | 'elements' | 'connections';
-type ElementKind = 'rectangle' | 'rounded' | 'circle' | 'divider';
-type TextPreset = typeof TEXT_STYLE_PRESETS[number];
+type BookSection = 'details' | 'ratings' | 'connections' | CreativeSection;
 
 function cloneDesign(design: CardDesign): CardDesign {
   return structuredClone(design);
@@ -46,10 +37,30 @@ function createBoundElement(path: BookFieldPath, index: number): DesignElement {
   if (path === 'progress') return { id: `element-${crypto.randomUUID()}`, type: 'progress', binding: path, x: 150, y, width: 220, height: 9, trackColor: '#75451f', fillColor: '#bd662f', borderRadius: 999 };
   if (path === 'rating' || path === 'spice' || path === 'impact') {
     const preset = path === 'rating' ? RATING_ICON_PRESETS[0] : path === 'spice' ? RATING_ICON_PRESETS[5] : RATING_ICON_PRESETS[1];
-    return { id: `element-${crypto.randomUUID()}`, type: 'rating', binding: path, metric: path, label: FIELD_LABELS[path], icon: preset.icon, emptyIcon: preset.emptyIcon, x: 150, y, width: 150, height: 64, color: '#bd662f', fontFamily: 'Inter', fontSize: 13 };
+    return {
+      id: `element-${crypto.randomUUID()}`,
+      type: 'rating',
+      binding: path,
+      metric: path,
+      label: FIELD_LABELS[path],
+      icon: preset.icon,
+      emptyIcon: preset.emptyIcon,
+      x: 150,
+      y,
+      width: 150,
+      height: 64,
+      color: '#bd662f',
+      fontFamily: 'Inter',
+      fontSize: 13,
+    };
   }
   return {
-    id: `element-${crypto.randomUUID()}`, type: 'text', binding: path, x: 150, y, width: 220,
+    id: `element-${crypto.randomUUID()}`,
+    type: 'text',
+    binding: path,
+    x: 150,
+    y,
+    width: 220,
     height: path === 'title' ? 58 : 34,
     fontFamily: path === 'title' || path === 'reaction' ? 'Libre Baskerville' : 'Inter',
     fontSize: path === 'title' ? 26 : 14,
@@ -57,37 +68,6 @@ function createBoundElement(path: BookFieldPath, index: number): DesignElement {
     fontStyle: path === 'reaction' ? 'italic' : 'normal',
     color: path === 'series' || path === 'reaction' ? '#c8a878' : '#f7ead2',
   };
-}
-
-function createTextElement(preset: TextPreset): DesignElement {
-  return {
-    id: `element-${crypto.randomUUID()}`,
-    type: 'text',
-    text: preset.text,
-    x: Math.round((420 - preset.width) / 2),
-    y: 110,
-    width: preset.width,
-    height: preset.height,
-    fontFamily: preset.fontFamily,
-    fontSize: preset.fontSize,
-    fontWeight: preset.fontWeight,
-    fontStyle: 'fontStyle' in preset ? preset.fontStyle : 'normal',
-    color: preset.color,
-    textAlign: preset.textAlign,
-    lineHeight: 1.15,
-  };
-}
-
-function createShapeElement(kind: ElementKind): DesignElement {
-  const id = `element-${crypto.randomUUID()}`;
-  if (kind === 'divider') return { id, type: 'shape', x: 80, y: 188, width: 260, height: 4, fill: '#bd662f', borderRadius: 999 };
-  if (kind === 'circle') return { id, type: 'shape', x: 150, y: 110, width: 120, height: 120, fill: '#75451f', stroke: '#bd662f', strokeWidth: 2, borderRadius: 999 };
-  if (kind === 'rounded') return { id, type: 'shape', x: 110, y: 120, width: 200, height: 100, fill: '#75451f', stroke: '#bd662f', strokeWidth: 2, borderRadius: 20 };
-  return { id, type: 'shape', x: 110, y: 120, width: 200, height: 100, fill: '#75451f', stroke: '#bd662f', strokeWidth: 2, borderRadius: 0 };
-}
-
-function createImageElement(src: string): DesignElement {
-  return { id: `element-${crypto.randomUUID()}`, type: 'image', src, x: 120, y: 72, width: 180, height: 220, fit: 'contain', borderRadius: 12 };
 }
 
 export default function App() {
@@ -98,14 +78,19 @@ export default function App() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>('title');
   const [cardSize, setCardSize] = useState<CardSize>('medium');
   const [activeBookSection, setActiveBookSection] = useState<BookSection>('details');
+  const [customFonts, setCustomFonts] = useState<FontLibraryItem[]>([]);
   const designRef = useRef(design);
   const interactionStartRef = useRef<CardDesign | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const imageUploadModeRef = useRef<'new' | 'replace'>('new');
+  const replacementImageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => { designRef.current = design; }, [design]);
 
-  const selectedElement = useMemo(() => design.elements.find((element) => element.id === selectedElementId) ?? null, [design.elements, selectedElementId]);
+  const selectedElement = useMemo(
+    () => design.elements.find((element) => element.id === selectedElementId) ?? null,
+    [design.elements, selectedElementId],
+  );
+
+  const handleFontsChange = useCallback((fonts: FontLibraryItem[]) => setCustomFonts(fonts), []);
 
   function recordDesign(updater: (current: CardDesign) => CardDesign) {
     setDesign((current) => {
@@ -124,51 +109,23 @@ export default function App() {
 
   function addField(path: BookFieldPath) {
     const existing = design.elements.find((element) => element.binding === path);
-    if (existing) { setSelectedElementId(existing.id); return; }
-    const element = createBoundElement(path, design.elements.length);
+    if (existing) {
+      setSelectedElementId(existing.id);
+      return;
+    }
+    addCreativeElement(createBoundElement(path, design.elements.length));
+  }
+
+  function addCreativeElement(element: DesignElement) {
     recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
     setSelectedElementId(element.id);
-  }
-
-  function addTextPreset(preset: TextPreset) {
-    const element = createTextElement(preset);
-    recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
-    setSelectedElementId(element.id);
-  }
-
-  function addShape(kind: ElementKind) {
-    const element = createShapeElement(kind);
-    recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
-    setSelectedElementId(element.id);
-  }
-
-  function requestImageUpload(mode: 'new' | 'replace') {
-    imageUploadModeRef.current = mode;
-    imageInputRef.current?.click();
-  }
-
-  function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = typeof reader.result === 'string' ? reader.result : '';
-      if (!src) return;
-      if (imageUploadModeRef.current === 'replace' && selectedElement?.type === 'image' && !selectedElement.binding) {
-        updateSelected({ src } as Partial<DesignElement>);
-        return;
-      }
-      const element = createImageElement(src);
-      recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
-      setSelectedElementId(element.id);
-    };
-    reader.readAsDataURL(file);
   }
 
   function updateElement(id: string, changes: Partial<DesignElement>, record = false) {
-    const apply = (current: CardDesign) => ({ ...current, elements: current.elements.map((element) => element.id === id ? { ...element, ...changes } as DesignElement : element) });
+    const apply = (current: CardDesign) => ({
+      ...current,
+      elements: current.elements.map((element) => element.id === id ? { ...element, ...changes } as DesignElement : element),
+    });
     if (record) recordDesign(apply);
     else setDesign((current) => {
       const next = apply(current);
@@ -228,9 +185,14 @@ export default function App() {
 
   function duplicateSelected() {
     if (!selectedElement) return;
-    const duplicate = { ...selectedElement, id: `element-${crypto.randomUUID()}`, x: Math.min(design.width - selectedElement.width, selectedElement.x + 16), y: Math.min(design.height - selectedElement.height, selectedElement.y + 16), locked: false } as DesignElement;
-    recordDesign((current) => ({ ...current, elements: [...current.elements, duplicate] }));
-    setSelectedElementId(duplicate.id);
+    const duplicate = {
+      ...selectedElement,
+      id: `element-${crypto.randomUUID()}`,
+      x: Math.min(design.width - selectedElement.width, selectedElement.x + 16),
+      y: Math.min(design.height - selectedElement.height, selectedElement.y + 16),
+      locked: false,
+    } as DesignElement;
+    addCreativeElement(duplicate);
   }
 
   function moveSelectedLayer(direction: 'forward' | 'backward' | 'front' | 'back') {
@@ -241,7 +203,13 @@ export default function App() {
       const index = movable.findIndex((element) => element.id === selectedElementId);
       if (index < 0) return current;
       const [element] = movable.splice(index, 1);
-      const nextIndex = direction === 'front' ? movable.length : direction === 'back' ? 0 : direction === 'forward' ? Math.min(movable.length, index + 1) : Math.max(0, index - 1);
+      const nextIndex = direction === 'front'
+        ? movable.length
+        : direction === 'back'
+          ? 0
+          : direction === 'forward'
+            ? Math.min(movable.length, index + 1)
+            : Math.max(0, index - 1);
       movable.splice(nextIndex, 0, element);
       return { ...current, elements: [...protectedBase, ...movable] };
     });
@@ -258,18 +226,43 @@ export default function App() {
     updateSelected(changes);
   }
 
+  function replaceSelectedImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !file.type.startsWith('image/') || selectedElement?.type !== 'image' || selectedElement.binding) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') updateSelected({ src: reader.result } as Partial<DesignElement>);
+    };
+    reader.readAsDataURL(file);
+  }
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
       const modifier = event.metaKey || event.ctrlKey;
-      if (modifier && event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); return; }
-      if (modifier && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); return; }
+      if (modifier && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redo(); else undo();
+        return;
+      }
+      if (modifier && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+        return;
+      }
       if (!selectedElement || selectedElement.locked || !event.key.startsWith('Arrow')) return;
       event.preventDefault();
       const amount = event.shiftKey ? 10 : 1;
-      const x = Math.max(0, Math.min(design.width - selectedElement.width, selectedElement.x + (event.key === 'ArrowLeft' ? -amount : event.key === 'ArrowRight' ? amount : 0)));
-      const y = Math.max(0, Math.min(design.height - selectedElement.height, selectedElement.y + (event.key === 'ArrowUp' ? -amount : event.key === 'ArrowDown' ? amount : 0)));
+      const x = Math.max(0, Math.min(
+        design.width - selectedElement.width,
+        selectedElement.x + (event.key === 'ArrowLeft' ? -amount : event.key === 'ArrowRight' ? amount : 0),
+      ));
+      const y = Math.max(0, Math.min(
+        design.height - selectedElement.height,
+        selectedElement.y + (event.key === 'ArrowUp' ? -amount : event.key === 'ArrowDown' ? amount : 0),
+      ));
       updateElement(selectedElement.id, { x, y }, true);
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -278,54 +271,78 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <input ref={imageInputRef} className="visually-hidden" type="file" accept="image/*" onChange={handleImageUpload} />
+      <input ref={replacementImageInputRef} className="visually-hidden" type="file" accept="image/*" onChange={replaceSelectedImage} />
       <header className="app-header">
         <div><p className="eyebrow">The Empyrean Tracker · V2</p><h1>Book Workspace</h1></div>
         <div className="header-actions">
-          <div className="history-controls" aria-label="Design history"><button onClick={undo} disabled={!past.length} title="Undo (Ctrl/Cmd+Z)">↶ Undo</button><button onClick={redo} disabled={!future.length} title="Redo (Ctrl/Cmd+Shift+Z)">↷ Redo</button></div>
-          <div className="size-switcher" aria-label="Card output size">{(['small', 'medium', 'large'] as CardSize[]).map((size) => <button key={size} className={cardSize === size ? 'is-active' : ''} onClick={() => setCardSize(size)}>{size}</button>)}</div>
+          <div className="history-controls" aria-label="Design history">
+            <button onClick={undo} disabled={!past.length} title="Undo (Ctrl/Cmd+Z)">↶ Undo</button>
+            <button onClick={redo} disabled={!future.length} title="Redo (Ctrl/Cmd+Shift+Z)">↷ Redo</button>
+          </div>
+          <div className="size-switcher" aria-label="Card output size">
+            {(['small', 'medium', 'large'] as CardSize[]).map((size) => <button key={size} className={cardSize === size ? 'is-active' : ''} onClick={() => setCardSize(size)}>{size}</button>)}
+          </div>
           <button className="primary-button">Save Book</button>
         </div>
       </header>
 
       <main className="workspace-grid">
         <aside className="panel book-panel">
-          <div className="panel-heading"><p className="eyebrow">Book</p><h2>Entry and connections</h2></div>
-          <nav className="section-tabs">
-            {(['details', 'ratings', 'elements', 'connections'] as BookSection[]).map((section) => <button key={section} className={activeBookSection === section ? 'is-active' : ''} onClick={() => setActiveBookSection(section)}>{section}</button>)}
+          <div className="panel-heading"><p className="eyebrow">Book</p><h2>Entry and creative tools</h2></div>
+          <nav className="section-tabs section-tabs--six">
+            {(['details', 'ratings', 'connections', 'text', 'elements', 'uploads'] as BookSection[]).map((section) => (
+              <button key={section} className={activeBookSection === section ? 'is-active' : ''} onClick={() => setActiveBookSection(section)}>{section}</button>
+            ))}
           </nav>
+
           {activeBookSection === 'details' && <div className="field-stack">
             <FieldRow label="Title" onAdd={() => addField('title')} included={hasBinding(design, 'title')}><input value={book.title} onChange={(event) => updateBook('title', event.target.value)} /></FieldRow>
             <FieldRow label="Author" onAdd={() => addField('author')} included={hasBinding(design, 'author')}><input value={book.author} onChange={(event) => updateBook('author', event.target.value)} /></FieldRow>
             <FieldRow label="Series" onAdd={() => addField('series')} included={hasBinding(design, 'series')}><input value={book.series} onChange={(event) => updateBook('series', event.target.value)} /></FieldRow>
             <FieldRow label="Cover image URL" onAdd={() => addField('coverUrl')} included={hasBinding(design, 'coverUrl')}><input value={book.coverUrl} onChange={(event) => updateBook('coverUrl', event.target.value)} placeholder="Paste an image URL" /></FieldRow>
-            <FieldRow label="Status" onAdd={() => addField('status')} included={hasBinding(design, 'status')}><select value={book.status} onChange={(event) => updateBook('status', event.target.value as BookRecord['status'])}><option value="want">Want to read</option><option value="reading">Currently reading</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="dnf">DNF</option></select></FieldRow>
+            <FieldRow label="Status" onAdd={() => addField('status')} included={hasBinding(design, 'status')}>
+              <select value={book.status} onChange={(event) => updateBook('status', event.target.value as BookRecord['status'])}>
+                <option value="want">Want to read</option><option value="reading">Currently reading</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="dnf">DNF</option>
+              </select>
+            </FieldRow>
             <FieldRow label={`Progress · ${book.progress}%`} onAdd={() => addField('progress')} included={hasBinding(design, 'progress')}><input type="range" min="0" max="100" value={book.progress} onChange={(event) => updateBook('progress', Number(event.target.value))} /></FieldRow>
             <FieldRow label="Reaction" onAdd={() => addField('reaction')} included={hasBinding(design, 'reaction')}><textarea value={book.reaction} onChange={(event) => updateBook('reaction', event.target.value)} /></FieldRow>
           </div>}
-          {activeBookSection === 'ratings' && <div className="field-stack">{(['rating', 'spice', 'impact'] as const).map((path) => <FieldRow key={path} label={`${FIELD_LABELS[path]} · ${book[path]}`} onAdd={() => addField(path)} included={hasBinding(design, path)}><input type="range" min="0" max="5" step="0.5" value={book[path]} onChange={(event) => updateBook(path, Number(event.target.value))} /></FieldRow>)}</div>}
-          {activeBookSection === 'elements' && <div className="element-library">
-            <section className="element-library-section">
-              <div className="element-library-heading"><h3>Text styles</h3><span>Choose a style, then edit its wording in the Inspector.</span></div>
-              <div className="text-preset-grid">{TEXT_STYLE_PRESETS.map((preset) => <TextPresetTool key={preset.id} preset={preset} onClick={() => addTextPreset(preset)} />)}</div>
-            </section>
-            <section className="element-library-section">
-              <div className="element-library-heading"><h3>Shapes and media</h3><span>Uploads are stored in the draft for now; Supabase Storage comes with persistence.</span></div>
-              <div className="element-tool-grid">
-                <ElementTool icon="▭" title="Rectangle" detail="Square-cornered shape" onClick={() => addShape('rectangle')} />
-                <ElementTool icon="▢" title="Rounded box" detail="Rounded shape or panel" onClick={() => addShape('rounded')} />
-                <ElementTool icon="●" title="Circle" detail="Circular shape or badge" onClick={() => addShape('circle')} />
-                <ElementTool icon="—" title="Divider" detail="Thin decorative line" onClick={() => addShape('divider')} />
-                <ElementTool icon="↑" title="Upload image" detail="Choose PNG, JPG, WEBP, or GIF" onClick={() => requestImageUpload('new')} />
-              </div>
-            </section>
+
+          {activeBookSection === 'ratings' && <div className="field-stack">
+            {(['rating', 'spice', 'impact'] as const).map((path) => (
+              <FieldRow key={path} label={`${FIELD_LABELS[path]} · ${book[path]}`} onAdd={() => addField(path)} included={hasBinding(design, path)}>
+                <input type="range" min="0" max="5" step="0.5" value={book[path]} onChange={(event) => updateBook(path, Number(event.target.value))} />
+              </FieldRow>
+            ))}
           </div>}
-          {activeBookSection === 'connections' && <div className="connection-stack"><ConnectionCard title="Mind Map" count={book.mindMapNodeIds.length} action="Link nodes" /><ConnectionCard title="Conspiracy Wall" count={book.wallCardIds.length} action="Link cards" /><ConnectionCard title="Theories" count={book.theoryIds.length} action="Link theories" /></div>}
+
+          {activeBookSection === 'connections' && <div className="connection-stack">
+            <ConnectionCard title="Mind Map" count={book.mindMapNodeIds.length} action="Link nodes" />
+            <ConnectionCard title="Conspiracy Wall" count={book.wallCardIds.length} action="Link cards" />
+            <ConnectionCard title="Theories" count={book.theoryIds.length} action="Link theories" />
+          </div>}
+
+          {(activeBookSection === 'text' || activeBookSection === 'elements' || activeBookSection === 'uploads') && (
+            <CreativeLibraries section={activeBookSection} onAddElement={addCreativeElement} onFontsChange={handleFontsChange} />
+          )}
         </aside>
 
         <section className="design-stage" onPointerDown={() => setSelectedElementId(null)}>
           <div className="stage-heading"><div><p className="eyebrow">Design</p><h2>Live card</h2></div><span>{cardSize} output · browser-native text</span></div>
-          <div className="stage-canvas"><CardRenderer book={book} design={design} size={cardSize} mode="editor" selectedElementId={selectedElementId} onSelectElement={setSelectedElementId} onChangeElement={(id, changes) => updateElement(id, changes)} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} /></div>
+          <div className="stage-canvas">
+            <CardRenderer
+              book={book}
+              design={design}
+              size={cardSize}
+              mode="editor"
+              selectedElementId={selectedElementId}
+              onSelectElement={setSelectedElementId}
+              onChangeElement={(id, changes) => updateElement(id, changes)}
+              onInteractionStart={beginInteraction}
+              onInteractionEnd={endInteraction}
+            />
+          </div>
         </section>
 
         <aside className="panel inspector-panel">
@@ -341,7 +358,10 @@ export default function App() {
               </div>
               <TransactionalRange label="Rotation" min={-180} max={180} value={selectedElement.rotation ?? 0} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ rotation: value })} />
               <TransactionalRange label="Opacity" min={0} max={1} step={0.05} value={selectedElement.opacity ?? 1} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ opacity: value })} />
-              <div className="alignment-grid"><button onClick={() => alignSelected('left')}>Left</button><button onClick={() => alignSelected('center-x')}>Center X</button><button onClick={() => alignSelected('right')}>Right</button><button onClick={() => alignSelected('top')}>Top</button><button onClick={() => alignSelected('center-y')}>Center Y</button><button onClick={() => alignSelected('bottom')}>Bottom</button></div>
+              <div className="alignment-grid">
+                <button onClick={() => alignSelected('left')}>Left</button><button onClick={() => alignSelected('center-x')}>Center X</button><button onClick={() => alignSelected('right')}>Right</button>
+                <button onClick={() => alignSelected('top')}>Top</button><button onClick={() => alignSelected('center-y')}>Center Y</button><button onClick={() => alignSelected('bottom')}>Bottom</button>
+              </div>
               <p className="shortcut-hint">Arrow keys nudge 1px · Shift + Arrow nudges 10px</p>
             </section>
 
@@ -349,26 +369,38 @@ export default function App() {
               {selectedElement.type === 'text' && <>
                 {!selectedElement.binding && <label>Text<textarea value={selectedElement.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value } as Partial<DesignElement>)} /></label>}
                 <label>Text color<input type="color" value={selectedElement.color} onChange={(event) => updateSelected({ color: event.target.value } as Partial<DesignElement>)} /></label>
-                <label>Font family<select value={selectedElement.fontFamily} onChange={(event) => updateSelected({ fontFamily: event.target.value } as Partial<DesignElement>)}><option>Inter</option><option>Libre Baskerville</option><option>Georgia</option><option>Arial</option><option>Trebuchet MS</option><option>Courier New</option></select></label>
+                <label>Font family
+                  <select value={selectedElement.fontFamily} onChange={(event) => updateSelected({ fontFamily: event.target.value } as Partial<DesignElement>)}>
+                    <optgroup label="Built-in fonts">{SYSTEM_FONTS.map((font) => <option key={font} value={font}>{font}</option>)}</optgroup>
+                    {!!customFonts.length && <optgroup label="Custom font library">{customFonts.map((font) => <option key={font.id} value={font.family}>{font.name}</option>)}</optgroup>}
+                  </select>
+                </label>
                 <TransactionalRange label="Font size" min={8} max={72} value={selectedElement.fontSize} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ fontSize: value } as Partial<DesignElement>)} />
                 <label>Alignment<select value={selectedElement.textAlign ?? 'left'} onChange={(event) => updateSelected({ textAlign: event.target.value as 'left' | 'center' | 'right' } as Partial<DesignElement>)}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
                 <div className="quick-action-grid"><button className={selectedElement.fontWeight === 700 ? 'is-active' : ''} onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === 700 ? 400 : 700 } as Partial<DesignElement>)}>Bold</button><button className={selectedElement.fontStyle === 'italic' ? 'is-active' : ''} onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' } as Partial<DesignElement>)}>Italic</button></div>
               </>}
+
               {selectedElement.type === 'rating' && <>
                 <label>Rating symbols<select value={`${selectedElement.icon}|${selectedElement.emptyIcon}`} onChange={(event) => { const preset = RATING_ICON_PRESETS.find((item) => `${item.icon}|${item.emptyIcon}` === event.target.value); if (preset) updateSelected({ icon: preset.icon, emptyIcon: preset.emptyIcon } as Partial<DesignElement>); }}>{RATING_ICON_PRESETS.map((preset) => <option key={preset.label} value={`${preset.icon}|${preset.emptyIcon}`}>{preset.icon}{preset.emptyIcon} · {preset.label}</option>)}</select></label>
                 <label>Rating color<input type="color" value={selectedElement.color} onChange={(event) => updateSelected({ color: event.target.value } as Partial<DesignElement>)} /></label>
                 <TransactionalRange label="Font size" min={8} max={36} value={selectedElement.fontSize} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ fontSize: value } as Partial<DesignElement>)} />
               </>}
+
               {selectedElement.type === 'shape' && <>
-                <label>Fill<input type="color" value={selectedElement.fill} onChange={(event) => updateSelected({ fill: event.target.value } as Partial<DesignElement>)} /></label>
+                <label>Fill<input type="color" value={selectedElement.fill === 'transparent' ? '#000000' : selectedElement.fill} onChange={(event) => updateSelected({ fill: event.target.value } as Partial<DesignElement>)} /></label>
                 <label>Border<input type="color" value={selectedElement.stroke ?? '#75451f'} onChange={(event) => updateSelected({ stroke: event.target.value } as Partial<DesignElement>)} /></label>
                 <TransactionalRange label="Border width" min={0} max={12} value={selectedElement.strokeWidth ?? 0} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ strokeWidth: value } as Partial<DesignElement>)} />
                 <TransactionalRange label="Corner radius" min={0} max={999} value={selectedElement.borderRadius ?? 0} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ borderRadius: value } as Partial<DesignElement>)} />
               </>}
-              {selectedElement.type === 'progress' && <><label>Track color<input type="color" value={selectedElement.trackColor} onChange={(event) => updateSelected({ trackColor: event.target.value } as Partial<DesignElement>)} /></label><label>Fill color<input type="color" value={selectedElement.fillColor} onChange={(event) => updateSelected({ fillColor: event.target.value } as Partial<DesignElement>)} /></label></>}
+
+              {selectedElement.type === 'progress' && <>
+                <label>Track color<input type="color" value={selectedElement.trackColor} onChange={(event) => updateSelected({ trackColor: event.target.value } as Partial<DesignElement>)} /></label>
+                <label>Fill color<input type="color" value={selectedElement.fillColor} onChange={(event) => updateSelected({ fillColor: event.target.value } as Partial<DesignElement>)} /></label>
+              </>}
+
               {selectedElement.type === 'image' && <>
                 {!selectedElement.binding && <>
-                  <button className="secondary-button" type="button" onClick={() => requestImageUpload('replace')}>Upload or replace file</button>
+                  <button className="secondary-button" type="button" onClick={() => replacementImageInputRef.current?.click()}>Replace with file</button>
                   <label>Optional image URL<input value={selectedElement.src?.startsWith('data:') ? '' : selectedElement.src ?? ''} placeholder="Or paste an image URL" onChange={(event) => updateSelected({ src: event.target.value } as Partial<DesignElement>)} /></label>
                 </>}
                 <label>Image fit<select value={selectedElement.fit ?? 'cover'} onChange={(event) => updateSelected({ fit: event.target.value as 'cover' | 'contain' } as Partial<DesignElement>)}><option value="cover">Crop to fill</option><option value="contain">Fit inside</option></select></label>
@@ -382,7 +414,7 @@ export default function App() {
               <button className={selectedElement.flipX ? 'is-active' : ''} onClick={() => updateSelected({ flipX: !selectedElement.flipX })}>Flip horizontal</button><button className={selectedElement.flipY ? 'is-active' : ''} onClick={() => updateSelected({ flipY: !selectedElement.flipY })}>Flip vertical</button>
             </div></section>
             <button className="danger-button" onClick={removeSelected}>Remove from design</button>
-          </div> : <p className="muted-copy">Select an element on the card or add one from the Book or Elements panel.</p>}
+          </div> : <p className="muted-copy">Select an element on the card or add one from Details, Ratings, Text, Elements, or Uploads.</p>}
         </aside>
       </main>
     </div>
@@ -395,14 +427,6 @@ function TransactionalRange({ label, min, max, step, value, onChange, onStart, o
 
 function FieldRow({ label, onAdd, included, children }: { label: string; onAdd: () => void; included: boolean; children: React.ReactNode }) {
   return <section className="field-row"><div className="field-row-heading"><label>{label}</label><button type="button" onClick={onAdd}>{included ? 'On card ✓' : '+'}</button></div>{children}</section>;
-}
-
-function TextPresetTool({ preset, onClick }: { preset: TextPreset; onClick: () => void }) {
-  return <button type="button" className="text-preset-tool" onClick={onClick}><span style={{ fontFamily: preset.fontFamily, fontSize: Math.min(preset.fontSize, 22), fontWeight: preset.fontWeight, fontStyle: 'fontStyle' in preset ? preset.fontStyle : 'normal', color: preset.color, textAlign: preset.textAlign }}>{preset.sample}</span><small>{preset.label}</small></button>;
-}
-
-function ElementTool({ icon, title, detail, onClick }: { icon: string; title: string; detail: string; onClick: () => void }) {
-  return <button type="button" className="element-tool" onClick={onClick}><span>{icon}</span><strong>{title}</strong><small>{detail}</small></button>;
 }
 
 function ConnectionCard({ title, count, action }: { title: string; count: number; action: string }) {

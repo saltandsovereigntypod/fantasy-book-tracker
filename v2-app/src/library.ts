@@ -112,8 +112,10 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 
 export async function loadFontFace(item: FontLibraryItem): Promise<void> {
   const existing = Array.from(document.fonts).some((face) => face.family === item.family);
-  if (existing) return;
-  const face = new FontFace(item.family, `url(${item.dataUrl})`);
-  await face.load();
-  document.fonts.add(face);
+  if (!existing) {
+    const face = new FontFace(item.family, `url(${item.dataUrl})`);
+    await face.load();
+    document.fonts.add(face);
+  }
+  window.dispatchEvent(new Event('empyrean-font-library-changed'));
 }

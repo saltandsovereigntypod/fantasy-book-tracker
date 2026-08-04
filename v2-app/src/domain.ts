@@ -41,6 +41,7 @@ export interface TextElement extends ElementBase {
   fontSize: number;
   fontWeight?: number;
   fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline' | 'line-through';
   color: string;
   textAlign?: 'left' | 'center' | 'right';
   lineHeight?: number;

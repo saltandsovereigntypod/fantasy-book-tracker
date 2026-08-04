@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import Workspace from './App';
 import { BookProfileDrawer } from './BookProfileDrawer';
+import { CardActionsPreview } from './CardActionsDesigner';
 import { CardRenderer } from './CardRenderer';
 import { freshArchive, loadCloudArchive, saveCloudArchive, type V2ArchiveState, type V2BookRecord } from './archive';
 import { defaultBook, defaultDesign } from './defaults';
 import { saveWorkspaceDraft, WORKSPACE_DRAFT_EVENT, type WorkspaceDraft } from './library';
 import { getAuthSnapshot, signIn, signOut, signUp, supabase } from './supabase';
-import type { CardSize, ReadingStatus } from './domain';
+import type { CardAction, CardSize, ReadingStatus } from './domain';
 import './full-app.css';
 import './full-app-enhancements.css';
 
@@ -221,7 +222,27 @@ function Library({ archive, onNewBook, onEditBook, onProfile, onDeleteBook, onSa
       .sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'author' ? a.author.localeCompare(b.author) : sort === 'progress' ? b.progress - a.progress : sort === 'rating' ? b.rating - a.rating : b.updatedAt.localeCompare(a.updatedAt));
   }, [archive.books, filter, query, sort]);
 
-  return <div className="v2-library"><header><div><h2>Book Library</h2><p>The same renderer used in the editor powers every saved card.</p></div><button onClick={() => onNewBook()}>Add Book</button></header><div className="v2-library-controls v2-library-controls--expanded"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, authors, genres, or tags" /><select value={filter} onChange={(event) => setFilter(event.target.value as LibraryFilter)}><option value="active">All active books</option><option value="reading">Currently reading</option><option value="want">Want to read</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="dnf">DNF</option><option value="favorites">Favorites</option><option value="archived">Archived</option></select><select value={sort} onChange={(event) => setSort(event.target.value as LibrarySort)}><option value="updated">Recently updated</option><option value="title">Title A–Z</option><option value="author">Author A–Z</option><option value="progress">Highest progress</option><option value="rating">Highest rated</option></select><select value={size} onChange={(event) => setSize(event.target.value as CardSize)}><option value="small">Small cards</option><option value="medium">Medium cards</option><option value="large">Large cards</option></select></div>{books.length ? <div className={`v2-library-grid is-${size}`}>{books.map((book) => <article key={book.id}><CardRenderer book={book} design={book.design} size={size} /><footer><button onClick={() => onProfile(book.id)}>Profile</button><button onClick={() => onEditBook(book.id)}>Edit</button><button onClick={() => onSaveBook({ ...book, favorite: !book.favorite })}>{book.favorite ? '★' : '☆'}</button><button className="is-danger" onClick={() => onDeleteBook(book.id)}>Delete</button></footer></article>)}</div> : <div className="v2-empty-state"><span>▤</span><h3>No books found</h3><p>Adjust the filters or create another book.</p><button onClick={() => onNewBook()}>Add Book</button></div>}</div>;
+  async function runAction(book: V2BookRecord, action: CardAction) {
+    if (action.action === 'profile' || action.action === 'progress' || action.action === 'add-note') { onProfile(book.id); return; }
+    if (action.action === 'edit') { await onEditBook(book.id); return; }
+    if (action.action === 'favorite') { await onSaveBook({ ...book, favorite: !book.favorite }); return; }
+    if (action.action === 'archive') { await onSaveBook({ ...book, archived: !book.archived }); return; }
+    if (action.action === 'delete') { await onDeleteBook(book.id); return; }
+    if (action.action === 'start-reading') {
+      const now = new Date().toISOString();
+      await onSaveBook({ ...book, status: 'reading', readingSessions: [...book.readingSessions, { id: crypto.randomUUID(), startedAt: now, startProgress: book.progress, endProgress: book.progress }] });
+      return;
+    }
+    if (action.action === 'finish-reading') {
+      const now = new Date().toISOString();
+      const sessions = [...book.readingSessions];
+      const activeIndex = sessions.map((session) => session.completedAt).lastIndexOf(undefined);
+      if (activeIndex >= 0) sessions[activeIndex] = { ...sessions[activeIndex], completedAt: now, endProgress: book.progress };
+      await onSaveBook({ ...book, status: book.progress >= 100 ? 'completed' : book.status, readingSessions: sessions });
+    }
+  }
+
+  return <div className="v2-library"><header><div><h2>Book Library</h2><p>The same renderer used in the editor powers every saved card.</p></div><button onClick={() => onNewBook()}>Add Book</button></header><div className="v2-library-controls v2-library-controls--expanded"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, authors, genres, or tags" /><select value={filter} onChange={(event) => setFilter(event.target.value as LibraryFilter)}><option value="active">All active books</option><option value="reading">Currently reading</option><option value="want">Want to read</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="dnf">DNF</option><option value="favorites">Favorites</option><option value="archived">Archived</option></select><select value={sort} onChange={(event) => setSort(event.target.value as LibrarySort)}><option value="updated">Recently updated</option><option value="title">Title A–Z</option><option value="author">Author A–Z</option><option value="progress">Highest progress</option><option value="rating">Highest rated</option></select><select value={size} onChange={(event) => setSize(event.target.value as CardSize)}><option value="small">Small cards</option><option value="medium">Medium cards</option><option value="large">Large cards</option></select></div>{books.length ? <div className={`v2-library-grid is-${size}`}>{books.map((book) => <article key={book.id}><CardRenderer book={book} design={book.design} size={size} /><CardActionsPreview actions={book.design.actions} size={size} interactive onAction={(action) => { runAction(book, action).catch((reason) => console.error(reason)); }} /></article>)}</div> : <div className="v2-empty-state"><span>▤</span><h3>No books found</h3><p>Adjust the filters or create another book.</p><button onClick={() => onNewBook()}>Add Book</button></div>}</div>;
 }
 
 function Profile({ archive, onSave }: { archive: V2ArchiveState; onSave: (next: V2ArchiveState) => void }) {

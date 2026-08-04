@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CardActionsDesigner, CardActionsPreview } from './CardActionsDesigner';
 import { CardRenderer } from './CardRenderer';
 import { CreativeLibraries, type CreativeSection } from './CreativeLibraries';
 import { defaultBook, defaultDesign } from './defaults';
-import type { BookFieldPath, BookRecord, CardDesign, CardSize, DesignElement } from './domain';
+import type { BookFieldPath, BookRecord, CardAction, CardDesign, CardSize, DesignElement } from './domain';
 import { FIELD_LABELS } from './domain';
 import { listLibraryItems, loadFontFace, loadWorkspaceDraft, saveWorkspaceDraft, type FontLibraryItem } from './library';
 import './styles.css';
@@ -20,9 +21,10 @@ const RATING_ICON_PRESETS = [
 ] as const;
 
 const SYSTEM_FONTS = ['Inter', 'Libre Baskerville', 'Georgia', 'Arial', 'Trebuchet MS', 'Courier New'];
-type BookSection = 'details' | 'ratings' | 'connections' | CreativeSection;
+type BookSection = 'details' | 'ratings' | 'connections' | 'actions' | CreativeSection;
 
 function cloneDesign(design: CardDesign): CardDesign { return structuredClone(design); }
+function normalizeDesign(design: CardDesign): CardDesign { return { ...design, actions: design.actions ?? structuredClone(defaultDesign.actions) }; }
 function hasBinding(design: CardDesign, path: BookFieldPath) { return design.elements.some((element) => element.binding === path); }
 
 function createBoundElement(path: BookFieldPath, index: number): DesignElement {
@@ -61,9 +63,10 @@ export default function App() {
         if (!active) return;
         setCustomFonts(fonts);
         if (draft) {
+          const nextDesign = normalizeDesign(draft.design);
           setBook(draft.book);
-          setDesign(draft.design);
-          designRef.current = draft.design;
+          setDesign(nextDesign);
+          designRef.current = nextDesign;
           setSelectedElementId(null);
         }
       })
@@ -95,6 +98,7 @@ export default function App() {
   }
 
   function updateBook<K extends keyof BookRecord>(key: K, value: BookRecord[K]) { setBook((current) => ({ ...current, [key]: value })); }
+  function updateActions(actions: CardAction[]) { recordDesign((current) => ({ ...current, actions })); }
   function addField(path: BookFieldPath) {
     const existing = design.elements.find((element) => element.binding === path);
     if (existing) { setSelectedElementId(existing.id); return; }
@@ -181,7 +185,6 @@ export default function App() {
       if (modifier && event.shiftKey && key === 'z') { event.preventDefault(); redo(); return; }
       if (modifier && key === 'y') { event.preventDefault(); redo(); return; }
       if (modifier && key === 'z') { event.preventDefault(); undo(); return; }
-
       const target = event.target as HTMLElement | null;
       if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
       if (event.key === 'Escape') { event.preventDefault(); setSelectedElementId(null); return; }
@@ -213,7 +216,7 @@ export default function App() {
       <main className="workspace-grid">
         <aside className="panel book-panel">
           <div className="panel-heading"><p className="eyebrow">Book</p><h2>Entry and creative tools</h2></div>
-          <nav className="section-tabs section-tabs--six">{(['details', 'ratings', 'connections', 'text', 'elements', 'uploads'] as BookSection[]).map((section) => <button key={section} className={activeBookSection === section ? 'is-active' : ''} onClick={() => setActiveBookSection(section)}>{section}</button>)}</nav>
+          <nav className="section-tabs section-tabs--seven">{(['details', 'ratings', 'connections', 'actions', 'text', 'elements', 'uploads'] as BookSection[]).map((section) => <button key={section} className={activeBookSection === section ? 'is-active' : ''} onClick={() => setActiveBookSection(section)}>{section}</button>)}</nav>
           {activeBookSection === 'details' && <div className="field-stack">
             <FieldRow label="Title" onAdd={() => addField('title')} included={hasBinding(design, 'title')}><input value={book.title} onChange={(event) => updateBook('title', event.target.value)} /></FieldRow>
             <FieldRow label="Author" onAdd={() => addField('author')} included={hasBinding(design, 'author')}><input value={book.author} onChange={(event) => updateBook('author', event.target.value)} /></FieldRow>
@@ -225,18 +228,13 @@ export default function App() {
           </div>}
           {activeBookSection === 'ratings' && <div className="field-stack">{(['rating', 'spice', 'impact'] as const).map((path) => <FieldRow key={path} label={`${FIELD_LABELS[path]} · ${book[path]}`} onAdd={() => addField(path)} included={hasBinding(design, path)}><input type="range" min="0" max="5" step="0.5" value={book[path]} onChange={(event) => updateBook(path, Number(event.target.value))} /></FieldRow>)}</div>}
           {activeBookSection === 'connections' && <div className="connection-stack"><ConnectionCard title="Mind Map" count={book.mindMapNodeIds.length} action="Link nodes" /><ConnectionCard title="Conspiracy Wall" count={book.wallCardIds.length} action="Link cards" /><ConnectionCard title="Theories" count={book.theoryIds.length} action="Link theories" /></div>}
+          {activeBookSection === 'actions' && <CardActionsDesigner design={design} onChange={updateActions} />}
           {(activeBookSection === 'text' || activeBookSection === 'elements' || activeBookSection === 'uploads') && <CreativeLibraries section={activeBookSection} onAddElement={addCreativeElement} onFontsChange={handleFontsChange} />}
         </aside>
 
         <section className="design-stage" onPointerDown={() => setSelectedElementId(null)}>
-          <div className="stage-heading">
-            <div><p className="eyebrow">Design</p><h2>Live card</h2></div>
-            <div className="stage-controls">
-              <label className="card-background-control">Card background<input type="color" value={design.background} onChange={(event) => recordDesign((current) => ({ ...current, background: event.target.value }))} /></label>
-              <span>{cardSize} output · autosaved locally</span>
-            </div>
-          </div>
-          <div className="stage-canvas"><CardRenderer book={book} design={design} size={cardSize} mode="editor" selectedElementId={selectedElementId} onSelectElement={setSelectedElementId} onChangeElement={(id, changes) => updateElement(id, changes)} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} /></div>
+          <div className="stage-heading"><div><p className="eyebrow">Design</p><h2>Live card</h2></div><div className="stage-controls"><label className="card-background-control">Card background<input type="color" value={design.background} onChange={(event) => recordDesign((current) => ({ ...current, background: event.target.value }))} /></label><span>{cardSize} output · autosaved locally</span></div></div>
+          <div className="stage-canvas"><CardRenderer book={book} design={design} size={cardSize} mode="editor" selectedElementId={selectedElementId} onSelectElement={setSelectedElementId} onChangeElement={(id, changes) => updateElement(id, changes)} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} /><CardActionsPreview actions={design.actions} size={cardSize} /></div>
         </section>
 
         <aside className="panel inspector-panel">
@@ -252,7 +250,7 @@ export default function App() {
             </section>
             <section className="inspector-group"><h3>Layers and object</h3><div className="quick-action-grid"><button onClick={() => moveSelectedLayer('back')}>To back</button><button onClick={() => moveSelectedLayer('backward')}>Backward</button><button onClick={() => moveSelectedLayer('forward')}>Forward</button><button onClick={() => moveSelectedLayer('front')}>To front</button><button onClick={duplicateSelected}>Duplicate</button><button className={selectedElement.locked ? 'is-active' : ''} onClick={() => updateSelected({ locked: !selectedElement.locked })}>{selectedElement.locked ? 'Unlock' : 'Lock'}</button><button className={selectedElement.flipX ? 'is-active' : ''} onClick={() => updateSelected({ flipX: !selectedElement.flipX })}>Flip horizontal</button><button className={selectedElement.flipY ? 'is-active' : ''} onClick={() => updateSelected({ flipY: !selectedElement.flipY })}>Flip vertical</button>{(selectedElement.type === 'image' || selectedElement.type === 'shape') && selectedElement.id !== 'card-frame' && <button onClick={makeSelectedBackground}>Make background</button>}</div></section>
             <button className="danger-button" onClick={removeSelected}>Remove from design</button>
-          </div> : <p className="muted-copy">Select an element on the card or add one from Details, Ratings, Text, Elements, or Uploads.</p>}
+          </div> : <p className="muted-copy">Select an element on the card or add one from Details, Ratings, Actions, Text, Elements, or Uploads.</p>}
         </aside>
       </main>
     </div>

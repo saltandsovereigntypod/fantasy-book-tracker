@@ -1,0 +1,34 @@
+.card-actions-designer { display: grid; gap: 16px; }
+.card-actions-designer h3 { margin: 0 0 10px; font-size: .92rem; }
+.card-actions-add,
+.card-actions-list > article { padding: 14px; border: 1px solid #4b2e1d; border-radius: 13px; background: #160d09; }
+.card-actions-add > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.card-actions-add button,
+.card-actions-list button { border: 1px solid #75451f; border-radius: 8px; padding: 8px 10px; color: #f7ead2; background: #2b160d; }
+.card-actions-add button { display: flex; align-items: center; gap: 7px; text-align: left; }
+.card-actions-add button:disabled { opacity: .42; }
+.card-actions-list { display: grid; gap: 10px; }
+.card-actions-list > p { color: #a98b64; }
+.card-actions-list > article { display: grid; gap: 12px; }
+.card-actions-list article > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.card-actions-list article > header > div { display: flex; gap: 5px; }
+.card-actions-list button.is-danger { border-color: #7f352f; color: #ffd0c9; background: #351411; }
+.card-action-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.card-action-fields label { display: grid; gap: 5px; color: #c8a878; font-size: .76rem; font-weight: 750; }
+.card-action-fields input,
+.card-action-fields select { min-width: 0; width: 100%; border: 1px solid #5a3824; border-radius: 8px; padding: 8px; color: #f7ead2; background: #0f0906; }
+.card-action-fields input[type="color"] { height: 40px; padding: 4px; }
+.card-action-sizes { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.card-action-sizes span { margin-right: 4px; color: #a98b64; font-size: .75rem; }
+.card-action-sizes button { padding: 6px 9px; text-transform: capitalize; }
+.card-action-sizes button.is-active { border-color: #d0783c; background: #75451f; }
+
+.v2-runtime-actions { width: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.v2-runtime-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 11px; font-weight: 750; cursor: pointer; }
+
+@media (max-width: 700px) {
+  .card-actions-add > div,
+  .card-action-fields { grid-template-columns: 1fr; }
+  .v2-runtime-actions { justify-content: stretch; }
+  .v2-runtime-actions button { flex: 1 1 auto; }
+}

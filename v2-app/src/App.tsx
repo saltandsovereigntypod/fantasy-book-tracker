@@ -17,8 +17,20 @@ const RATING_ICON_PRESETS = [
   { label: 'Clubs', icon: '♣', emptyIcon: '♧' },
 ] as const;
 
+const TEXT_STYLE_PRESETS = [
+  { id: 'epic-title', label: 'Epic title', sample: 'DRAGON RIDER', text: 'Custom title', fontFamily: 'Libre Baskerville', fontSize: 30, fontWeight: 700, color: '#f7ead2', textAlign: 'center' as const, width: 260, height: 68 },
+  { id: 'elegant-serif', label: 'Elegant serif', sample: 'A beautiful passage', text: 'Elegant text', fontFamily: 'Georgia', fontSize: 22, fontWeight: 400, fontStyle: 'italic' as const, color: '#e7d5b7', textAlign: 'center' as const, width: 250, height: 58 },
+  { id: 'chapter-heading', label: 'Chapter heading', sample: 'CHAPTER TWELVE', text: 'CHAPTER TITLE', fontFamily: 'Inter', fontSize: 17, fontWeight: 700, color: '#bd662f', textAlign: 'center' as const, width: 230, height: 40 },
+  { id: 'minimal-label', label: 'Minimal label', sample: 'ARCHIVE NOTE', text: 'LABEL', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: '#c8a878', textAlign: 'left' as const, width: 150, height: 28 },
+  { id: 'gothic-display', label: 'Gothic display', sample: 'THE EMPYREAN', text: 'Gothic title', fontFamily: 'Georgia', fontSize: 27, fontWeight: 700, color: '#f4b942', textAlign: 'center' as const, width: 250, height: 62 },
+  { id: 'pull-quote', label: 'Pull quote', sample: '“We do not break.”', text: '“Add a memorable quote.”', fontFamily: 'Libre Baskerville', fontSize: 18, fontWeight: 400, fontStyle: 'italic' as const, color: '#f7ead2', textAlign: 'center' as const, width: 280, height: 76 },
+  { id: 'typewriter-note', label: 'Typewriter note', sample: 'classified observation', text: 'Add a private note', fontFamily: 'Courier New', fontSize: 14, fontWeight: 400, color: '#dbc5a5', textAlign: 'left' as const, width: 230, height: 52 },
+  { id: 'clean-body', label: 'Clean body', sample: 'Readable supporting text', text: 'Supporting text', fontFamily: 'Inter', fontSize: 15, fontWeight: 400, color: '#f7ead2', textAlign: 'left' as const, width: 230, height: 48 },
+] as const;
+
 type BookSection = 'details' | 'ratings' | 'elements' | 'connections';
-type ElementKind = 'text' | 'rectangle' | 'rounded' | 'circle' | 'divider' | 'image';
+type ElementKind = 'rectangle' | 'rounded' | 'circle' | 'divider';
+type TextPreset = typeof TEXT_STYLE_PRESETS[number];
 
 function cloneDesign(design: CardDesign): CardDesign {
   return structuredClone(design);
@@ -47,14 +59,35 @@ function createBoundElement(path: BookFieldPath, index: number): DesignElement {
   };
 }
 
-function createFreeElement(kind: ElementKind): DesignElement {
+function createTextElement(preset: TextPreset): DesignElement {
+  return {
+    id: `element-${crypto.randomUUID()}`,
+    type: 'text',
+    text: preset.text,
+    x: Math.round((420 - preset.width) / 2),
+    y: 110,
+    width: preset.width,
+    height: preset.height,
+    fontFamily: preset.fontFamily,
+    fontSize: preset.fontSize,
+    fontWeight: preset.fontWeight,
+    fontStyle: 'fontStyle' in preset ? preset.fontStyle : 'normal',
+    color: preset.color,
+    textAlign: preset.textAlign,
+    lineHeight: 1.15,
+  };
+}
+
+function createShapeElement(kind: ElementKind): DesignElement {
   const id = `element-${crypto.randomUUID()}`;
-  if (kind === 'text') return { id, type: 'text', text: 'Custom text', x: 110, y: 100, width: 200, height: 52, fontFamily: 'Libre Baskerville', fontSize: 24, fontWeight: 700, color: '#f7ead2', textAlign: 'center', lineHeight: 1.15 };
-  if (kind === 'image') return { id, type: 'image', src: '', x: 120, y: 72, width: 180, height: 220, fit: 'contain', borderRadius: 12 };
   if (kind === 'divider') return { id, type: 'shape', x: 80, y: 188, width: 260, height: 4, fill: '#bd662f', borderRadius: 999 };
   if (kind === 'circle') return { id, type: 'shape', x: 150, y: 110, width: 120, height: 120, fill: '#75451f', stroke: '#bd662f', strokeWidth: 2, borderRadius: 999 };
   if (kind === 'rounded') return { id, type: 'shape', x: 110, y: 120, width: 200, height: 100, fill: '#75451f', stroke: '#bd662f', strokeWidth: 2, borderRadius: 20 };
   return { id, type: 'shape', x: 110, y: 120, width: 200, height: 100, fill: '#75451f', stroke: '#bd662f', strokeWidth: 2, borderRadius: 0 };
+}
+
+function createImageElement(src: string): DesignElement {
+  return { id: `element-${crypto.randomUUID()}`, type: 'image', src, x: 120, y: 72, width: 180, height: 220, fit: 'contain', borderRadius: 12 };
 }
 
 export default function App() {
@@ -67,6 +100,8 @@ export default function App() {
   const [activeBookSection, setActiveBookSection] = useState<BookSection>('details');
   const designRef = useRef(design);
   const interactionStartRef = useRef<CardDesign | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const imageUploadModeRef = useRef<'new' | 'replace'>('new');
 
   useEffect(() => { designRef.current = design; }, [design]);
 
@@ -95,10 +130,41 @@ export default function App() {
     setSelectedElementId(element.id);
   }
 
-  function addFreeElement(kind: ElementKind) {
-    const element = createFreeElement(kind);
+  function addTextPreset(preset: TextPreset) {
+    const element = createTextElement(preset);
     recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
     setSelectedElementId(element.id);
+  }
+
+  function addShape(kind: ElementKind) {
+    const element = createShapeElement(kind);
+    recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
+    setSelectedElementId(element.id);
+  }
+
+  function requestImageUpload(mode: 'new' | 'replace') {
+    imageUploadModeRef.current = mode;
+    imageInputRef.current?.click();
+  }
+
+  function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = typeof reader.result === 'string' ? reader.result : '';
+      if (!src) return;
+      if (imageUploadModeRef.current === 'replace' && selectedElement?.type === 'image' && !selectedElement.binding) {
+        updateSelected({ src } as Partial<DesignElement>);
+        return;
+      }
+      const element = createImageElement(src);
+      recordDesign((current) => ({ ...current, elements: [...current.elements, element] }));
+      setSelectedElementId(element.id);
+    };
+    reader.readAsDataURL(file);
   }
 
   function updateElement(id: string, changes: Partial<DesignElement>, record = false) {
@@ -212,6 +278,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <input ref={imageInputRef} className="visually-hidden" type="file" accept="image/*" onChange={handleImageUpload} />
       <header className="app-header">
         <div><p className="eyebrow">The Empyrean Tracker · V2</p><h1>Book Workspace</h1></div>
         <div className="header-actions">
@@ -237,13 +304,21 @@ export default function App() {
             <FieldRow label="Reaction" onAdd={() => addField('reaction')} included={hasBinding(design, 'reaction')}><textarea value={book.reaction} onChange={(event) => updateBook('reaction', event.target.value)} /></FieldRow>
           </div>}
           {activeBookSection === 'ratings' && <div className="field-stack">{(['rating', 'spice', 'impact'] as const).map((path) => <FieldRow key={path} label={`${FIELD_LABELS[path]} · ${book[path]}`} onAdd={() => addField(path)} included={hasBinding(design, path)}><input type="range" min="0" max="5" step="0.5" value={book[path]} onChange={(event) => updateBook(path, Number(event.target.value))} /></FieldRow>)}</div>}
-          {activeBookSection === 'elements' && <div className="element-tool-grid">
-            <ElementTool icon="T" title="Custom text" detail="Add an unbound text box" onClick={() => addFreeElement('text')} />
-            <ElementTool icon="▭" title="Rectangle" detail="Square-cornered shape" onClick={() => addFreeElement('rectangle')} />
-            <ElementTool icon="▢" title="Rounded box" detail="Rounded shape or panel" onClick={() => addFreeElement('rounded')} />
-            <ElementTool icon="●" title="Circle" detail="Circular shape or badge" onClick={() => addFreeElement('circle')} />
-            <ElementTool icon="—" title="Divider" detail="Thin decorative line" onClick={() => addFreeElement('divider')} />
-            <ElementTool icon="▧" title="Image" detail="Add an image by URL" onClick={() => addFreeElement('image')} />
+          {activeBookSection === 'elements' && <div className="element-library">
+            <section className="element-library-section">
+              <div className="element-library-heading"><h3>Text styles</h3><span>Choose a style, then edit its wording in the Inspector.</span></div>
+              <div className="text-preset-grid">{TEXT_STYLE_PRESETS.map((preset) => <TextPresetTool key={preset.id} preset={preset} onClick={() => addTextPreset(preset)} />)}</div>
+            </section>
+            <section className="element-library-section">
+              <div className="element-library-heading"><h3>Shapes and media</h3><span>Uploads are stored in the draft for now; Supabase Storage comes with persistence.</span></div>
+              <div className="element-tool-grid">
+                <ElementTool icon="▭" title="Rectangle" detail="Square-cornered shape" onClick={() => addShape('rectangle')} />
+                <ElementTool icon="▢" title="Rounded box" detail="Rounded shape or panel" onClick={() => addShape('rounded')} />
+                <ElementTool icon="●" title="Circle" detail="Circular shape or badge" onClick={() => addShape('circle')} />
+                <ElementTool icon="—" title="Divider" detail="Thin decorative line" onClick={() => addShape('divider')} />
+                <ElementTool icon="↑" title="Upload image" detail="Choose PNG, JPG, WEBP, or GIF" onClick={() => requestImageUpload('new')} />
+              </div>
+            </section>
           </div>}
           {activeBookSection === 'connections' && <div className="connection-stack"><ConnectionCard title="Mind Map" count={book.mindMapNodeIds.length} action="Link nodes" /><ConnectionCard title="Conspiracy Wall" count={book.wallCardIds.length} action="Link cards" /><ConnectionCard title="Theories" count={book.theoryIds.length} action="Link theories" /></div>}
         </aside>
@@ -292,7 +367,10 @@ export default function App() {
               </>}
               {selectedElement.type === 'progress' && <><label>Track color<input type="color" value={selectedElement.trackColor} onChange={(event) => updateSelected({ trackColor: event.target.value } as Partial<DesignElement>)} /></label><label>Fill color<input type="color" value={selectedElement.fillColor} onChange={(event) => updateSelected({ fillColor: event.target.value } as Partial<DesignElement>)} /></label></>}
               {selectedElement.type === 'image' && <>
-                {!selectedElement.binding && <label>Image URL<input value={selectedElement.src ?? ''} placeholder="Paste an image URL" onChange={(event) => updateSelected({ src: event.target.value } as Partial<DesignElement>)} /></label>}
+                {!selectedElement.binding && <>
+                  <button className="secondary-button" type="button" onClick={() => requestImageUpload('replace')}>Upload or replace file</button>
+                  <label>Optional image URL<input value={selectedElement.src?.startsWith('data:') ? '' : selectedElement.src ?? ''} placeholder="Or paste an image URL" onChange={(event) => updateSelected({ src: event.target.value } as Partial<DesignElement>)} /></label>
+                </>}
                 <label>Image fit<select value={selectedElement.fit ?? 'cover'} onChange={(event) => updateSelected({ fit: event.target.value as 'cover' | 'contain' } as Partial<DesignElement>)}><option value="cover">Crop to fill</option><option value="contain">Fit inside</option></select></label>
                 <TransactionalRange label="Corner radius" min={0} max={100} value={selectedElement.borderRadius ?? 0} onStart={beginInteraction} onEnd={endInteraction} onChange={(value) => updateSelectedLive({ borderRadius: value } as Partial<DesignElement>)} />
               </>}
@@ -317,6 +395,10 @@ function TransactionalRange({ label, min, max, step, value, onChange, onStart, o
 
 function FieldRow({ label, onAdd, included, children }: { label: string; onAdd: () => void; included: boolean; children: React.ReactNode }) {
   return <section className="field-row"><div className="field-row-heading"><label>{label}</label><button type="button" onClick={onAdd}>{included ? 'On card ✓' : '+'}</button></div>{children}</section>;
+}
+
+function TextPresetTool({ preset, onClick }: { preset: TextPreset; onClick: () => void }) {
+  return <button type="button" className="text-preset-tool" onClick={onClick}><span style={{ fontFamily: preset.fontFamily, fontSize: Math.min(preset.fontSize, 22), fontWeight: preset.fontWeight, fontStyle: 'fontStyle' in preset ? preset.fontStyle : 'normal', color: preset.color, textAlign: preset.textAlign }}>{preset.sample}</span><small>{preset.label}</small></button>;
 }
 
 function ElementTool({ icon, title, detail, onClick }: { icon: string; title: string; detail: string; onClick: () => void }) {

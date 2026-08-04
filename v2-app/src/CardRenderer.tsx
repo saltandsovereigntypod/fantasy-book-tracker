@@ -53,13 +53,17 @@ function RatingGlyphs({ value, icon, emptyIcon }: { value: number; icon: string;
 }
 
 function elementStyle(element: DesignElement, scale: number): React.CSSProperties {
+  const transforms: string[] = [];
+  if (element.rotation) transforms.push(`rotate(${element.rotation}deg)`);
+  if (element.flipX) transforms.push('scaleX(-1)');
+  if (element.flipY) transforms.push('scaleY(-1)');
   return {
     position: 'absolute',
     left: element.x * scale,
     top: element.y * scale,
     width: element.width * scale,
     height: element.height * scale,
-    transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+    transform: transforms.length ? transforms.join(' ') : undefined,
     transformOrigin: 'center',
     opacity: element.opacity ?? 1,
   };
@@ -229,7 +233,7 @@ export function CardRenderer({
       const source = element.binding ? String(boundValue(book, element) || '') : element.src || '';
       return source
         ? <img className="design-element-content" src={source} alt="" draggable={false} style={{ objectFit: element.fit ?? 'cover', borderRadius: (element.borderRadius ?? 0) * scale }} />
-        : <div className="design-element-content design-element-placeholder" style={{ borderRadius: (element.borderRadius ?? 0) * scale, borderWidth: scale, fontSize: 12 * scale }}>Cover</div>;
+        : <div className="design-element-content design-element-placeholder" style={{ borderRadius: (element.borderRadius ?? 0) * scale, borderWidth: scale, fontSize: 12 * scale }}>{element.binding ? 'Cover' : 'Image'}</div>;
     }
     if (element.type === 'text') return <div className="design-element-content" style={textStyle(element, scale)}>{String(boundValue(book, element))}</div>;
     if (element.type === 'progress') {

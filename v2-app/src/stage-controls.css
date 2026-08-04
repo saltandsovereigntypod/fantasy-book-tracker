@@ -1,0 +1,33 @@
+.stage-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-background-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dbc5a5;
+  font-size: .76rem;
+  font-weight: 750;
+}
+
+.card-background-control input[type='color'] {
+  width: 42px;
+  min-height: 34px;
+  padding: 3px;
+}
+
+@media (max-width: 760px) {
+  .stage-heading,
+  .stage-controls {
+    align-items: flex-start;
+  }
+
+  .stage-controls {
+    flex-direction: column;
+  }
+}

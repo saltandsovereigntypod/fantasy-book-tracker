@@ -1,4 +1,4 @@
-/* Repair pass: modal usability, crisp canvases, cover overlays, and trailing add tile. */
+/* Repair pass: modal usability, crisp cards, cover overlays, and trailing add tile. */
 .modal-backdrop[aria-hidden="false"] .modal{position:relative}
 .modal-backdrop[aria-hidden="false"] .modal>.modal-close,.modal-backdrop[aria-hidden="false"] .modal .ui-repair-close{position:absolute;z-index:100;top:14px;right:16px;display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:999px;background:transparent;color:var(--ui-text-muted,var(--muted));font-size:32px;line-height:1;cursor:pointer}
 .modal-backdrop[aria-hidden="false"] .modal>.modal-close:hover,.modal-backdrop[aria-hidden="false"] .modal .ui-repair-close:hover{background:var(--ui-surface-raised,var(--panel-2));color:var(--ui-text,var(--text))}
@@ -11,6 +11,9 @@
 .fabric-canvas-frame canvas{width:auto!important;height:auto!important;max-width:none!important;image-rendering:auto}
 .fabric-card-viewport{position:relative;container-type:inline-size}
 .fabric-card-canvas{width:100%!important;height:100%!important;image-rendering:auto}
+.fabric-card-svg{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.fabric-card-svg svg{display:block;width:100%;height:100%;overflow:visible}
+.fabric-card-canvas.is-vector-replaced{visibility:hidden}
 .fabric-cover-overlay{position:absolute;z-index:2;object-fit:cover;border-radius:2.4%;pointer-events:none;box-shadow:0 0 0 1px var(--ui-border,var(--border));background:var(--ui-surface-soft,var(--panel))}
 .fabric-editor-cover-overlay{position:absolute;z-index:4;object-fit:cover;pointer-events:none;border-radius:10px;box-shadow:0 0 0 1px var(--ui-border,var(--border))}
 .book-add-tail{display:grid;place-items:center;min-height:100%;border:1px dashed var(--ui-border-strong,var(--border));border-radius:18px;background:color-mix(in srgb,var(--ui-surface-raised,var(--panel-2)) 78%,transparent);color:var(--ui-text,var(--text));cursor:pointer}

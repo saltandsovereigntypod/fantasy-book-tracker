@@ -1,39 +1,158 @@
 import type { User } from '@supabase/supabase-js';
-import type { BookNote, BookRecord, BookRelationship, CardAction, CardDesign, ReadingSession } from './domain';
+import type { BookNote, BookRecord, BookRelationship, CardDesign, ReadingSession } from './domain';
 import { defaultDesign } from './defaults';
 import { supabase } from './supabase';
 
-export interface V2BookRecord extends BookRecord { design: CardDesign; createdAt: string; updatedAt: string; favorite?: boolean; archived?: boolean; }
-export interface V2Profile { displayName: string; path: string; points: number; rankIndex: number; onboarded: boolean; }
-export interface V2ArchiveState { version: 1; profile: V2Profile; books: V2BookRecord[]; theories: unknown[]; suspicions: unknown[]; walls: unknown[]; mindMapNodes: unknown[]; updatedAt: string; }
-const LOCAL_KEY = 'empyrean-v2-archive';
-
-export function freshArchive(user?: User | null): V2ArchiveState { return { version: 1, profile: { displayName: String(user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader'), path: 'rider', points: 0, rankIndex: 0, onboarded: false }, books: [], theories: [], suspicions: [], walls: [], mindMapNodes: [], updatedAt: new Date().toISOString() }; }
-function normalizeStrings(values: unknown): string[] { return Array.isArray(values) ? [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))] : []; }
-function normalizeNotes(values: unknown): BookNote[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const note = value && typeof value === 'object' ? value as Partial<BookNote> : {}; return { id: String(note.id || crypto.randomUUID()), text: String(note.text || ''), createdAt: String(note.createdAt || now), updatedAt: String(note.updatedAt || note.createdAt || now) }; }).filter((note) => note.text) : []; }
-function normalizeSessions(values: unknown): ReadingSession[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const session = value && typeof value === 'object' ? value as Partial<ReadingSession> : {}; return { id: String(session.id || crypto.randomUUID()), startedAt: String(session.startedAt || now), completedAt: session.completedAt ? String(session.completedAt) : undefined, startProgress: Number(session.startProgress) || 0, endProgress: Number(session.endProgress) || 0, pagesRead: session.pagesRead == null ? undefined : Number(session.pagesRead) || 0, minutesRead: session.minutesRead == null ? undefined : Number(session.minutesRead) || 0, notes: session.notes ? String(session.notes) : undefined }; }) : []; }
-function normalizeRelationships(values: unknown): BookRelationship[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const relationship = value && typeof value === 'object' ? value as Partial<BookRelationship> : {}; return { id: String(relationship.id || crypto.randomUUID()), targetBookId: String(relationship.targetBookId || ''), type: String(relationship.type || ''), explanation: relationship.explanation ? String(relationship.explanation) : undefined, notes: relationship.notes ? String(relationship.notes) : undefined, createdAt: String(relationship.createdAt || now), updatedAt: String(relationship.updatedAt || relationship.createdAt || now) }; }).filter((relationship) => relationship.targetBookId && relationship.type) : []; }
-
-function normalizeActions(values: unknown): CardAction[] {
-  const source = Array.isArray(values) ? values : defaultDesign.actions;
-  return source.map((value, index) => {
-    const action = value && typeof value === 'object' ? value as Partial<CardAction> : {};
-    const fallback = defaultDesign.actions[index] ?? defaultDesign.actions[0];
-    return {
-      id: String(action.id || `action-${crypto.randomUUID()}`), action: action.action || fallback.action, label: String(action.label || fallback.label), icon: action.icon == null ? fallback.icon : String(action.icon), variant: action.variant || fallback.variant,
-      x: Number.isFinite(Number(action.x)) ? Number(action.x) : fallback.x, y: Number.isFinite(Number(action.y)) ? Number(action.y) : fallback.y, width: Number.isFinite(Number(action.width)) ? Number(action.width) : fallback.width, height: Number.isFinite(Number(action.height)) ? Number(action.height) : fallback.height,
-      background: String(action.background ?? fallback.background), color: String(action.color || fallback.color), borderColor: String(action.borderColor || fallback.borderColor), borderRadius: Number.isFinite(Number(action.borderRadius)) ? Number(action.borderRadius) : fallback.borderRadius,
-      fontFamily: String(action.fontFamily || fallback.fontFamily), fontSize: Number.isFinite(Number(action.fontSize)) ? Number(action.fontSize) : fallback.fontSize, fontWeight: Number.isFinite(Number(action.fontWeight)) ? Number(action.fontWeight) : fallback.fontWeight, textAlign: action.textAlign || fallback.textAlign,
-      visibleOn: Array.isArray(action.visibleOn) ? action.visibleOn.filter((size): size is 'small' | 'medium' | 'large' => size === 'small' || size === 'medium' || size === 'large') : [...fallback.visibleOn],
-    };
-  });
+export interface V2BookRecord extends BookRecord {
+  design: CardDesign;
+  createdAt: string;
+  updatedAt: string;
+  favorite?: boolean;
+  archived?: boolean;
 }
 
-function normalizeDesign(value: Partial<CardDesign> | undefined): CardDesign { const source = value || defaultDesign; return { ...structuredClone(defaultDesign), ...structuredClone(source), width: 420, height: 380, elements: Array.isArray(source.elements) ? structuredClone(source.elements) : structuredClone(defaultDesign.elements), actions: normalizeActions(source.actions), version: Math.max(3, Number(source.version) || 1) }; }
-function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord { const now = new Date().toISOString(); return { id: String(book.id || crypto.randomUUID()), title: String(book.title || 'Untitled Book'), author: String(book.author || ''), series: String(book.series || ''), status: book.status || 'want', progress: Number(book.progress) || 0, rating: Number(book.rating) || 0, spice: Number(book.spice) || 0, impact: Number(book.impact) || 0, reaction: String(book.reaction || ''), coverUrl: String(book.coverUrl || ''), summary: String(book.summary || ''), about: String(book.about || ''), genres: normalizeStrings(book.genres), tags: normalizeStrings(book.tags), notes: normalizeNotes(book.notes), readingSessions: normalizeSessions(book.readingSessions), relationships: normalizeRelationships(book.relationships), mindMapNodeIds: normalizeStrings(book.mindMapNodeIds), wallCardIds: normalizeStrings(book.wallCardIds), theoryIds: normalizeStrings(book.theoryIds), suspicionIds: normalizeStrings(book.suspicionIds), design: normalizeDesign(book.design), createdAt: String(book.createdAt || now), updatedAt: String(book.updatedAt || now), favorite: Boolean(book.favorite), archived: Boolean(book.archived) }; }
+export interface V2Profile {
+  displayName: string;
+  path: string;
+  points: number;
+  rankIndex: number;
+  onboarded: boolean;
+}
 
-export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState { const source = value && typeof value === 'object' ? value as Partial<V2ArchiveState> : {}; const base = freshArchive(user); return { ...base, ...source, version: 1, profile: { ...base.profile, ...(source.profile || {}) }, books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [], theories: Array.isArray(source.theories) ? source.theories : [], suspicions: Array.isArray(source.suspicions) ? source.suspicions : [], walls: Array.isArray(source.walls) ? source.walls : [], mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [], updatedAt: String(source.updatedAt || base.updatedAt) }; }
-export function loadLocalArchive(user?: User | null): V2ArchiveState { try { const raw = localStorage.getItem(LOCAL_KEY); return raw ? normalizeArchive(JSON.parse(raw), user) : freshArchive(user); } catch { return freshArchive(user); } }
+export interface V2ArchiveState {
+  version: 1;
+  profile: V2Profile;
+  books: V2BookRecord[];
+  theories: unknown[];
+  suspicions: unknown[];
+  walls: unknown[];
+  mindMapNodes: unknown[];
+  updatedAt: string;
+}
+
+const LOCAL_KEY = 'empyrean-v2-archive';
+
+export function freshArchive(user?: User | null): V2ArchiveState {
+  return {
+    version: 1,
+    profile: {
+      displayName: String(user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader'),
+      path: 'rider',
+      points: 0,
+      rankIndex: 0,
+      onboarded: false,
+    },
+    books: [],
+    theories: [],
+    suspicions: [],
+    walls: [],
+    mindMapNodes: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeStrings(values: unknown): string[] {
+  return Array.isArray(values) ? [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))] : [];
+}
+
+function normalizeNotes(values: unknown): BookNote[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const note = value && typeof value === 'object' ? value as Partial<BookNote> : {};
+    return { id: String(note.id || crypto.randomUUID()), text: String(note.text || ''), createdAt: String(note.createdAt || now), updatedAt: String(note.updatedAt || note.createdAt || now) };
+  }).filter((note) => note.text) : [];
+}
+
+function normalizeSessions(values: unknown): ReadingSession[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const session = value && typeof value === 'object' ? value as Partial<ReadingSession> : {};
+    return { id: String(session.id || crypto.randomUUID()), startedAt: String(session.startedAt || now), completedAt: session.completedAt ? String(session.completedAt) : undefined, startProgress: Number(session.startProgress) || 0, endProgress: Number(session.endProgress) || 0, pagesRead: session.pagesRead == null ? undefined : Number(session.pagesRead) || 0, minutesRead: session.minutesRead == null ? undefined : Number(session.minutesRead) || 0, notes: session.notes ? String(session.notes) : undefined };
+  }) : [];
+}
+
+function normalizeRelationships(values: unknown): BookRelationship[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const relationship = value && typeof value === 'object' ? value as Partial<BookRelationship> : {};
+    return { id: String(relationship.id || crypto.randomUUID()), targetBookId: String(relationship.targetBookId || ''), type: String(relationship.type || ''), explanation: relationship.explanation ? String(relationship.explanation) : undefined, notes: relationship.notes ? String(relationship.notes) : undefined, createdAt: String(relationship.createdAt || now), updatedAt: String(relationship.updatedAt || relationship.createdAt || now) };
+  }).filter((relationship) => relationship.targetBookId && relationship.type) : [];
+}
+
+function normalizeDesign(value: Partial<CardDesign> | undefined): CardDesign {
+  const source = value || defaultDesign;
+  return {
+    ...structuredClone(defaultDesign),
+    ...structuredClone(source),
+    width: 420,
+    height: 380,
+    elements: Array.isArray(source.elements) ? structuredClone(source.elements) : structuredClone(defaultDesign.elements),
+    version: Math.max(4, Number(source.version) || 1),
+  };
+}
+
+function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord {
+  const now = new Date().toISOString();
+  return {
+    id: String(book.id || crypto.randomUUID()),
+    title: String(book.title || 'Untitled Book'),
+    author: String(book.author || ''),
+    series: String(book.series || ''),
+    status: book.status || 'want',
+    progress: Number(book.progress) || 0,
+    rating: Number(book.rating) || 0,
+    spice: Number(book.spice) || 0,
+    impact: Number(book.impact) || 0,
+    reaction: String(book.reaction || ''),
+    coverUrl: String(book.coverUrl || ''),
+    summary: String(book.summary || ''),
+    about: String(book.about || ''),
+    genres: normalizeStrings(book.genres),
+    tags: normalizeStrings(book.tags),
+    notes: normalizeNotes(book.notes),
+    readingSessions: normalizeSessions(book.readingSessions),
+    relationships: normalizeRelationships(book.relationships),
+    mindMapNodeIds: normalizeStrings(book.mindMapNodeIds),
+    wallCardIds: normalizeStrings(book.wallCardIds),
+    theoryIds: normalizeStrings(book.theoryIds),
+    suspicionIds: normalizeStrings(book.suspicionIds),
+    design: normalizeDesign(book.design),
+    createdAt: String(book.createdAt || now),
+    updatedAt: String(book.updatedAt || now),
+    favorite: Boolean(book.favorite),
+    archived: Boolean(book.archived),
+  };
+}
+
+export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState {
+  const source = value && typeof value === 'object' ? value as Partial<V2ArchiveState> : {};
+  const base = freshArchive(user);
+  return { ...base, ...source, version: 1, profile: { ...base.profile, ...(source.profile || {}) }, books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [], theories: Array.isArray(source.theories) ? source.theories : [], suspicions: Array.isArray(source.suspicious) ? source.suspicious : Array.isArray(source.suspicions) ? source.suspicions : [], walls: Array.isArray(source.walls) ? source.walls : [], mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [], updatedAt: String(source.updatedAt || base.updatedAt) };
+}
+
+export function loadLocalArchive(user?: User | null): V2ArchiveState {
+  try { const raw = localStorage.getItem(LOCAL_KEY); return raw ? normalizeArchive(JSON.parse(raw), user) : freshArchive(user); }
+  catch { return freshArchive(user); }
+}
+
 export function saveLocalArchive(state: V2ArchiveState): void { localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }
-export async function loadCloudArchive(user: User): Promise<V2ArchiveState> { const { data, error } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle(); if (error) throw error; if (!data?.state) return loadLocalArchive(user); const raw = data.state as Record<string, unknown>; if (raw.v2Archive && typeof raw.v2Archive === 'object') return normalizeArchive(raw.v2Archive, user); return loadLocalArchive(user); }
-export async function saveCloudArchive(user: User, state: V2ArchiveState): Promise<void> { const next = { ...state, updatedAt: new Date().toISOString() }; saveLocalArchive(next); const { data: existing, error: readError } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle(); if (readError) throw readError; const legacyState = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {}; const mergedState = { ...legacyState, v2Archive: next }; const { error } = await supabase.from('archive_states').upsert({ user_id: user.id, state: mergedState, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }); if (error) throw error; }
+
+export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
+  const { data, error } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
+  if (error) throw error;
+  if (!data?.state) return loadLocalArchive(user);
+  const raw = data.state as Record<string, unknown>;
+  if (raw.v2Archive && typeof raw.v2Archive === 'object') return normalizeArchive(raw.v2Archive, user);
+  return loadLocalArchive(user);
+}
+
+export async function saveCloudArchive(user: User, state: V2ArchiveState): Promise<void> {
+  const next = { ...state, updatedAt: new Date().toISOString() };
+  saveLocalArchive(next);
+  const { data: existing, error: readError } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
+  if (readError) throw readError;
+  const legacyState = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {};
+  const mergedState = { ...legacyState, v2Archive: next };
+  const { error } = await supabase.from('archive_states').upsert({ user_id: user.id, state: mergedState, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  if (error) throw error;
+}

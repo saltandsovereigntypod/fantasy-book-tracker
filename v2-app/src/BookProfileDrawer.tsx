@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { V2ArchiveState, V2BookRecord } from './archive';
 import type { ReadingStatus } from './domain';
+import './book-profile-editor.css';
 
 function splitList(value: string): string[] {
   return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];

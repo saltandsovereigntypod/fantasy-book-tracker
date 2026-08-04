@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BookRecord, CardDesign, CardSize, DesignElement, TextElement } from './domain';
 import { CARD_WIDTHS } from './domain';
 
@@ -15,8 +15,9 @@ interface CardRendererProps {
 }
 
 type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+type MoveMember = { id: string; x: number; y: number };
 type Interaction =
-  | { kind: 'move'; pointerId: number; startClientX: number; startClientY: number; element: DesignElement }
+  | { kind: 'move'; pointerId: number; startClientX: number; startClientY: number; element: DesignElement; members: MoveMember[] }
   | { kind: 'resize'; pointerId: number; startClientX: number; startClientY: number; element: DesignElement; handle: ResizeHandle }
   | { kind: 'rotate'; pointerId: number; centerClientX: number; centerClientY: number; startAngle: number; rotation: number; element: DesignElement };
 
@@ -70,17 +71,49 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   const outputHeight = design.height * scale;
   const interaction = useRef<Interaction | null>(null);
   const [guides, setGuides] = useState<Guides>({ vertical: [], horizontal: [] });
+  const [selectedIds, setSelectedIds] = useState<string[]>(selectedElementId ? [selectedElementId] : []);
+  const frame = design.elements.find((element) => element.id === 'card-frame');
+  const selectedElements = useMemo(() => design.elements.filter((element) => selectedIds.includes(element.id)), [design.elements, selectedIds]);
+  const activeGroupId = selectedElements.length > 1 && selectedElements.every((element) => element.groupId && element.groupId === selectedElements[0].groupId) ? selectedElements[0].groupId : undefined;
+
+  useEffect(() => {
+    if (!selectedElementId) setSelectedIds([]);
+    else if (!selectedIds.includes(selectedElementId)) setSelectedIds([selectedElementId]);
+  }, [selectedElementId]);
 
   function startInteraction() { setGuides({ vertical: [], horizontal: [] }); onInteractionStart?.(); }
-  function beginMove(event: React.PointerEvent<HTMLDivElement>, element: DesignElement) {
-    if (mode !== 'editor' || element.locked) return;
-    event.preventDefault(); event.stopPropagation(); onSelectElement?.(element.id); startInteraction(); event.currentTarget.setPointerCapture(event.pointerId);
-    interaction.current = { kind: 'move', pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, element: { ...element } };
+
+  function selectElement(element: DesignElement, additive: boolean) {
+    if (element.id === 'card-frame') return;
+    if (additive) {
+      setSelectedIds((current) => current.includes(element.id) ? current.filter((id) => id !== element.id) : [...current, element.id]);
+      onSelectElement?.(element.id);
+      return;
+    }
+    const ids = element.groupId ? design.elements.filter((item) => item.groupId === element.groupId).map((item) => item.id) : [element.id];
+    setSelectedIds(ids);
+    onSelectElement?.(element.id);
   }
+
+  function beginMove(event: React.PointerEvent<HTMLDivElement>, element: DesignElement) {
+    if (mode !== 'editor' || element.locked || element.id === 'card-frame') return;
+    event.preventDefault(); event.stopPropagation();
+    if (event.shiftKey) { selectElement(element, true); return; }
+    selectElement(element, false);
+    startInteraction();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const ids = element.groupId
+      ? design.elements.filter((item) => item.groupId === element.groupId).map((item) => item.id)
+      : selectedIds.includes(element.id) && selectedIds.length > 1 ? selectedIds : [element.id];
+    const members = design.elements.filter((item) => ids.includes(item.id)).map((item) => ({ id: item.id, x: item.x, y: item.y }));
+    interaction.current = { kind: 'move', pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, element: { ...element }, members };
+  }
+
   function beginResize(event: React.PointerEvent<HTMLButtonElement>, element: DesignElement, handle: ResizeHandle) {
     event.preventDefault(); event.stopPropagation(); startInteraction(); event.currentTarget.setPointerCapture(event.pointerId);
     interaction.current = { kind: 'resize', pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, element: { ...element }, handle };
   }
+
   function beginRotate(event: React.PointerEvent<HTMLButtonElement>, element: DesignElement) {
     event.preventDefault(); event.stopPropagation();
     const card = event.currentTarget.closest('.card-renderer')?.getBoundingClientRect(); if (!card) return;
@@ -97,16 +130,19 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     if (active.kind === 'move') {
       const dx = (event.clientX - active.startClientX) / scale;
       const dy = (event.clientY - active.startClientY) / scale;
-      let x = active.element.x + dx;
-      let y = active.element.y + dy;
-      const others = design.elements.filter((element) => element.id !== active.element.id && element.id !== 'card-frame');
+      const primary = active.members.find((member) => member.id === active.element.id) ?? active.members[0];
+      let x = primary.x + dx;
+      let y = primary.y + dy;
+      const movingIds = active.members.map((member) => member.id);
+      const others = design.elements.filter((element) => !movingIds.includes(element.id) && element.id !== 'card-frame');
       const xTargets = [0, design.width / 2, design.width, ...others.flatMap((element) => [element.x, element.x + element.width / 2, element.x + element.width])];
       const yTargets = [0, design.height / 2, design.height, ...others.flatMap((element) => [element.y, element.y + element.height / 2, element.y + element.height])];
       const snappedX = snapAxis(x, active.element.width, xTargets);
       const snappedY = snapAxis(y, active.element.height, yTargets);
-      x = snappedX.position; y = snappedY.position;
+      const adjustedDx = snappedX.position - primary.x;
+      const adjustedDy = snappedY.position - primary.y;
       setGuides({ vertical: snappedX.guide === null ? [] : [snappedX.guide], horizontal: snappedY.guide === null ? [] : [snappedY.guide] });
-      onChangeElement?.(active.element.id, { x: snapValue(x), y: snapValue(y) });
+      active.members.forEach((member) => onChangeElement?.(member.id, { x: snapValue(member.x + adjustedDx), y: snapValue(member.y + adjustedDy) }));
       return;
     }
     if (active.kind === 'rotate') {
@@ -135,6 +171,21 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     onInteractionEnd?.();
   }
 
+  function groupSelection() {
+    if (selectedIds.length < 2) return;
+    startInteraction();
+    const groupId = `group-${crypto.randomUUID()}`;
+    selectedIds.forEach((id) => onChangeElement?.(id, { groupId }));
+    onInteractionEnd?.();
+  }
+
+  function ungroupSelection() {
+    if (!activeGroupId) return;
+    startInteraction();
+    design.elements.filter((element) => element.groupId === activeGroupId).forEach((element) => onChangeElement?.(element.id, { groupId: undefined }));
+    onInteractionEnd?.();
+  }
+
   function renderContent(element: DesignElement) {
     if (element.type === 'shape') {
       const fill = element.id === 'card-frame' ? 'transparent' : element.fill;
@@ -151,13 +202,18 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
   }
 
   return <div className={`card-renderer card-renderer--${mode}`} style={{ width: outputWidth, height: outputHeight, background: design.background }} data-card-size={size}>
+    {mode === 'editor' && <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>
+      <label>Border<input type="color" value={frame?.type === 'shape' ? frame.stroke ?? '#75451f' : '#75451f'} onFocus={startInteraction} onBlur={onInteractionEnd} onPointerDown={startInteraction} onPointerUp={onInteractionEnd} onChange={(event) => onChangeElement?.('card-frame', { stroke: event.target.value })} /></label>
+      {selectedIds.length > 1 && <button type="button" onClick={activeGroupId ? ungroupSelection : groupSelection}>{activeGroupId ? 'Ungroup' : `Group ${selectedIds.length}`}</button>}
+    </div>}
     {mode === 'editor' && guides.vertical.map((position) => <div key={`v-${position}`} className="alignment-guide alignment-guide--vertical" style={{ left: position * scale }} />)}
     {mode === 'editor' && guides.horizontal.map((position) => <div key={`h-${position}`} className="alignment-guide alignment-guide--horizontal" style={{ top: position * scale }} />)}
     {design.elements.map((element) => {
-      const selected = mode === 'editor' && selectedElementId === element.id;
-      return <div key={element.id} className={`design-element design-element--${element.type}${selected ? ' is-selected' : ''}${element.locked ? ' is-locked' : ''}`} style={elementStyle(element, scale)} onPointerDown={mode === 'editor' ? (event) => beginMove(event, element) : undefined} onPointerMove={mode === 'editor' ? continueInteraction : undefined} onPointerUp={mode === 'editor' ? endInteraction : undefined} onPointerCancel={mode === 'editor' ? endInteraction : undefined}>
+      const selected = mode === 'editor' && selectedIds.includes(element.id);
+      const primary = selectedElementId === element.id;
+      return <div key={element.id} className={`design-element design-element--${element.type}${selected ? ' is-selected' : ''}${selected && !primary ? ' is-secondary-selected' : ''}${element.locked ? ' is-locked' : ''}`} style={elementStyle(element, scale)} onPointerDown={mode === 'editor' ? (event) => beginMove(event, element) : undefined} onPointerMove={mode === 'editor' ? continueInteraction : undefined} onPointerUp={mode === 'editor' ? endInteraction : undefined} onPointerCancel={mode === 'editor' ? endInteraction : undefined}>
         {renderContent(element)}
-        {selected && !element.locked && <div className="selection-controls" aria-hidden="true"><button className="rotation-handle" tabIndex={-1} onPointerDown={(event) => beginRotate(event, element)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />{(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, element, handle)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />)}</div>}
+        {primary && selected && !element.locked && <div className="selection-controls" aria-hidden="true"><button className="rotation-handle" tabIndex={-1} onPointerDown={(event) => beginRotate(event, element)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />{(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandle[]).map((handle) => <button key={handle} className={`resize-handle resize-handle--${handle}`} tabIndex={-1} onPointerDown={(event) => beginResize(event, element, handle)} onPointerMove={continueInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />)}</div>}
       </div>;
     })}
   </div>;

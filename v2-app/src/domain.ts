@@ -2,6 +2,34 @@ export type CardSize = 'small' | 'medium' | 'large';
 export type ReadingStatus = 'want' | 'reading' | 'paused' | 'completed' | 'dnf';
 export type BookFieldPath = 'title' | 'author' | 'series' | 'status' | 'progress' | 'rating' | 'spice' | 'impact' | 'reaction' | 'coverUrl';
 
+export interface BookNote {
+  id: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadingSession {
+  id: string;
+  startedAt: string;
+  completedAt?: string;
+  startProgress: number;
+  endProgress: number;
+  pagesRead?: number;
+  minutesRead?: number;
+  notes?: string;
+}
+
+export interface BookRelationship {
+  id: string;
+  targetBookId: string;
+  type: string;
+  explanation?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BookRecord {
   id: string;
   title: string;
@@ -14,9 +42,17 @@ export interface BookRecord {
   impact: number;
   reaction: string;
   coverUrl: string;
+  summary?: string;
+  about?: string;
+  genres?: string[];
+  tags?: string[];
+  notes?: BookNote[];
+  readingSessions?: ReadingSession[];
+  relationships?: BookRelationship[];
   mindMapNodeIds: string[];
   wallCardIds: string[];
   theoryIds: string[];
+  suspicionIds?: string[];
 }
 
 interface ElementBase {

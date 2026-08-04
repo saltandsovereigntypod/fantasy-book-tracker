@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js';
-import type { BookRecord, CardDesign } from './domain';
+import type { BookNote, BookRecord, BookRelationship, CardDesign, ReadingSession } from './domain';
 import { defaultDesign } from './defaults';
 import { supabase } from './supabase';
 
@@ -51,6 +51,56 @@ export function freshArchive(user?: User | null): V2ArchiveState {
   };
 }
 
+function normalizeStrings(values: unknown): string[] {
+  return Array.isArray(values) ? [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))] : [];
+}
+
+function normalizeNotes(values: unknown): BookNote[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const note = value && typeof value === 'object' ? value as Partial<BookNote> : {};
+    return {
+      id: String(note.id || crypto.randomUUID()),
+      text: String(note.text || ''),
+      createdAt: String(note.createdAt || now),
+      updatedAt: String(note.updatedAt || note.createdAt || now),
+    };
+  }).filter((note) => note.text) : [];
+}
+
+function normalizeSessions(values: unknown): ReadingSession[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const session = value && typeof value === 'object' ? value as Partial<ReadingSession> : {};
+    return {
+      id: String(session.id || crypto.randomUUID()),
+      startedAt: String(session.startedAt || now),
+      completedAt: session.completedAt ? String(session.completedAt) : undefined,
+      startProgress: Number(session.startProgress) || 0,
+      endProgress: Number(session.endProgress) || 0,
+      pagesRead: session.pagesRead == null ? undefined : Number(session.pagesRead) || 0,
+      minutesRead: session.minutesRead == null ? undefined : Number(session.minutesRead) || 0,
+      notes: session.notes ? String(session.notes) : undefined,
+    };
+  }) : [];
+}
+
+function normalizeRelationships(values: unknown): BookRelationship[] {
+  const now = new Date().toISOString();
+  return Array.isArray(values) ? values.map((value) => {
+    const relationship = value && typeof value === 'object' ? value as Partial<BookRelationship> : {};
+    return {
+      id: String(relationship.id || crypto.randomUUID()),
+      targetBookId: String(relationship.targetBookId || ''),
+      type: String(relationship.type || ''),
+      explanation: relationship.explanation ? String(relationship.explanation) : undefined,
+      notes: relationship.notes ? String(relationship.notes) : undefined,
+      createdAt: String(relationship.createdAt || now),
+      updatedAt: String(relationship.updatedAt || relationship.createdAt || now),
+    };
+  }).filter((relationship) => relationship.targetBookId && relationship.type) : [];
+}
+
 function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord {
   const now = new Date().toISOString();
   return {
@@ -65,9 +115,17 @@ function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord {
     impact: Number(book.impact) || 0,
     reaction: String(book.reaction || ''),
     coverUrl: String(book.coverUrl || ''),
-    mindMapNodeIds: Array.isArray(book.mindMapNodeIds) ? book.mindMapNodeIds : [],
-    wallCardIds: Array.isArray(book.wallCardIds) ? book.wallCardIds : [],
-    theoryIds: Array.isArray(book.theoryIds) ? book.theoryIds : [],
+    summary: String(book.summary || ''),
+    about: String(book.about || ''),
+    genres: normalizeStrings(book.genres),
+    tags: normalizeStrings(book.tags),
+    notes: normalizeNotes(book.notes),
+    readingSessions: normalizeSessions(book.readingSessions),
+    relationships: normalizeRelationships(book.relationships),
+    mindMapNodeIds: normalizeStrings(book.mindMapNodeIds),
+    wallCardIds: normalizeStrings(book.wallCardIds),
+    theoryIds: normalizeStrings(book.theoryIds),
+    suspicionIds: normalizeStrings(book.suspicionIds),
     design: structuredClone(book.design || defaultDesign),
     createdAt: String(book.createdAt || now),
     updatedAt: String(book.updatedAt || now),

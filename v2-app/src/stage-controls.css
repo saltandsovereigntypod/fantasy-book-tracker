@@ -11,22 +11,29 @@
 }
 
 .stage-canvas {
-  padding-top: 132px;
+  padding-top: 24px;
+}
+
+.card-editor-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 100%;
 }
 
 .card-inline-tools {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 22px);
-  z-index: 1000;
-  width: max-content;
-  max-width: min(980px, calc(100vw - 60px));
+  position: relative;
+  z-index: 20;
+  width: min(100%, 620px);
+  max-width: 100%;
+  max-height: 190px;
+  overflow: auto;
   padding: 9px 11px;
   border: 1px solid #75451f;
   border-radius: 15px;
   background: rgba(20, 11, 7, .985);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, .52);
-  transform: translateX(-50%);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .42);
   pointer-events: auto;
 }
 
@@ -91,17 +98,14 @@
   background: #21130d;
 }
 
-.toolbar-color {
+.toolbar-color,
+.toolbar-compact-number,
+.toolbar-opacity {
   min-height: 32px;
-  padding: 3px 5px 3px 8px;
+  padding: 4px 8px;
   border: 1px solid #75451f;
   border-radius: 8px;
   background: #21130d;
-}
-
-.toolbar-color span {
-  color: #f7ead2;
-  font-size: .68rem;
 }
 
 .toolbar-number-control {
@@ -129,28 +133,8 @@
   padding: 4px 7px !important;
 }
 
-.toolbar-compact-number {
-  min-height: 32px;
-  padding-left: 8px;
-  border: 1px solid #75451f;
-  border-radius: 8px;
-  background: #21130d;
-}
-
 .toolbar-compact-number input {
   width: 58px;
-  min-height: 30px !important;
-  border: 0 !important;
-  border-left: 1px solid #4b2e1d !important;
-  border-radius: 0 7px 7px 0 !important;
-}
-
-.toolbar-opacity {
-  min-height: 32px;
-  padding: 4px 8px;
-  border: 1px solid #75451f;
-  border-radius: 8px;
-  background: #21130d;
 }
 
 .toolbar-opacity input[type='range'] {
@@ -208,14 +192,14 @@
   outline-style: dashed;
 }
 
-@media (max-width: 1050px) {
-  .stage-canvas {
-    padding-top: 174px;
-  }
+/* Appearance and common object actions now live in the contextual toolbar. */
+.inspector-stack > .inspector-group:nth-of-type(2) {
+  display: none;
+}
 
-  .card-inline-tools {
-    max-width: calc(100vw - 42px);
-  }
+.inspector-stack > .inspector-group:nth-of-type(3) .quick-action-grid button:nth-child(n+5):nth-child(-n+8),
+.inspector-stack > .danger-button {
+  display: none;
 }
 
 @media (max-width: 760px) {
@@ -228,13 +212,9 @@
     flex-direction: column;
   }
 
-  .stage-canvas {
-    padding-top: 220px;
-  }
-
   .card-inline-tools {
-    bottom: calc(100% + 14px);
-    max-width: calc(100vw - 28px);
+    width: 100%;
+    max-height: 240px;
   }
 
   .toolbar-font-select {

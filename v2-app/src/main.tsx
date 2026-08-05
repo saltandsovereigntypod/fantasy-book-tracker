@@ -16,6 +16,7 @@ import './wall-v1-dossier-runtime';
 import './editor-shell';
 import './editor-toolbar-dock';
 import './sidebar-collapse';
+import './mind-map-route-runtime';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

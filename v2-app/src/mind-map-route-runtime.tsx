@@ -64,23 +64,40 @@ function ensureOverlayRoot() {
   overlayHost.hidden = true;
   Object.assign(overlayHost.style, {
     position: 'fixed',
-    zIndex: '30',
+    zIndex: '2147483000',
     overflow: 'auto',
     background: 'var(--ink, #160b08)',
     contain: 'layout paint',
+    isolation: 'isolate',
   });
   document.body.appendChild(overlayHost);
   overlayRoot = createRoot(overlayHost);
   overlayRoot.render(<StrictMode><MindMapRoute /></StrictMode>);
 }
 
+function isVisibleView(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 20 && rect.height > 20;
+}
+
+function findVisibleMindMapTarget() {
+  const candidates = [...document.querySelectorAll<HTMLElement>('.v2-view--mindmap')];
+  return candidates.find(isVisibleView) || null;
+}
+
+function restoreTarget(target: HTMLElement | null) {
+  if (!target) return;
+  target.style.visibility = '';
+}
+
 function positionOverlay() {
-  if (!overlayHost || !activeTarget || !activeTarget.isConnected) return;
+  if (!overlayHost || !activeTarget || !activeTarget.isConnected || !isVisibleView(activeTarget)) return;
   const rect = activeTarget.getBoundingClientRect();
   overlayHost.style.left = `${Math.max(0, rect.left)}px`;
   overlayHost.style.top = `${Math.max(0, rect.top)}px`;
   overlayHost.style.width = `${Math.max(320, rect.width)}px`;
-  overlayHost.style.height = `${Math.max(480, Math.min(rect.height || window.innerHeight - rect.top, window.innerHeight - Math.max(0, rect.top)))}px`;
+  overlayHost.style.height = `${Math.max(480, Math.min(rect.height, window.innerHeight - Math.max(0, rect.top)))}px`;
 }
 
 function watchTarget(target: HTMLElement | null) {
@@ -93,8 +110,10 @@ function watchTarget(target: HTMLElement | null) {
 
 function syncMindMapRoute() {
   scheduled = false;
-  const target = document.querySelector<HTMLElement>('.v2-view--mindmap');
+  const target = findVisibleMindMapTarget();
+
   if (!target) {
+    restoreTarget(activeTarget);
     activeTarget = null;
     watchTarget(null);
     if (overlayHost) overlayHost.hidden = true;
@@ -103,10 +122,13 @@ function syncMindMapRoute() {
 
   ensureOverlayRoot();
   if (activeTarget !== target) {
+    restoreTarget(activeTarget);
     activeTarget = target;
     watchTarget(target);
   }
+
   target.style.minHeight = 'calc(100vh - 150px)';
+  target.style.visibility = 'hidden';
   if (overlayHost) overlayHost.hidden = false;
   positionOverlay();
 }
@@ -117,15 +139,7 @@ function scheduleSync() {
   window.requestAnimationFrame(syncMindMapRoute);
 }
 
-function mutationTouchesMindMap(mutation: MutationRecord): boolean {
-  if (activeTarget && !activeTarget.isConnected) return true;
-  const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
-  return nodes.some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap'))));
-}
-
-const observer = new MutationObserver((mutations) => {
-  if (mutations.some(mutationTouchesMindMap)) scheduleSync();
-});
+const observer = new MutationObserver(scheduleSync);
 
 function blockPassiveMindMapWheel(event: WheelEvent) {
   const target = event.target;
@@ -137,8 +151,8 @@ function blockPassiveMindMapWheel(event: WheelEvent) {
 function startMindMapRoute() {
   scheduleSync();
   const root = document.getElementById('root');
-  if (root) observer.observe(root, { childList: true, subtree: true });
-  window.addEventListener('resize', positionOverlay);
+  if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'] });
+  window.addEventListener('resize', scheduleSync);
   window.addEventListener('scroll', positionOverlay, true);
   document.addEventListener('wheel', blockPassiveMindMapWheel, { passive: false, capture: true });
 }

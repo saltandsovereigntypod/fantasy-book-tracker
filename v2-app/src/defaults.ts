@@ -1,7 +1,7 @@
 import type { BookRecord, CardDesign } from './domain';
 
 export const defaultBook: BookRecord = {
-  id: 'draft-book', title: 'Fourth Wing', author: 'Rebecca Yarros', series: 'The Empyrean · Book 1', status: 'reading', progress: 64, rating: 4.5, spice: 3, impact: 4, reaction: 'I am emotionally compromised.', coverUrl: '', mindMapNodeIds: [], wallCardIds: [], theoryIds: [],
+  id: 'draft-book', title: 'Fourth Wing', author: 'Rebecca Yarros', series: 'The Empyrean · Book 1', status: 'reading', progress: 64, rating: 4.5, spice: 3, impact: 4, reaction: 'I am emotionally compromised.', coverUrl: '', customRatings: [], mindMapNodeIds: [], wallCardIds: [], theoryIds: [],
 };
 
 export const defaultDesign: CardDesign = {

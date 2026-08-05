@@ -86,11 +86,6 @@ function findVisibleMindMapTarget() {
   return candidates.find(isVisibleView) || null;
 }
 
-function restoreTarget(target: HTMLElement | null) {
-  if (!target) return;
-  target.style.visibility = '';
-}
-
 function positionOverlay() {
   if (!overlayHost || !activeTarget || !activeTarget.isConnected || !isVisibleView(activeTarget)) return;
   const rect = activeTarget.getBoundingClientRect();
@@ -113,7 +108,6 @@ function syncMindMapRoute() {
   const target = findVisibleMindMapTarget();
 
   if (!target) {
-    restoreTarget(activeTarget);
     activeTarget = null;
     watchTarget(null);
     if (overlayHost) overlayHost.hidden = true;
@@ -122,13 +116,11 @@ function syncMindMapRoute() {
 
   ensureOverlayRoot();
   if (activeTarget !== target) {
-    restoreTarget(activeTarget);
     activeTarget = target;
     watchTarget(target);
   }
 
-  target.style.minHeight = 'calc(100vh - 150px)';
-  target.style.visibility = 'hidden';
+  if (target.style.minHeight !== 'calc(100vh - 150px)') target.style.minHeight = 'calc(100vh - 150px)';
   if (overlayHost) overlayHost.hidden = false;
   positionOverlay();
 }
@@ -139,7 +131,16 @@ function scheduleSync() {
   window.requestAnimationFrame(syncMindMapRoute);
 }
 
-const observer = new MutationObserver(scheduleSync);
+const observer = new MutationObserver((mutations) => {
+  const relevant = mutations.some((mutation) => {
+    if (mutation.type === 'attributes') {
+      const target = mutation.target;
+      return target instanceof Element && (target.matches('.v2-view--mindmap') || Boolean(target.closest('.v2-view--mindmap')));
+    }
+    return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap'))));
+  });
+  if (relevant) scheduleSync();
+});
 
 function blockPassiveMindMapWheel(event: WheelEvent) {
   const target = event.target;

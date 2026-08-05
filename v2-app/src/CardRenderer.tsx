@@ -45,9 +45,10 @@ function boundValue(book: BookRecord, element: DesignElement): string | number {
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
-function RatingGlyphs({ value, icon, emptyIcon }: { value: number; icon: string; emptyIcon: string }) {
-  const safeValue = Math.max(0, Math.min(5, value));
-  return <span className="rating-glyph-row" aria-label={`${safeValue} of 5`}>{Array.from({ length: 5 }, (_, index) => {
+function RatingGlyphs({ value, max, icon, emptyIcon }: { value: number; max: number; icon: string; emptyIcon: string }) {
+  const safeMax = Math.max(1, Math.min(10, max));
+  const safeValue = Math.max(0, Math.min(safeMax, value));
+  return <span className="rating-glyph-row" aria-label={`${safeValue} of ${safeMax}`}>{Array.from({ length: safeMax }, (_, index) => {
     const fill = Math.max(0, Math.min(1, safeValue - index));
     return <span className="rating-glyph-slot" key={index}><span className="rating-glyph-empty">{emptyIcon}</span>{fill > 0 && <span className="rating-glyph-fill" style={{ width: `${fill * 100}%` }}><span>{icon}</span></span>}</span>;
   })}</span>;
@@ -338,8 +339,13 @@ export function CardRenderer({ book, design, size, mode = 'library', selectedEle
     }
     if (element.type === 'text') return <div className="design-element-content" style={textStyle(element, scale)}>{String(boundValue(book, element))}</div>;
     if (element.type === 'progress') { const value = Number(boundValue(book, element)) || 0; return <div className="design-element-content" style={{ background: element.trackColor, borderRadius: (element.borderRadius ?? 0) * scale, overflow: 'hidden' }}><div style={{ width: `${Math.max(0, Math.min(100, value))}%`, height: '100%', background: element.fillColor, borderRadius: 'inherit' }} /></div>; }
-    const value = Number(book[element.metric]) || 0;
-    return <div className="design-element-content" style={{ color: element.color, fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: 700, lineHeight: 1.35 }}><strong>{element.label}</strong><RatingGlyphs value={value} icon={element.icon} emptyIcon={element.emptyIcon} /><small>{value} of 5</small></div>;
+    const custom = element.customRatingId ? (book.customRatings || []).find((item) => item.id === element.customRatingId) : undefined;
+    const value = custom ? custom.value : Number(book[element.metric === 'custom' ? 'rating' : element.metric]) || 0;
+    const max = custom?.max || 5;
+    const label = custom?.label || element.label;
+    const icon = custom?.icon || element.icon;
+    const emptyIcon = custom?.emptyIcon || element.emptyIcon;
+    return <div className="design-element-content" style={{ color: element.color, fontFamily: element.fontFamily, fontSize: element.fontSize * scale, fontWeight: 700, lineHeight: 1.35 }}><strong>{label}</strong><RatingGlyphs value={value} max={max} icon={icon} emptyIcon={emptyIcon} /><small>{value} of {max}</small></div>;
   }
 
   const toolbar = mode === 'editor' ? <div className="card-inline-tools" onPointerDown={(event) => event.stopPropagation()}>

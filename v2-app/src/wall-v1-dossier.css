@@ -1,0 +1,46 @@
+.wall-module.has-profile-drawer{padding-right:min(900px,60vw)}
+.wall-profile-drawer.wall-old-dossier-profile{width:min(900px,60vw);min-width:620px;grid-template-rows:auto minmax(0,1fr) auto;background:#21140d;border-left:1px solid var(--v2-border-strong);box-shadow:-24px 0 70px rgba(0,0,0,.48)}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-hero{grid-template-columns:92px minmax(0,1fr) auto;gap:18px;align-items:center;padding:20px;border-top-width:5px;border-radius:0;background:linear-gradient(135deg,rgba(92,42,22,.32),rgba(33,20,13,.98))}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-avatar{width:92px;height:92px;border-radius:16px;font-size:1.65rem}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-identity{min-width:0}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-identity p{margin:0;color:var(--v2-accent);font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-identity h3{margin:3px 0 8px;max-width:none;font-size:clamp(1.5rem,2.2vw,2rem);line-height:1.1;overflow-wrap:normal;word-break:normal;white-space:normal}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-badges{display:flex;flex-wrap:wrap;gap:8px}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-badges span{padding:7px 10px;border:1px solid var(--v2-border-strong);border-radius:999px;background:rgba(58,31,18,.72);font-size:.72rem}
+.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-header-actions{display:flex;align-items:center;gap:8px;align-self:start}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-scroll{min-height:0;overflow-y:auto;display:block;padding:22px 28px 120px}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-scroll>section{display:block;margin:0 0 24px;padding:0;border:0}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-section-toggle{display:none!important}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-section-content{display:block!important;padding:0!important;border:0!important;background:transparent!important}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-collapsible{display:block!important;margin:0 0 24px!important;padding:0!important;border:0!important;background:transparent!important}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-collapsible::before{display:block;margin:0 0 12px;color:#f0dfc7;font-family:'Libre Baskerville',Georgia,serif;font-size:1.05rem;font-weight:700}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-collapsible:nth-of-type(2)::before{content:'Overview'}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-collapsible:nth-of-type(3)::before{content:'Connections'}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-collapsible:nth-of-type(4)::before{content:'Where this dossier appears'}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-collapsible:nth-of-type(5)::before{content:'Card display'}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-section-content p{margin:0;color:#d2b99a;font-size:.92rem;line-height:1.7;white-space:pre-wrap}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-section-content p.is-empty{color:#b79b77;font-style:italic}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-section-content h5{margin:22px 0 10px;color:#f0dfc7;font-family:'Libre Baskerville',Georgia,serif;font-size:1rem}
+.wall-profile-drawer.wall-old-dossier-profile .wall-link-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wall-profile-drawer.wall-old-dossier-profile .wall-link-groups>div{padding:14px;border:1px solid var(--v2-border);border-radius:13px;background:#2a1a11}
+.wall-profile-drawer.wall-old-dossier-profile .wall-add-appearance{margin:0 0 10px}
+.wall-profile-drawer.wall-old-dossier-profile .wall-card-display-settings.compact{grid-template-columns:1fr 1fr;gap:12px;padding:14px;border:1px solid var(--v2-border);border-radius:14px;background:#2a1a11}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0 0 28px;padding:18px;border:1px solid var(--v2-border);border-radius:17px;background:#2a1a11}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact>h4,.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact>.wall-profile-connection-grid,.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact>button{grid-column:1/-1}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact label{display:grid;gap:6px;min-width:0;color:#c8a878;font-size:.74rem;font-weight:700}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact input,.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact textarea,.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact select{width:100%;min-width:0;box-sizing:border-box;min-height:44px;padding:10px 12px;font-size:.86rem}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact textarea{min-height:118px}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-connection-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.wall-profile-drawer.wall-old-dossier-profile .wall-profile-connection-grid select[multiple]{min-height:150px;background-image:none!important}
+.wall-profile-drawer.wall-old-dossier-profile>footer{padding:13px 18px;background:#140b08}
+.wall-dossier-card{padding:0!important;gap:0!important;border-radius:18px!important;background:#21140d!important;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 32%,transparent),0 18px 38px rgba(0,0,0,.34)!important}
+.wall-dossier-card>header{padding:15px 16px 4px}
+.wall-dossier-card h3{padding:0 16px;margin:0 0 12px!important;font-size:.96rem!important;line-height:1.22!important}
+.wall-dossier-card .wall-card-summary-block{padding:0 16px 16px}
+.wall-dossier-card .wall-card-summary-block>span{display:block;margin-bottom:5px;color:#b99a75;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.wall-dossier-card .wall-card-summary-block p{margin:0;color:#d6bea0;font-size:.74rem;line-height:1.45;white-space:normal;overflow:visible;display:block}
+.wall-dossier-card .wall-card-connection-footer{margin-top:auto;display:flex;flex-wrap:wrap;gap:10px;padding:12px 16px;border-top:1px solid rgba(208,120,60,.18);color:#b98255;font-size:.64rem}
+.wall-dossier-card .wall-card-status{padding:0 16px 12px;color:#9e7b5e;font-size:.62rem}
+.wall-dossier-card.is-reference{border-style:solid;opacity:.9}
+@media(max-width:1180px){.wall-module.has-profile-drawer{padding-right:0}.wall-profile-drawer.wall-old-dossier-profile{width:min(900px,92vw);min-width:0}}
+@media(max-width:760px){.wall-profile-drawer.wall-old-dossier-profile{top:0;width:100%;height:100dvh}.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-hero{grid-template-columns:64px minmax(0,1fr);padding:16px}.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-avatar{width:64px;height:64px}.wall-profile-drawer.wall-old-dossier-profile .wall-dossier-header-actions{grid-column:1/-1}.wall-profile-drawer.wall-old-dossier-profile .wall-profile-editor.compact,.wall-profile-drawer.wall-old-dossier-profile .wall-profile-connection-grid,.wall-profile-drawer.wall-old-dossier-profile .wall-link-groups,.wall-profile-drawer.wall-old-dossier-profile .wall-card-display-settings.compact{grid-template-columns:1fr}}

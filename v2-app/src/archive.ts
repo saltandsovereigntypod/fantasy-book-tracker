@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js';
-import type { BookNote, BookRecord, BookRelationship, CardDesign, EvidenceNote, InvestigationRevision, ReadingSession, SuspicionRecord, TheoryRecord, WallCardKind, WallCardRecord, WallDossierCategory, WallDossierRecord, WallRecord, WallRegionLayout, WallRegionRecord, WallRegionRule, WallRegionSort } from './domain';
+import type { BookNote, BookRecord, BookRelationship, CardDesign, EvidenceNote, InvestigationRevision, ReadingSession, SuspicionRecord, TheoryRecord, WallCardDisplay, WallCardKind, WallCardRecord, WallDossierCategory, WallDossierRecord, WallRecord, WallRegionLayout, WallRegionRecord, WallRegionRule, WallRegionSort } from './domain';
 import { defaultDesign } from './defaults';
 import { supabase } from './supabase';
 
@@ -34,12 +34,27 @@ function normalizeRegionRule(value: unknown): WallRegionRule { return value === 
 function normalizeRegionLayout(value: unknown): WallRegionLayout { return value === 'grid' || value === 'list' ? value : 'free'; }
 function normalizeRegionSort(value: unknown): WallRegionSort { return value === 'alphabetical' || value === 'updated' || value === 'confidence' ? value : 'manual'; }
 function normalizeCardKind(value: unknown): WallCardKind { return value === 'reference' ? 'reference' : 'home'; }
+function normalizeCardDisplay(value: unknown, kind: WallCardKind): WallCardDisplay {
+  const display = value && typeof value === 'object' ? value as Partial<WallCardDisplay> : {};
+  const density = display.density === 'minimal' || display.density === 'detailed' ? display.density : 'standard';
+  const categoryStyle = display.categoryStyle === 'link' || display.categoryStyle === 'tag' || display.categoryStyle === 'pill' || display.categoryStyle === 'count' ? display.categoryStyle : 'text';
+  const countsStyle = display.countsStyle === 'text' || display.countsStyle === 'link' || display.countsStyle === 'tag' || display.countsStyle === 'count' ? display.countsStyle : 'pill';
+  return {
+    density,
+    showCategory: display.showCategory ?? true,
+    showSummary: display.showSummary ?? kind !== 'reference',
+    showCounts: display.showCounts ?? kind !== 'reference',
+    showStatus: display.showStatus ?? kind !== 'reference',
+    categoryStyle,
+    countsStyle,
+  };
+}
 function normalizeWalls(values: unknown): WallRecord[] {
   const now = new Date().toISOString();
   return Array.isArray(values) ? values.map((value) => {
     const wall = value && typeof value === 'object' ? value as Partial<WallRecord> : {};
     const regions: WallRegionRecord[] = Array.isArray(wall.regions) ? wall.regions.map((entry) => { const region = entry && typeof entry === 'object' ? entry as Partial<WallRegionRecord> : {}; return { id: String(region.id || crypto.randomUUID()), title: String(region.title || 'Untitled region'), description: region.description ? String(region.description) : undefined, x: Number.isFinite(Number(region.x)) ? Number(region.x) : 40, y: Number.isFinite(Number(region.y)) ? Number(region.y) : 40, width: Math.max(260, Number(region.width) || 520), height: Math.max(220, Number(region.height) || 380), color: String(region.color || '#6f4427'), rule: normalizeRegionRule(region.rule), autoSort: Boolean(region.autoSort), collapsed: Boolean(region.collapsed), locked: Boolean(region.locked), layout: normalizeRegionLayout(region.layout), sort: normalizeRegionSort(region.sort), createdAt: String(region.createdAt || now), updatedAt: String(region.updatedAt || region.createdAt || now) }; }) : [];
-    const rawCards: WallCardRecord[] = Array.isArray(wall.cards) ? wall.cards.map((entry) => { const card = entry && typeof entry === 'object' ? entry as Partial<WallCardRecord> : {}; const sourceType = card.sourceType === 'theory' || card.sourceType === 'suspicion' || card.sourceType === 'dossier' ? card.sourceType : 'book'; const kind = normalizeCardKind(card.kind); return { id: String(card.id || crypto.randomUUID()), sourceType, sourceId: String(card.sourceId || ''), kind, homeCardId: card.homeCardId ? String(card.homeCardId) : undefined, x: Number.isFinite(Number(card.x)) ? Number(card.x) : 80, y: Number.isFinite(Number(card.y)) ? Number(card.y) : 80, width: Math.max(kind === 'reference' ? 140 : 170, Number(card.width) || (kind === 'reference' ? 180 : 230)), height: Math.max(kind === 'reference' ? 90 : 150, Number(card.height) || (kind === 'reference' ? 120 : 260)), note: card.note ? String(card.note) : undefined, color: String(card.color || '#a64f24'), regionId: card.regionId && regions.some((region) => region.id === card.regionId) ? String(card.regionId) : undefined, createdAt: String(card.createdAt || now), updatedAt: String(card.updatedAt || card.createdAt || now) }; }).filter((card) => card.sourceId) : [];
+    const rawCards: WallCardRecord[] = Array.isArray(wall.cards) ? wall.cards.map((entry) => { const card = entry && typeof entry === 'object' ? entry as Partial<WallCardRecord> : {}; const sourceType = card.sourceType === 'theory' || card.sourceType === 'suspicion' || card.sourceType === 'dossier' ? card.sourceType : 'book'; const kind = normalizeCardKind(card.kind); return { id: String(card.id || crypto.randomUUID()), sourceType, sourceId: String(card.sourceId || ''), kind, homeCardId: card.homeCardId ? String(card.homeCardId) : undefined, x: Number.isFinite(Number(card.x)) ? Number(card.x) : 80, y: Number.isFinite(Number(card.y)) ? Number(card.y) : 80, width: Math.max(kind === 'reference' ? 140 : 170, Number(card.width) || (kind === 'reference' ? 180 : 230)), height: Math.max(kind === 'reference' ? 90 : 150, Number(card.height) || (kind === 'reference' ? 120 : 260)), note: card.note ? String(card.note) : undefined, color: String(card.color || '#a64f24'), display: normalizeCardDisplay(card.display, kind), regionId: card.regionId && regions.some((region) => region.id === card.regionId) ? String(card.regionId) : undefined, createdAt: String(card.createdAt || now), updatedAt: String(card.updatedAt || card.createdAt || now) }; }).filter((card) => card.sourceId) : [];
     const homeBySource = new Map<string, string>(); rawCards.forEach((card) => { if (card.kind === 'home') homeBySource.set(`${card.sourceType}:${card.sourceId}`, card.id); });
     const cards = rawCards.map((card) => card.kind === 'reference' ? { ...card, homeCardId: card.homeCardId && rawCards.some((item) => item.id === card.homeCardId && item.kind === 'home') ? card.homeCardId : homeBySource.get(`${card.sourceType}:${card.sourceId}`) } : { ...card, homeCardId: undefined });
     return { id: String(wall.id || crypto.randomUUID()), title: String(wall.title || 'Primary Conspiracy Wall'), cards, regions, canvasWidth: Math.max(1200, Number(wall.canvasWidth) || 1800), canvasHeight: Math.max(800, Number(wall.canvasHeight) || 1100), createdAt: String(wall.createdAt || now), updatedAt: String(wall.updatedAt || wall.createdAt || now) };

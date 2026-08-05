@@ -1,0 +1,146 @@
+.wall-module.has-profile-drawer {
+  padding-right: min(430px, 34vw);
+  transition: padding-right .18s ease;
+}
+
+.wall-profile-drawer {
+  position: fixed;
+  z-index: 430;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(430px, 34vw);
+  min-width: 360px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-left: 1px solid var(--v2-border-strong);
+  background: #160d09;
+  box-shadow: -24px 0 60px rgba(0,0,0,.46);
+}
+
+.wall-profile-drawer .wall-dossier-hero {
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 13px;
+  padding: 18px;
+  border-radius: 0;
+}
+.wall-profile-drawer .wall-dossier-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  font-size: 1.35rem;
+}
+.wall-profile-drawer .wall-dossier-hero h3 {
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+.wall-profile-drawer .wall-dossier-hero > div:nth-child(2) > span {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: .74rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wall-profile-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 18px;
+}
+.wall-profile-scroll > section {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--v2-border);
+}
+.wall-profile-scroll > section:last-child { border-bottom: 0; }
+.wall-profile-scroll h4 { margin: 0; font-size: .95rem; }
+.wall-profile-scroll p { margin: 0; color: #d0b99a; line-height: 1.6; }
+.wall-profile-scroll label {
+  display: grid;
+  gap: 5px;
+  color: #c8a878;
+  font-size: .72rem;
+  font-weight: 800;
+}
+.wall-profile-scroll select[multiple] { min-height: 115px; }
+.wall-profile-drawer > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--v2-border);
+  background: #120a07;
+}
+
+.wall-profile-editor { display: grid; gap: 10px; }
+.wall-card-display-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wall-card-display-settings .wall-section-heading,
+.wall-card-display-settings .wall-display-toggles { grid-column: 1 / -1; }
+.wall-card-display-settings input[type="color"] { height: 42px; padding: 4px; }
+.wall-display-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.wall-display-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid var(--v2-border);
+  border-radius: 9px;
+  background: #100906;
+}
+.wall-display-toggles input { width: auto; }
+
+.wall-card.density-minimal .wall-card-summary,
+.wall-card.density-minimal .wall-card-counts,
+.wall-card.density-minimal footer { display: none; }
+.wall-card.density-minimal { gap: 5px; }
+.wall-card.density-detailed .wall-card-summary { -webkit-line-clamp: 5; }
+
+.wall-card-category.is-tag,
+.wall-card-category.is-pill {
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 3px 6px;
+  border: 1px solid rgba(208,120,60,.32);
+  background: rgba(17,8,5,.38);
+}
+.wall-card-category.is-tag { border-radius: 5px; }
+.wall-card-category.is-pill { border-radius: 999px; }
+.wall-card-category.is-link { text-decoration: underline; text-underline-offset: 2px; }
+.wall-card-counts.is-text span {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.wall-card-counts.is-text span:not(:last-child)::after { content: ' ·'; }
+.wall-card-counts.is-tag span { border-radius: 5px; }
+.wall-card-counts.is-link span { border: 0; background: transparent; text-decoration: underline; }
+
+.wall-link-groups button {
+  padding: 5px 8px;
+  border: 1px solid #68401f;
+  border-radius: 999px;
+  color: #d9b888;
+  background: transparent;
+  font-size: .68rem;
+}
+
+@media (max-width: 1180px) {
+  .wall-module.has-profile-drawer { padding-right: 0; }
+  .wall-profile-drawer { width: min(410px, 48vw); min-width: 340px; }
+}
+@media (max-width: 760px) {
+  .wall-profile-drawer { top: 18vh; width: 100%; min-width: 0; border-top: 1px solid var(--v2-border-strong); border-left: 0; }
+  .wall-profile-drawer .wall-dossier-hero { grid-template-columns: 48px minmax(0, 1fr) auto; padding: 14px; }
+  .wall-profile-drawer .wall-dossier-avatar { width: 48px; height: 48px; }
+  .wall-card-display-settings { grid-template-columns: 1fr; }
+  .wall-card-display-settings .wall-section-heading,
+  .wall-card-display-settings .wall-display-toggles { grid-column: auto; }
+}

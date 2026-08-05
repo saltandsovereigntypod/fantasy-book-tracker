@@ -51,28 +51,64 @@ function MindMapRoute() {
   return <MindMapEnhanced archive={archive} onSave={save} />;
 }
 
-let mountedTarget: HTMLElement | null = null;
-let mountedRoot: Root | null = null;
+let overlayHost: HTMLDivElement | null = null;
+let overlayRoot: Root | null = null;
+let activeTarget: HTMLElement | null = null;
 let scheduled = false;
+let targetResizeObserver: ResizeObserver | null = null;
+
+function ensureOverlayRoot() {
+  if (overlayHost && overlayRoot) return;
+  overlayHost = document.createElement('div');
+  overlayHost.className = 'v2-mind-map-route-root v2-mind-map-route-overlay';
+  overlayHost.hidden = true;
+  Object.assign(overlayHost.style, {
+    position: 'fixed',
+    zIndex: '30',
+    overflow: 'auto',
+    background: 'var(--ink, #160b08)',
+    contain: 'layout paint',
+  });
+  document.body.appendChild(overlayHost);
+  overlayRoot = createRoot(overlayHost);
+  overlayRoot.render(<StrictMode><MindMapRoute /></StrictMode>);
+}
+
+function positionOverlay() {
+  if (!overlayHost || !activeTarget || !activeTarget.isConnected) return;
+  const rect = activeTarget.getBoundingClientRect();
+  overlayHost.style.left = `${Math.max(0, rect.left)}px`;
+  overlayHost.style.top = `${Math.max(0, rect.top)}px`;
+  overlayHost.style.width = `${Math.max(320, rect.width)}px`;
+  overlayHost.style.height = `${Math.max(480, Math.min(rect.height || window.innerHeight - rect.top, window.innerHeight - Math.max(0, rect.top)))}px`;
+}
+
+function watchTarget(target: HTMLElement | null) {
+  targetResizeObserver?.disconnect();
+  targetResizeObserver = null;
+  if (!target || typeof ResizeObserver === 'undefined') return;
+  targetResizeObserver = new ResizeObserver(positionOverlay);
+  targetResizeObserver.observe(target);
+}
 
 function syncMindMapRoute() {
   scheduled = false;
   const target = document.querySelector<HTMLElement>('.v2-view--mindmap');
   if (!target) {
-    if (mountedRoot) mountedRoot.unmount();
-    mountedRoot = null;
-    mountedTarget = null;
+    activeTarget = null;
+    watchTarget(null);
+    if (overlayHost) overlayHost.hidden = true;
     return;
   }
-  if (mountedTarget === target && mountedRoot) return;
-  if (mountedRoot) mountedRoot.unmount();
-  target.replaceChildren();
-  const host = document.createElement('div');
-  host.className = 'v2-mind-map-route-root';
-  target.appendChild(host);
-  mountedTarget = target;
-  mountedRoot = createRoot(host);
-  mountedRoot.render(<StrictMode><MindMapRoute /></StrictMode>);
+
+  ensureOverlayRoot();
+  if (activeTarget !== target) {
+    activeTarget = target;
+    watchTarget(target);
+  }
+  target.style.minHeight = 'calc(100vh - 150px)';
+  if (overlayHost) overlayHost.hidden = false;
+  positionOverlay();
 }
 
 function scheduleSync() {
@@ -82,7 +118,7 @@ function scheduleSync() {
 }
 
 function mutationTouchesMindMap(mutation: MutationRecord): boolean {
-  if (mountedTarget && !mountedTarget.isConnected) return true;
+  if (activeTarget && !activeTarget.isConnected) return true;
   const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
   return nodes.some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap'))));
 }
@@ -91,10 +127,20 @@ const observer = new MutationObserver((mutations) => {
   if (mutations.some(mutationTouchesMindMap)) scheduleSync();
 });
 
+function blockPassiveMindMapWheel(event: WheelEvent) {
+  const target = event.target;
+  if (!(target instanceof Element) || !target.closest('.mind-map-canvas')) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
 function startMindMapRoute() {
   scheduleSync();
   const root = document.getElementById('root');
   if (root) observer.observe(root, { childList: true, subtree: true });
+  window.addEventListener('resize', positionOverlay);
+  window.addEventListener('scroll', positionOverlay, true);
+  document.addEventListener('wheel', blockPassiveMindMapWheel, { passive: false, capture: true });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startMindMapRoute, { once: true });

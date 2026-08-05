@@ -6,6 +6,7 @@ import './stage-controls.css';
 import './editor-shell.css';
 import './editor-toolbar-dock.css';
 import './wall-card-refinement.css';
+import './wall-card-responsive.css';
 import './editor-shell';
 import './editor-toolbar-dock';
 

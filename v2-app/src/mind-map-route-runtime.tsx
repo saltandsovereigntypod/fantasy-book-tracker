@@ -56,6 +56,8 @@ let overlayRoot: Root | null = null;
 let activeTarget: HTMLElement | null = null;
 let scheduled = false;
 let targetResizeObserver: ResizeObserver | null = null;
+let wheelFrame = 0;
+let wheelDelta = 0;
 
 function ensureOverlayRoot() {
   if (overlayHost && overlayRoot) return;
@@ -89,10 +91,16 @@ function findVisibleMindMapTarget() {
 function positionOverlay() {
   if (!overlayHost || !activeTarget || !activeTarget.isConnected || !isVisibleView(activeTarget)) return;
   const rect = activeTarget.getBoundingClientRect();
-  overlayHost.style.left = `${Math.max(0, rect.left)}px`;
-  overlayHost.style.top = `${Math.max(0, rect.top)}px`;
-  overlayHost.style.width = `${Math.max(320, rect.width)}px`;
-  overlayHost.style.height = `${Math.max(480, Math.min(rect.height, window.innerHeight - Math.max(0, rect.top)))}px`;
+  const left = Math.max(0, rect.left);
+  const top = Math.max(0, rect.top);
+  const availableWidth = Math.max(0, window.innerWidth - left);
+  const availableHeight = Math.max(0, window.innerHeight - top);
+  const width = Math.max(280, Math.min(rect.width || availableWidth, availableWidth));
+  const height = Math.max(240, Math.min(rect.height || availableHeight, availableHeight));
+  overlayHost.style.left = `${left}px`;
+  overlayHost.style.top = `${top}px`;
+  overlayHost.style.width = `${width}px`;
+  overlayHost.style.height = `${height}px`;
 }
 
 function watchTarget(target: HTMLElement | null) {
@@ -142,11 +150,22 @@ const observer = new MutationObserver((mutations) => {
   if (relevant) scheduleSync();
 });
 
-function blockPassiveMindMapWheel(event: WheelEvent) {
+function performWheelZoom() {
+  wheelFrame = 0;
+  const direction = wheelDelta > 0 ? '−' : '+';
+  wheelDelta = 0;
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('.mind-map-page--enhanced .mind-map-view-controls button')];
+  const button = buttons.find((item) => item.textContent?.trim() === direction);
+  button?.click();
+}
+
+function handleMindMapWheel(event: WheelEvent) {
   const target = event.target;
   if (!(target instanceof Element) || !target.closest('.mind-map-canvas')) return;
   event.preventDefault();
   event.stopImmediatePropagation();
+  wheelDelta += event.deltaY;
+  if (!wheelFrame) wheelFrame = window.requestAnimationFrame(performWheelZoom);
 }
 
 function startMindMapRoute() {
@@ -155,7 +174,7 @@ function startMindMapRoute() {
   if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'] });
   window.addEventListener('resize', scheduleSync);
   window.addEventListener('scroll', positionOverlay, true);
-  document.addEventListener('wheel', blockPassiveMindMapWheel, { passive: false, capture: true });
+  document.addEventListener('wheel', handleMindMapWheel, { passive: false, capture: true });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startMindMapRoute, { once: true });

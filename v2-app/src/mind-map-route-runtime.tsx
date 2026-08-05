@@ -3,24 +3,46 @@ import { createRoot, type Root } from 'react-dom/client';
 import { loadCloudArchive, loadLocalArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState } from './archive';
 import { MindMapEnhanced } from './MindMapEnhanced';
 import { getAuthSnapshot } from './supabase';
+import './mind-map-line-style';
+
+let cachedArchive: V2ArchiveState | null = null;
+let cachedUserId = '';
+let archiveLoad: Promise<V2ArchiveState> | null = null;
+
+async function resolveArchive(): Promise<V2ArchiveState> {
+  const { user } = await getAuthSnapshot();
+  const userId = user?.id || 'local';
+  if (cachedArchive && cachedUserId === userId) return cachedArchive;
+  if (archiveLoad) return archiveLoad;
+  archiveLoad = (user ? loadCloudArchive(user) : Promise.resolve(loadLocalArchive()))
+    .then((next) => {
+      cachedArchive = next;
+      cachedUserId = userId;
+      return next;
+    })
+    .finally(() => { archiveLoad = null; });
+  return archiveLoad;
+}
 
 function MindMapRoute() {
-  const [archive, setArchive] = useState<V2ArchiveState | null>(null);
+  const [archive, setArchive] = useState<V2ArchiveState | null>(() => cachedArchive);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (archive) return;
     let active = true;
-    getAuthSnapshot().then(async ({ user }) => {
-      const next = user ? await loadCloudArchive(user) : loadLocalArchive();
-      if (active) setArchive(next);
-    }).catch((reason) => { if (active) setError(reason instanceof Error ? reason.message : 'The mind map could not load.'); });
+    resolveArchive()
+      .then((next) => { if (active) setArchive(next); })
+      .catch((reason) => { if (active) setError(reason instanceof Error ? reason.message : 'The mind map could not load.'); });
     return () => { active = false; };
-  }, []);
+  }, [archive]);
 
   async function save(next: V2ArchiveState) {
+    cachedArchive = next;
     setArchive(next);
     saveLocalArchive(next);
     const { user } = await getAuthSnapshot();
+    cachedUserId = user?.id || 'local';
     if (user) await saveCloudArchive(user, next);
   }
 
@@ -59,7 +81,16 @@ function scheduleSync() {
   window.requestAnimationFrame(syncMindMapRoute);
 }
 
-const observer = new MutationObserver(scheduleSync);
+function mutationTouchesMindMap(mutation: MutationRecord): boolean {
+  if (mountedTarget && !mountedTarget.isConnected) return true;
+  const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
+  return nodes.some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap'))));
+}
+
+const observer = new MutationObserver((mutations) => {
+  if (mutations.some(mutationTouchesMindMap)) scheduleSync();
+});
+
 function startMindMapRoute() {
   scheduleSync();
   const root = document.getElementById('root');

@@ -7,6 +7,7 @@ import './editor-shell.css';
 import './editor-toolbar-dock.css';
 import './wall-card-refinement.css';
 import './wall-card-responsive.css';
+import './wall-profile-drawer.css';
 import './editor-shell';
 import './editor-toolbar-dock';
 

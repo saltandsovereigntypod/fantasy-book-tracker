@@ -5,6 +5,8 @@ export type TheoryStatus = 'open' | 'confirmed' | 'disproven' | 'dormant';
 export type SuspicionStatus = 'open' | 'resolved' | 'dismissed';
 export type WallSourceType = 'book' | 'theory' | 'suspicion';
 export type WallRegionRule = 'manual' | 'any' | 'book' | 'theory' | 'suspicion' | 'open-investigation' | 'resolved-investigation';
+export type WallRegionLayout = 'free' | 'grid' | 'list';
+export type WallRegionSort = 'manual' | 'alphabetical' | 'updated' | 'confidence';
 
 export interface BookNote { id: string; text: string; createdAt: string; updatedAt: string; }
 export interface ReadingSession { id: string; startedAt: string; completedAt?: string; startProgress: number; endProgress: number; pagesRead?: number; minutesRead?: number; notes?: string; }
@@ -13,43 +15,9 @@ export interface EvidenceNote { id: string; text: string; createdAt: string; }
 export interface InvestigationRevision { id: string; editedAt: string; title: string; body: string; confidence: number; status: TheoryStatus | SuspicionStatus; bookIds: string[]; }
 export interface TheoryRecord { id: string; title: string; statement: string; status: TheoryStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; history: InvestigationRevision[]; createdAt: string; updatedAt: string; }
 export interface SuspicionRecord { id: string; title: string; details: string; status: SuspicionStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; history: InvestigationRevision[]; createdAt: string; updatedAt: string; }
-export interface WallCardRecord {
-  id: string;
-  sourceType: WallSourceType;
-  sourceId: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  note?: string;
-  color?: string;
-  regionId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-export interface WallRegionRecord {
-  id: string;
-  title: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  rule: WallRegionRule;
-  autoSort: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-export interface WallRecord {
-  id: string;
-  title: string;
-  cards: WallCardRecord[];
-  regions: WallRegionRecord[];
-  canvasWidth: number;
-  canvasHeight: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export interface WallCardRecord { id: string; sourceType: WallSourceType; sourceId: string; x: number; y: number; width: number; height: number; regionId?: string; note?: string; color?: string; createdAt: string; updatedAt: string; }
+export interface WallRegionRecord { id: string; title: string; description?: string; x: number; y: number; width: number; height: number; color: string; rule: WallRegionRule; autoSort: boolean; collapsed?: boolean; locked?: boolean; layout?: WallRegionLayout; sort?: WallRegionSort; createdAt: string; updatedAt: string; }
+export interface WallRecord { id: string; title: string; cards: WallCardRecord[]; regions: WallRegionRecord[]; canvasWidth: number; canvasHeight: number; createdAt: string; updatedAt: string; }
 
 export interface BookRecord {
   id: string; title: string; author: string; series: string; status: ReadingStatus; progress: number; rating: number; spice: number; impact: number; reaction: string; coverUrl: string;

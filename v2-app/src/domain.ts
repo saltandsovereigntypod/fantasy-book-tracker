@@ -9,6 +9,8 @@ export type WallCardKind = 'home' | 'reference';
 export type WallRegionRule = 'manual' | 'any' | 'book' | 'theory' | 'suspicion' | 'dossier' | 'open-investigation' | 'resolved-investigation';
 export type WallRegionLayout = 'free' | 'grid' | 'list';
 export type WallRegionSort = 'manual' | 'alphabetical' | 'updated' | 'confidence';
+export type WallCardDensity = 'minimal' | 'standard' | 'detailed';
+export type WallPropertyStyle = 'text' | 'link' | 'tag' | 'pill' | 'count';
 
 export interface BookNote { id: string; text: string; createdAt: string; updatedAt: string; }
 export interface ReadingSession { id: string; startedAt: string; completedAt?: string; startProgress: number; endProgress: number; pagesRead?: number; minutesRead?: number; notes?: string; }
@@ -31,7 +33,16 @@ export interface WallDossierRecord {
   createdAt: string;
   updatedAt: string;
 }
-export interface WallCardRecord { id: string; sourceType: WallSourceType; sourceId: string; kind: WallCardKind; homeCardId?: string; x: number; y: number; width: number; height: number; regionId?: string; note?: string; color?: string; createdAt: string; updatedAt: string; }
+export interface WallCardDisplay {
+  density: WallCardDensity;
+  showCategory: boolean;
+  showSummary: boolean;
+  showCounts: boolean;
+  showStatus: boolean;
+  categoryStyle: WallPropertyStyle;
+  countsStyle: WallPropertyStyle;
+}
+export interface WallCardRecord { id: string; sourceType: WallSourceType; sourceId: string; kind: WallCardKind; homeCardId?: string; x: number; y: number; width: number; height: number; regionId?: string; note?: string; color?: string; display?: WallCardDisplay; createdAt: string; updatedAt: string; }
 export interface WallRegionRecord { id: string; title: string; description?: string; x: number; y: number; width: number; height: number; color: string; rule: WallRegionRule; autoSort: boolean; collapsed?: boolean; locked?: boolean; layout?: WallRegionLayout; sort?: WallRegionSort; createdAt: string; updatedAt: string; }
 export interface WallRecord { id: string; title: string; cards: WallCardRecord[]; regions: WallRegionRecord[]; canvasWidth: number; canvasHeight: number; createdAt: string; updatedAt: string; }
 

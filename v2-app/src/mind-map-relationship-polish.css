@@ -1,0 +1,14 @@
+.mind-map-edge:focus-visible{outline:none}
+.mind-map-edge:focus-visible line:not(.mind-map-edge-hit){stroke:#ffd29c;stroke-width:5;stroke-opacity:1}
+.mind-map-edge.is-map text{fill:#f0c79c}
+.mind-map-edge.is-canonical text{fill:#b9d9ca}
+.mind-map-selection-bar{position:sticky;top:8px;z-index:25;box-shadow:0 12px 30px rgba(0,0,0,.32)}
+.mind-map-note-form>button{justify-self:stretch;width:100%}
+.mind-map-note-form select{max-height:240px}
+.mind-map-connection-row:hover .mind-map-connection,.mind-map-connection-row:focus-within .mind-map-connection{border-color:#a65a2f;background:#25150e}
+.mind-map-edge-open{font-size:1.1rem;line-height:1}
+.mind-map-pill.is-canonical::before{content:'◆ ';font-size:.7em}
+.mind-map-pill.is-map::before{content:'◇ ';font-size:.8em}
+.mind-map-readonly-note{padding:10px 12px;border:1px solid #4f7f69;border-radius:10px;background:rgba(79,127,105,.1)}
+.mind-map-edge-parties button:focus-visible,.mind-map-connection:focus-visible,.mind-map-edge-open:focus-visible,.mind-map-selection-bar button:focus-visible,.mind-map-note-form button:focus-visible{outline:3px solid #df8a4e;outline-offset:2px}
+@media(max-width:640px){.mind-map-selection-bar{top:4px}.mind-map-edge-parties{grid-template-columns:1fr}.mind-map-edge-parties span{transform:rotate(90deg)}}

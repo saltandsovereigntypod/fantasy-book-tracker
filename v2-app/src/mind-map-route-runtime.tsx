@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { loadCloudArchive, loadLocalArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState } from './archive';
-import { MindMapEnhanced } from './MindMapEnhanced';
+import { MindMapWorkspace } from './MindMapWorkspace';
 import { getAuthSnapshot } from './supabase';
 import './mind-map-line-style';
 
@@ -48,7 +48,7 @@ function MindMapRoute() {
 
   if (error) return <div className="v2-app-error" role="alert">{error}</div>;
   if (!archive) return <div className="v2-boot-screen"><span>✦</span><strong>Mapping the archive…</strong></div>;
-  return <MindMapEnhanced archive={archive} onSave={save} />;
+  return <MindMapWorkspace archive={archive} onSave={save} />;
 }
 
 let overlayHost: HTMLDivElement | null = null;

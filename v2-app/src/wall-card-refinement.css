@@ -1,0 +1,59 @@
+.wall-card {
+  gap: 7px;
+  padding: 14px 15px;
+}
+
+.wall-card > header {
+  min-height: 22px;
+}
+
+.wall-card > header span {
+  font-size: .58rem;
+  letter-spacing: .12em;
+}
+
+.wall-card h3 {
+  max-width: calc(100% - 4px);
+  font-size: clamp(.78rem, 1.4vw, .88rem);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  text-transform: none;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.wall-card-summary {
+  margin-top: 2px;
+  font-size: .7rem;
+  line-height: 1.42;
+  -webkit-line-clamp: 3;
+}
+
+.wall-card-counts {
+  margin-top: 2px;
+}
+
+.wall-card-counts span {
+  padding: 3px 6px;
+  font-size: .57rem;
+}
+
+.wall-card footer {
+  padding-top: 7px;
+  border-top: 1px solid rgba(208, 120, 60, .16);
+  font-size: .6rem;
+}
+
+.wall-card.is-reference h3 {
+  font-size: .75rem;
+  -webkit-line-clamp: 2;
+}
+
+@media (min-width: 900px) {
+  .wall-card:not(.is-reference) h3 {
+    font-size: .84rem;
+  }
+}

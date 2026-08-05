@@ -1,493 +1,145 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { V2ArchiveState } from './archive';
-import type { WallCardRecord, WallRecord, WallRegionLayout, WallRegionRecord, WallRegionRule, WallRegionSort, WallSourceType } from './domain';
+import type { WallCardRecord, WallDossierCategory, WallDossierRecord, WallRecord, WallRegionRecord, WallRegionRule, WallSourceType } from './domain';
 import './conspiracy-wall.css';
 
-type Interaction =
-  | { kind: 'card-move'; id: string; startX: number; startY: number; x: number; y: number }
-  | { kind: 'card-resize'; id: string; startX: number; startY: number; width: number; height: number }
-  | { kind: 'region-move'; id: string; startX: number; startY: number; x: number; y: number; children: Array<{ id: string; x: number; y: number }> }
-  | { kind: 'region-resize'; id: string; startX: number; startY: number; width: number; height: number };
-
-type WallSource = {
+type Source = {
   type: WallSourceType;
   id: string;
+  category: string;
   title: string;
-  subtitle: string;
-  body: string;
+  shortSummary: string;
+  overview: string;
   status?: string;
   confidence?: number;
   bookIds: string[];
+  theoryIds: string[];
+  suspicionIds: string[];
+  dossierIds: string[];
   updatedAt?: string;
 };
 
-type TypeFilter = 'all' | WallSourceType;
-type StatusFilter = 'all' | 'open' | 'resolved';
+type Interaction =
+  | { kind: 'card'; id: string; startX: number; startY: number; x: number; y: number }
+  | { kind: 'region'; id: string; startX: number; startY: number; x: number; y: number; children: Array<{ id: string; x: number; y: number }> }
+  | { kind: 'card-resize'; id: string; startX: number; startY: number; width: number; height: number }
+  | { kind: 'region-resize'; id: string; startX: number; startY: number; width: number; height: number };
 
 const WALL_KEY = 'empyrean-v2-active-wall';
 const ZOOM_KEY = 'empyrean-v2-wall-zoom';
-const MIN_ZOOM = 0.35;
+const MIN_ZOOM = .35;
 const MAX_ZOOM = 2;
-const ZOOM_STEP = 0.1;
-const REGION_HEADER_HEIGHT = 56;
-const RULE_LABELS: Record<WallRegionRule, string> = {
-  manual: 'Manual placement',
-  any: 'Any unassigned card',
-  book: 'Books',
-  theory: 'Theories',
-  suspicion: 'Suspicions',
-  'open-investigation': 'Open investigations',
-  'resolved-investigation': 'Resolved investigations',
-};
+const REGION_HEADER = 58;
+const CATEGORIES: WallDossierCategory[] = ['character', 'location', 'faction', 'object', 'event', 'creature', 'custom'];
+const RULES: Array<{ value: WallRegionRule; label: string }> = [
+  { value: 'manual', label: 'Manual placement' }, { value: 'any', label: 'Any unassigned card' },
+  { value: 'book', label: 'Books' }, { value: 'theory', label: 'Theories' }, { value: 'suspicion', label: 'Suspicions' },
+  { value: 'dossier', label: 'Wall dossiers' }, { value: 'open-investigation', label: 'Open investigations' }, { value: 'resolved-investigation', label: 'Resolved investigations' },
+];
 
-function timestamp() { return new Date().toISOString(); }
-function readActiveWall() { try { return localStorage.getItem(WALL_KEY) || ''; } catch { return ''; } }
-function readZoom(wallId: string) {
-  try {
-    const values = JSON.parse(localStorage.getItem(ZOOM_KEY) || '{}') as Record<string, number>;
-    const value = Number(values[wallId]);
-    return Number.isFinite(value) ? Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value)) : 1;
-  } catch { return 1; }
-}
-function saveZoom(wallId: string, zoom: number) {
-  try {
-    const values = JSON.parse(localStorage.getItem(ZOOM_KEY) || '{}') as Record<string, number>;
-    values[wallId] = zoom;
-    localStorage.setItem(ZOOM_KEY, JSON.stringify(values));
-  } catch { /* storage unavailable */ }
-}
-function alphaColor(color: string, alpha = '2e') { return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : '#a64f242e'; }
-function defaultWall(title = 'Primary Conspiracy Wall'): WallRecord {
-  const now = timestamp();
-  return { id: crypto.randomUUID(), title, cards: [], regions: [], canvasWidth: 1800, canvasHeight: 1100, createdAt: now, updatedAt: now };
-}
-function isResolved(status?: string) { return status === 'confirmed' || status === 'disproven' || status === 'resolved' || status === 'dismissed' || status === 'completed'; }
+function now() { return new Date().toISOString(); }
 function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)); }
+function alpha(color: string, suffix: string) { return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${suffix}` : `#a64f24${suffix}`; }
+function readActive() { try { return localStorage.getItem(WALL_KEY) || ''; } catch { return ''; } }
+function readZoom(id: string) { try { const map = JSON.parse(localStorage.getItem(ZOOM_KEY) || '{}') as Record<string, number>; return clamp(Number(map[id]) || 1, MIN_ZOOM, MAX_ZOOM); } catch { return 1; } }
+function writeZoom(id: string, zoom: number) { try { const map = JSON.parse(localStorage.getItem(ZOOM_KEY) || '{}') as Record<string, number>; map[id] = zoom; localStorage.setItem(ZOOM_KEY, JSON.stringify(map)); } catch { /* unavailable */ } }
+function newWall(title: string): WallRecord { const stamp = now(); return { id: crypto.randomUUID(), title, cards: [], regions: [], canvasWidth: 1900, canvasHeight: 1200, createdAt: stamp, updatedAt: stamp }; }
+function resolved(status?: string) { return ['confirmed', 'disproven', 'resolved', 'dismissed', 'completed'].includes(status || ''); }
+function plural(count: number, label: string) { return `${count} ${label}${count === 1 ? '' : 's'}`; }
+function selectedValues(event: React.ChangeEvent<HTMLSelectElement>) { return Array.from(event.currentTarget.selectedOptions).map((option) => option.value); }
 
 export function ConspiracyWall({ archive, onSave }: { archive: V2ArchiveState; onSave: (next: V2ArchiveState) => Promise<void> }) {
-  const fallbackRef = useRef<WallRecord>(defaultWall());
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const interactionRef = useRef<Interaction | null>(null);
-  const movedRef = useRef(false);
-  const initialId = readActiveWall();
-  const [activeWallId, setActiveWallId] = useState(initialId);
-  const [sourceSearch, setSourceSearch] = useState('');
-  const [cardSearch, setCardSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [regionFilter, setRegionFilter] = useState('all');
+  const fallback = useRef(newWall('Primary Conspiracy Wall'));
+  const viewport = useRef<HTMLDivElement>(null);
+  const interaction = useRef<Interaction | null>(null);
+  const moved = useRef(false);
+  const [activeId, setActiveId] = useState(readActive);
+  const wall = archive.walls.find((item) => item.id === activeId) ?? archive.walls[0] ?? fallback.current;
+  const [zoom, setZoom] = useState(() => readZoom(activeId || 'default'));
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<'all' | WallSourceType>('all');
+  const [filterRegion, setFilterRegion] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [showBoardMenu, setShowBoardMenu] = useState(false);
-  const [showRegions, setShowRegions] = useState(true);
-  const [zoom, setZoom] = useState(() => readZoom(initialId || 'default'));
-  const [previewCardId, setPreviewCardId] = useState<string | null>(null);
-  const [noteText, setNoteText] = useState('');
-  const [settingsRegionId, setSettingsRegionId] = useState<string | null>(null);
-  const [appearanceRegionId, setAppearanceRegionId] = useState('');
-
-  const wall = archive.walls.find((item) => item.id === activeWallId) ?? archive.walls[0] ?? fallbackRef.current;
-  const previewCard = wall.cards.find((card) => card.id === previewCardId) ?? null;
-  const settingsRegion = wall.regions.find((region) => region.id === settingsRegionId) ?? null;
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [regionSettingsId, setRegionSettingsId] = useState<string | null>(null);
+  const [showDossierForm, setShowDossierForm] = useState(false);
+  const [appearanceRegion, setAppearanceRegion] = useState('');
+  const [draft, setDraft] = useState({ category: 'character' as WallDossierCategory, title: '', shortSummary: '', overview: '', notes: '', bookIds: [] as string[], theoryIds: [] as string[], suspicionIds: [] as string[], dossierIds: [] as string[] });
 
   useEffect(() => { setZoom(readZoom(wall.id)); }, [wall.id]);
 
-  const allSources = useMemo<WallSource[]>(() => [
-    ...archive.books.map((book) => ({
-      type: 'book' as const,
-      id: book.id,
-      title: book.title,
-      subtitle: book.author || book.series || 'Book',
-      body: book.summary || book.about || book.reaction || 'No book summary has been added yet.',
-      status: book.status,
-      bookIds: [book.id],
-      updatedAt: book.updatedAt,
-    })),
-    ...archive.theories.map((item) => ({
-      type: 'theory' as const,
-      id: item.id,
-      title: item.title,
-      subtitle: `${item.confidence}% confidence · ${item.status}`,
-      body: item.statement,
-      status: item.status,
-      confidence: item.confidence,
-      bookIds: item.bookIds,
-      updatedAt: item.updatedAt,
-    })),
-    ...archive.suspicions.map((item) => ({
-      type: 'suspicion' as const,
-      id: item.id,
-      title: item.title,
-      subtitle: `${item.confidence}% confidence · ${item.status}`,
-      body: item.details,
-      status: item.status,
-      confidence: item.confidence,
-      bookIds: item.bookIds,
-      updatedAt: item.updatedAt,
-    })),
-  ], [archive.books, archive.theories, archive.suspicions]);
+  const sources = useMemo<Source[]>(() => [
+    ...archive.books.map((book) => ({ type: 'book' as const, id: book.id, category: 'book', title: book.title, shortSummary: book.summary || book.about || book.author || 'Book record', overview: book.about || book.summary || book.reaction || 'No full summary has been added.', status: book.status, bookIds: [book.id], theoryIds: book.theoryIds || [], suspicionIds: book.suspicionIds || [], dossierIds: [], updatedAt: book.updatedAt })),
+    ...archive.theories.map((item) => ({ type: 'theory' as const, id: item.id, category: 'theory', title: item.title, shortSummary: item.statement.split(/(?<=[.!?])\s/)[0] || item.statement, overview: item.statement, status: item.status, confidence: item.confidence, bookIds: item.bookIds, theoryIds: [], suspicionIds: [], dossierIds: [], updatedAt: item.updatedAt })),
+    ...archive.suspicions.map((item) => ({ type: 'suspicion' as const, id: item.id, category: 'suspicion', title: item.title, shortSummary: item.details.split(/(?<=[.!?])\s/)[0] || item.details, overview: item.details, status: item.status, confidence: item.confidence, bookIds: item.bookIds, theoryIds: [], suspicionIds: [], dossierIds: [], updatedAt: item.updatedAt })),
+    ...archive.dossiers.map((item) => ({ type: 'dossier' as const, id: item.id, category: item.category, title: item.title, shortSummary: item.shortSummary || 'No one-sentence summary yet.', overview: item.overview || 'No full overview has been added.', status: 'active', bookIds: item.bookIds, theoryIds: item.theoryIds, suspicionIds: item.suspicionIds, dossierIds: item.dossierIds, updatedAt: item.updatedAt })),
+  ], [archive.books, archive.dossiers, archive.suspicions, archive.theories]);
 
-  const availableSources = useMemo(() => {
-    const query = sourceSearch.trim().toLowerCase();
-    return allSources.filter((source) => {
-      const hasHome = wall.cards.some((card) => card.kind === 'home' && card.sourceType === source.type && card.sourceId === source.id);
-      return !hasHome && (!query || `${source.title} ${source.subtitle} ${source.type}`.toLowerCase().includes(query));
-    }).slice(0, 30);
-  }, [allSources, sourceSearch, wall.cards]);
-
-  const filteredCardIds = useMemo(() => {
-    const query = cardSearch.trim().toLowerCase();
-    return new Set(wall.cards.filter((card) => {
-      const source = allSources.find((item) => item.type === card.sourceType && item.id === card.sourceId);
-      if (!source) return false;
-      if (typeFilter !== 'all' && source.type !== typeFilter) return false;
-      if (statusFilter === 'open' && isResolved(source.status)) return false;
-      if (statusFilter === 'resolved' && !isResolved(source.status)) return false;
-      if (regionFilter !== 'all' && (regionFilter === 'unassigned' ? Boolean(card.regionId) : card.regionId !== regionFilter)) return false;
-      return !query || `${source.title} ${source.subtitle} ${source.body} ${card.note || ''}`.toLowerCase().includes(query);
-    }).map((card) => card.id));
-  }, [allSources, cardSearch, regionFilter, statusFilter, typeFilter, wall.cards]);
-
-  function sourceFor(card: WallCardRecord | null) { return card ? allSources.find((item) => item.type === card.sourceType && item.id === card.sourceId) : undefined; }
-  function homeFor(card: WallCardRecord) { return card.kind === 'home' ? card : wall.cards.find((item) => item.id === card.homeCardId) ?? wall.cards.find((item) => item.kind === 'home' && item.sourceType === card.sourceType && item.sourceId === card.sourceId); }
-  function setActive(id: string) { setActiveWallId(id); try { localStorage.setItem(WALL_KEY, id); } catch { /* unavailable */ } setShowBoardMenu(false); }
-  function changeZoom(next: number) { const value = clamp(Math.round(next * 100) / 100, MIN_ZOOM, MAX_ZOOM); setZoom(value); saveZoom(wall.id, value); }
-  function handleWheel(event: React.WheelEvent<HTMLDivElement>) { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); changeZoom(zoom + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)); }
-
-  async function saveWalls(walls: WallRecord[]) { await onSave({ ...archive, walls }); }
-  async function saveWall(nextWall: WallRecord) {
-    const stamped = { ...nextWall, updatedAt: timestamp() };
-    const walls = archive.walls.some((item) => item.id === stamped.id) ? archive.walls.map((item) => item.id === stamped.id ? stamped : item) : [...archive.walls, stamped];
-    await saveWalls(walls);
-  }
-
-  async function createBoard() {
-    const next = defaultWall(`Conspiracy Wall ${archive.walls.length + 1}`);
-    await saveWalls([...archive.walls, next]);
-    setActive(next.id);
-  }
-  async function duplicateBoard() {
-    const now = timestamp();
-    const regionIds = new Map(wall.regions.map((region) => [region.id, crypto.randomUUID()]));
-    const homeIds = new Map(wall.cards.filter((card) => card.kind === 'home').map((card) => [card.id, crypto.randomUUID()]));
-    const cardIds = new Map(wall.cards.map((card) => [card.id, card.kind === 'home' ? homeIds.get(card.id)! : crypto.randomUUID()]));
-    const next: WallRecord = {
-      ...structuredClone(wall),
-      id: crypto.randomUUID(),
-      title: `${wall.title} Copy`,
-      createdAt: now,
-      updatedAt: now,
-      regions: wall.regions.map((region) => ({ ...region, id: regionIds.get(region.id)!, createdAt: now, updatedAt: now })),
-      cards: wall.cards.map((card) => ({
-        ...card,
-        id: cardIds.get(card.id)!,
-        homeCardId: card.homeCardId ? homeIds.get(card.homeCardId) : undefined,
-        regionId: card.regionId ? regionIds.get(card.regionId) : undefined,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    };
-    await saveWalls([...archive.walls, next]);
-    setActive(next.id);
-  }
-  async function deleteBoard() {
-    if (!archive.walls.some((item) => item.id === wall.id)) return;
-    if (!window.confirm(`Delete “${wall.title}” and all of its wall placements?`)) return;
-    const remaining = archive.walls.filter((item) => item.id !== wall.id);
-    await saveWalls(remaining);
-    setActive(remaining[0]?.id || '');
-  }
-
-  function matchesRegion(source: WallSource | undefined, rule: WallRegionRule) {
-    if (!source || rule === 'manual') return false;
-    if (rule === 'any') return true;
-    if (rule === 'book' || rule === 'theory' || rule === 'suspicion') return source.type === rule;
-    if (source.type === 'book') return false;
-    return rule === 'open-investigation' ? !isResolved(source.status) : isResolved(source.status);
-  }
-
-  function sortCardsForRegion(cards: WallCardRecord[], region: WallRegionRecord) {
-    const sort = region.sort ?? 'manual';
-    if (sort === 'manual') return cards;
-    return [...cards].sort((a, b) => {
-      const sourceA = sourceFor(a);
-      const sourceB = sourceFor(b);
-      if (sort === 'alphabetical') return (sourceA?.title || '').localeCompare(sourceB?.title || '');
-      if (sort === 'confidence') return (sourceB?.confidence || 0) - (sourceA?.confidence || 0);
-      return String(sourceB?.updatedAt || '').localeCompare(String(sourceA?.updatedAt || ''));
-    });
-  }
-
-  function layoutRegionCards(input: WallRecord, region: WallRegionRecord) {
-    const cards = sortCardsForRegion(input.cards.filter((card) => card.regionId === region.id && card.kind === 'home'), region);
-    if (!cards.length || region.layout === 'free') return input;
-    const updates = new Map<string, Partial<WallCardRecord>>();
-    if (region.layout === 'list') {
-      cards.forEach((card, index) => updates.set(card.id, { x: region.x + 18, y: region.y + REGION_HEADER_HEIGHT + 16 + index * 128, width: Math.max(190, region.width - 36), height: 112 }));
-    } else {
-      const width = 210;
-      const height = 190;
-      const columns = Math.max(1, Math.floor((region.width - 36) / (width + 14)));
-      cards.forEach((card, index) => updates.set(card.id, { x: region.x + 18 + (index % columns) * (width + 14), y: region.y + REGION_HEADER_HEIGHT + 16 + Math.floor(index / columns) * (height + 14), width, height }));
-    }
-    return { ...input, cards: input.cards.map((card) => updates.has(card.id) ? { ...card, ...updates.get(card.id), updatedAt: timestamp() } : card) };
-  }
-
-  function sortedWall(input: WallRecord) {
-    let next = input;
-    const autoRegions = input.regions.filter((region) => region.autoSort && region.rule !== 'manual');
-    if (autoRegions.length) {
-      const counts = new Map<string, number>();
-      next = {
-        ...next,
-        cards: next.cards.map((card) => {
-          if (card.kind === 'reference') return card;
-          const source = sourceFor(card);
-          const region = autoRegions.find((candidate) => matchesRegion(source, candidate.rule));
-          if (!region) return card;
-          const index = counts.get(region.id) ?? 0;
-          counts.set(region.id, index + 1);
-          return { ...card, regionId: region.id, x: region.x + 18 + (index % 2) * 224, y: region.y + REGION_HEADER_HEIGHT + 16 + Math.floor(index / 2) * 204, width: 210, height: 190, updatedAt: timestamp() };
-        }),
-      };
-    }
-    next.regions.forEach((region) => { next = layoutRegionCards(next, region); });
-    return next;
-  }
-
-  async function addHomeCard(sourceType: WallSourceType, sourceId: string) {
-    const index = wall.cards.length;
-    const now = timestamp();
-    const card: WallCardRecord = {
-      id: crypto.randomUUID(), sourceType, sourceId, kind: 'home',
-      x: 70 + (index % 5) * 245, y: 90 + Math.floor(index / 5) * 280,
-      width: 230, height: 250,
-      color: sourceType === 'suspicion' ? '#9b4f72' : sourceType === 'theory' ? '#b55b2a' : '#6b7f9d',
-      createdAt: now, updatedAt: now,
-    };
-    await saveWall(sortedWall({ ...wall, cards: [...wall.cards, card] }));
-    setSourceSearch('');
-  }
-
-  async function addAppearance(homeCard: WallCardRecord, regionId: string) {
-    const region = wall.regions.find((item) => item.id === regionId);
-    if (!region) return;
-    const existing = wall.cards.some((card) => card.kind === 'reference' && card.homeCardId === homeCard.id && card.regionId === region.id);
-    if (existing) return;
-    const appearances = wall.cards.filter((card) => card.regionId === region.id).length;
-    const now = timestamp();
-    const card: WallCardRecord = {
-      id: crypto.randomUUID(), sourceType: homeCard.sourceType, sourceId: homeCard.sourceId, kind: 'reference', homeCardId: homeCard.id,
-      regionId: region.id, x: region.x + 20 + (appearances % 3) * 190, y: region.y + REGION_HEADER_HEIGHT + 18 + Math.floor(appearances / 3) * 118,
-      width: 176, height: 104, color: homeCard.color, createdAt: now, updatedAt: now,
-    };
-    await saveWall({ ...wall, cards: [...wall.cards, card] });
-    setAppearanceRegionId('');
-  }
-
-  async function updateCard(id: string, changes: Partial<WallCardRecord>) { await saveWall({ ...wall, cards: wall.cards.map((card) => card.id === id ? { ...card, ...changes, updatedAt: timestamp() } : card) }); }
-  async function removeCard(id: string) {
-    const card = wall.cards.find((item) => item.id === id);
-    const removedIds = new Set([id]);
-    if (card?.kind === 'home') wall.cards.filter((item) => item.homeCardId === id).forEach((item) => removedIds.add(item.id));
-    await saveWall({ ...wall, cards: wall.cards.filter((item) => !removedIds.has(item.id)) });
-    if (previewCardId && removedIds.has(previewCardId)) setPreviewCardId(null);
-  }
-
-  async function addRegion() {
-    const index = wall.regions.length;
-    const now = timestamp();
-    const region: WallRegionRecord = {
-      id: crypto.randomUUID(), title: `Region ${index + 1}`, description: '',
-      x: 50 + (index % 2) * 620, y: 50 + Math.floor(index / 2) * 450,
-      width: 570, height: 390, color: '#76567f', rule: 'manual', autoSort: false,
-      collapsed: false, locked: false, layout: 'free', sort: 'manual', createdAt: now, updatedAt: now,
-    };
-    await saveWall({ ...wall, regions: [...wall.regions, region] });
-    setShowRegions(true);
-    setSettingsRegionId(region.id);
-  }
-
-  async function updateRegion(id: string, changes: Partial<WallRegionRecord>, shouldSort = false) {
-    let next: WallRecord = { ...wall, regions: wall.regions.map((region) => region.id === id ? { ...region, ...changes, updatedAt: timestamp() } : region) };
-    const region = next.regions.find((item) => item.id === id);
-    if (region && shouldSort) next = layoutRegionCards(sortedWall(next), region);
-    await saveWall(next);
-  }
-
-  async function removeRegion(id: string) {
-    await saveWall({ ...wall, regions: wall.regions.filter((region) => region.id !== id), cards: wall.cards.map((card) => card.regionId === id ? { ...card, regionId: undefined } : card) });
-    setSettingsRegionId(null);
-  }
-
-  async function autoSort() { await saveWall(sortedWall(wall)); }
-
-  function fitBoard() {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const content = [...wall.regions.map((region) => ({ x: region.x, y: region.y, width: region.width, height: region.collapsed ? REGION_HEADER_HEIGHT : region.height })), ...wall.cards.filter((card) => !card.regionId || !wall.regions.find((region) => region.id === card.regionId)?.collapsed).map((card) => ({ x: card.x, y: card.y, width: card.width, height: card.height }))];
-    const maxX = Math.max(900, ...content.map((item) => item.x + item.width + 80));
-    const maxY = Math.max(600, ...content.map((item) => item.y + item.height + 80));
-    changeZoom(Math.min(1, (viewport.clientWidth - 32) / maxX, (viewport.clientHeight - 32) / maxY));
-    viewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
-  }
-
-  function focusRegion(region: WallRegionRecord) {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const nextZoom = clamp(Math.min((viewport.clientWidth - 80) / region.width, (viewport.clientHeight - 80) / (region.collapsed ? REGION_HEADER_HEIGHT : region.height), 1.35), MIN_ZOOM, MAX_ZOOM);
-    changeZoom(nextZoom);
-    requestAnimationFrame(() => viewport.scrollTo({ left: Math.max(0, region.x * nextZoom - 36), top: Math.max(0, region.y * nextZoom - 36), behavior: 'smooth' }));
-  }
-
-  function regionAt(x: number, y: number, width: number, height: number) {
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-    return wall.regions.find((region) => centerX >= region.x && centerX <= region.x + region.width && centerY >= region.y + REGION_HEADER_HEIGHT && centerY <= region.y + region.height);
-  }
-
-  function beginInteraction(event: React.PointerEvent<HTMLElement>, interaction: Interaction) {
-    const target = event.target as HTMLElement;
-    if (target.closest('button, input, textarea, select') && !target.closest('.wall-resize-handle')) return;
-    movedRef.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    interactionRef.current = interaction;
-  }
-
-  function moveInteraction(event: React.PointerEvent<HTMLElement>) {
-    const interaction = interactionRef.current;
-    if (!interaction) return;
-    const dx = (event.clientX - interaction.startX) / zoom;
-    const dy = (event.clientY - interaction.startY) / zoom;
-    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true;
-    const element = event.currentTarget as HTMLElement;
-    if (interaction.kind.endsWith('move')) {
-      element.style.left = `${Math.max(0, interaction.x + dx)}px`;
-      element.style.top = `${Math.max(0, interaction.y + dy)}px`;
-      if (interaction.kind === 'region-move') {
-        interaction.children.forEach((child) => {
-          const node = document.querySelector<HTMLElement>(`[data-wall-card-id="${child.id}"]`);
-          if (node) { node.style.left = `${Math.max(0, child.x + dx)}px`; node.style.top = `${Math.max(0, child.y + dy)}px`; }
-        });
-      }
-    } else {
-      element.style.width = `${Math.max(interaction.kind === 'card-resize' ? 150 : 260, interaction.width + dx)}px`;
-      element.style.height = `${Math.max(interaction.kind === 'card-resize' ? 100 : 220, interaction.height + dy)}px`;
-    }
-  }
-
-  function endInteraction(event: React.PointerEvent<HTMLElement>) {
-    const interaction = interactionRef.current;
-    if (!interaction) return;
-    interactionRef.current = null;
-    const dx = (event.clientX - interaction.startX) / zoom;
-    const dy = (event.clientY - interaction.startY) / zoom;
-    if (interaction.kind === 'card-move') {
-      const card = wall.cards.find((item) => item.id === interaction.id);
-      if (!card) return;
-      const x = Math.max(0, Math.round(interaction.x + dx));
-      const y = Math.max(0, Math.round(interaction.y + dy));
-      const region = regionAt(x, y, card.width, card.height);
-      updateCard(card.id, { x, y, regionId: region?.id }).catch(console.error);
-    }
-    if (interaction.kind === 'card-resize') updateCard(interaction.id, { width: Math.max(150, Math.round(interaction.width + dx)), height: Math.max(100, Math.round(interaction.height + dy)) }).catch(console.error);
-    if (interaction.kind === 'region-move') {
-      const x = Math.max(0, Math.round(interaction.x + dx));
-      const y = Math.max(0, Math.round(interaction.y + dy));
-      const cards = wall.cards.map((card) => {
-        const child = interaction.children.find((item) => item.id === card.id);
-        return child ? { ...card, x: Math.max(0, Math.round(child.x + dx)), y: Math.max(0, Math.round(child.y + dy)), updatedAt: timestamp() } : card;
-      });
-      saveWall({ ...wall, regions: wall.regions.map((region) => region.id === interaction.id ? { ...region, x, y, updatedAt: timestamp() } : region), cards }).catch(console.error);
-    }
-    if (interaction.kind === 'region-resize') updateRegion(interaction.id, { width: Math.max(260, Math.round(interaction.width + dx)), height: Math.max(220, Math.round(interaction.height + dy)) }).catch(console.error);
-  }
-
-  function openPreview(card: WallCardRecord) { if (movedRef.current) return; setPreviewCardId(card.id); setNoteText(homeFor(card)?.note || card.note || ''); setAppearanceRegionId(''); }
-  function jumpToHome(card: WallCardRecord) {
-    const home = homeFor(card);
-    if (!home) return;
-    const viewport = viewportRef.current;
-    viewport?.scrollTo({ left: Math.max(0, home.x * zoom - 120), top: Math.max(0, home.y * zoom - 120), behavior: 'smooth' });
-    setPreviewCardId(home.id);
-  }
-  async function savePreviewNote() {
-    if (!previewCard) return;
-    const home = homeFor(previewCard);
-    if (!home) return;
-    await updateCard(home.id, { note: noteText.trim() || undefined });
-  }
-
-  const previewSource = sourceFor(previewCard);
+  const sourceMap = useMemo(() => new Map(sources.map((source) => [`${source.type}:${source.id}`, source])), [sources]);
+  const sourceFor = (card: WallCardRecord | null) => card ? sourceMap.get(`${card.sourceType}:${card.sourceId}`) : undefined;
+  const homeFor = (card: WallCardRecord) => card.kind === 'home' ? card : wall.cards.find((item) => item.id === card.homeCardId) ?? wall.cards.find((item) => item.kind === 'home' && item.sourceType === card.sourceType && item.sourceId === card.sourceId);
+  const previewCard = wall.cards.find((card) => card.id === previewId) ?? null;
   const previewHome = previewCard ? homeFor(previewCard) : undefined;
-  const previewAppearances = previewHome ? wall.cards.filter((card) => card.homeCardId === previewHome.id) : [];
+  const previewSource = sourceFor(previewCard);
+  const regionSettings = wall.regions.find((region) => region.id === regionSettingsId) ?? null;
+
+  const available = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return sources.filter((source) => !wall.cards.some((card) => card.kind === 'home' && card.sourceType === source.type && card.sourceId === source.id) && (!query || `${source.title} ${source.shortSummary} ${source.category}`.toLowerCase().includes(query))).slice(0, 25);
+  }, [search, sources, wall.cards]);
+
+  const visibleIds = useMemo(() => new Set(wall.cards.filter((card) => {
+    const source = sourceFor(card);
+    if (!source) return false;
+    if (filterType !== 'all' && source.type !== filterType) return false;
+    if (filterRegion !== 'all' && (filterRegion === 'unassigned' ? Boolean(card.regionId) : card.regionId !== filterRegion)) return false;
+    return true;
+  }).map((card) => card.id)), [filterRegion, filterType, sourceMap, wall.cards]);
+
+  async function save(next: V2ArchiveState) { await onSave(next); }
+  async function saveWall(nextWall: WallRecord) { const stamped = { ...nextWall, updatedAt: now() }; const walls = archive.walls.some((item) => item.id === stamped.id) ? archive.walls.map((item) => item.id === stamped.id ? stamped : item) : [...archive.walls, stamped]; await save({ ...archive, walls }); }
+  function setActive(id: string) { setActiveId(id); try { localStorage.setItem(WALL_KEY, id); } catch { /* unavailable */ } }
+  function changeZoom(value: number) { const next = clamp(Math.round(value * 100) / 100, MIN_ZOOM, MAX_ZOOM); setZoom(next); writeZoom(wall.id, next); }
+
+  async function createBoard() { const next = newWall(`Conspiracy Wall ${archive.walls.length + 1}`); await save({ ...archive, walls: [...archive.walls, next] }); setActive(next.id); }
+  async function duplicateBoard() { const stamp = now(); const regionIds = new Map(wall.regions.map((region) => [region.id, crypto.randomUUID()])); const homeIds = new Map(wall.cards.filter((card) => card.kind === 'home').map((card) => [card.id, crypto.randomUUID()])); const next: WallRecord = { ...structuredClone(wall), id: crypto.randomUUID(), title: `${wall.title} Copy`, createdAt: stamp, updatedAt: stamp, regions: wall.regions.map((region) => ({ ...region, id: regionIds.get(region.id)!, createdAt: stamp, updatedAt: stamp })), cards: wall.cards.map((card) => ({ ...card, id: card.kind === 'home' ? homeIds.get(card.id)! : crypto.randomUUID(), homeCardId: card.homeCardId ? homeIds.get(card.homeCardId) : undefined, regionId: card.regionId ? regionIds.get(card.regionId) : undefined, createdAt: stamp, updatedAt: stamp })) }; await save({ ...archive, walls: [...archive.walls, next] }); setActive(next.id); }
+  async function deleteBoard() { if (!archive.walls.some((item) => item.id === wall.id) || !window.confirm(`Delete “${wall.title}”?`)) return; const walls = archive.walls.filter((item) => item.id !== wall.id); await save({ ...archive, walls }); setActive(walls[0]?.id || ''); }
+
+  async function addHome(type: WallSourceType, id: string) { const index = wall.cards.length; const stamp = now(); const card: WallCardRecord = { id: crypto.randomUUID(), sourceType: type, sourceId: id, kind: 'home', x: 70 + index % 5 * 250, y: 90 + Math.floor(index / 5) * 250, width: 228, height: 214, color: type === 'dossier' ? '#b96934' : type === 'theory' ? '#a65a31' : type === 'suspicion' ? '#96546f' : '#657c96', createdAt: stamp, updatedAt: stamp }; await saveWall({ ...wall, cards: [...wall.cards, card] }); setSearch(''); }
+  async function removeCard(card: WallCardRecord) { const removed = new Set([card.id]); if (card.kind === 'home') wall.cards.filter((item) => item.homeCardId === card.id).forEach((item) => removed.add(item.id)); await saveWall({ ...wall, cards: wall.cards.filter((item) => !removed.has(item.id)) }); setPreviewId(null); }
+  async function addAppearance(home: WallCardRecord, regionId: string) { const region = wall.regions.find((item) => item.id === regionId); if (!region || wall.cards.some((card) => card.kind === 'reference' && card.homeCardId === home.id && card.regionId === regionId)) return; const count = wall.cards.filter((card) => card.regionId === regionId).length; const stamp = now(); const card: WallCardRecord = { id: crypto.randomUUID(), sourceType: home.sourceType, sourceId: home.sourceId, kind: 'reference', homeCardId: home.id, regionId, x: region.x + 20 + count % 3 * 190, y: region.y + REGION_HEADER + 18 + Math.floor(count / 3) * 118, width: 176, height: 104, color: home.color, createdAt: stamp, updatedAt: stamp }; await saveWall({ ...wall, cards: [...wall.cards, card] }); setAppearanceRegion(''); }
+
+  async function createDossier(event: React.FormEvent) { event.preventDefault(); if (!draft.title.trim()) return; const stamp = now(); const dossier: WallDossierRecord = { id: crypto.randomUUID(), category: draft.category, title: draft.title.trim(), shortSummary: draft.shortSummary.trim(), overview: draft.overview.trim(), notes: draft.notes.trim() || undefined, bookIds: draft.bookIds, theoryIds: draft.theoryIds, suspicionIds: draft.suspicionIds, dossierIds: draft.dossierIds, createdAt: stamp, updatedAt: stamp }; const nextArchive = { ...archive, dossiers: [...archive.dossiers, dossier] }; const index = wall.cards.length; const card: WallCardRecord = { id: crypto.randomUUID(), sourceType: 'dossier', sourceId: dossier.id, kind: 'home', x: 70 + index % 5 * 250, y: 90 + Math.floor(index / 5) * 250, width: 228, height: 214, color: '#b96934', createdAt: stamp, updatedAt: stamp }; const nextWall = { ...wall, cards: [...wall.cards, card], updatedAt: stamp }; const walls = archive.walls.some((item) => item.id === wall.id) ? archive.walls.map((item) => item.id === wall.id ? nextWall : item) : [...archive.walls, nextWall]; await save({ ...nextArchive, walls }); setDraft({ category: 'character', title: '', shortSummary: '', overview: '', notes: '', bookIds: [], theoryIds: [], suspicionIds: [], dossierIds: [] }); setShowDossierForm(false); }
+
+  async function addRegion() { const index = wall.regions.length; const stamp = now(); const region: WallRegionRecord = { id: crypto.randomUUID(), title: `Region ${index + 1}`, description: '', x: 50 + index % 2 * 620, y: 50 + Math.floor(index / 2) * 450, width: 570, height: 390, color: '#76567f', rule: 'manual', autoSort: false, collapsed: false, locked: false, layout: 'free', sort: 'manual', createdAt: stamp, updatedAt: stamp }; await saveWall({ ...wall, regions: [...wall.regions, region] }); setRegionSettingsId(region.id); }
+  async function updateRegion(id: string, changes: Partial<WallRegionRecord>) { await saveWall({ ...wall, regions: wall.regions.map((region) => region.id === id ? { ...region, ...changes, updatedAt: now() } : region) }); }
+  async function removeRegion(id: string) { await saveWall({ ...wall, regions: wall.regions.filter((region) => region.id !== id), cards: wall.cards.map((card) => card.regionId === id ? { ...card, regionId: undefined } : card) }); setRegionSettingsId(null); }
+
+  function regionAt(x: number, y: number, width: number, height: number) { const cx = x + width / 2; const cy = y + height / 2; return wall.regions.find((region) => cx >= region.x && cx <= region.x + region.width && cy >= region.y + REGION_HEADER && cy <= region.y + region.height); }
+  function begin(event: React.PointerEvent<HTMLElement>, value: Interaction) { const target = event.target as HTMLElement; if (target.closest('button,input,textarea,select') && !target.closest('.wall-resize-handle')) return; moved.current = false; event.currentTarget.setPointerCapture(event.pointerId); interaction.current = value; }
+  function move(event: React.PointerEvent<HTMLElement>) { const current = interaction.current; if (!current) return; const dx = (event.clientX - current.startX) / zoom; const dy = (event.clientY - current.startY) / zoom; if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved.current = true; const element = event.currentTarget as HTMLElement; if (current.kind === 'card' || current.kind === 'region') { element.style.left = `${Math.max(0, current.x + dx)}px`; element.style.top = `${Math.max(0, current.y + dy)}px`; if (current.kind === 'region') current.children.forEach((child) => { const node = document.querySelector<HTMLElement>(`[data-wall-card-id="${child.id}"]`); if (node) { node.style.left = `${Math.max(0, child.x + dx)}px`; node.style.top = `${Math.max(0, child.y + dy)}px`; } }); } else { element.style.width = `${Math.max(current.kind === 'card-resize' ? 150 : 260, current.width + dx)}px`; element.style.height = `${Math.max(current.kind === 'card-resize' ? 100 : 220, current.height + dy)}px`; } }
+  function end(event: React.PointerEvent<HTMLElement>) { const current = interaction.current; if (!current) return; interaction.current = null; const dx = (event.clientX - current.startX) / zoom; const dy = (event.clientY - current.startY) / zoom; if (current.kind === 'card') { const card = wall.cards.find((item) => item.id === current.id); if (!card) return; const x = Math.max(0, Math.round(current.x + dx)); const y = Math.max(0, Math.round(current.y + dy)); const region = regionAt(x, y, card.width, card.height); saveWall({ ...wall, cards: wall.cards.map((item) => item.id === card.id ? { ...item, x, y, regionId: region?.id, updatedAt: now() } : item) }).catch(console.error); } if (current.kind === 'card-resize') saveWall({ ...wall, cards: wall.cards.map((card) => card.id === current.id ? { ...card, width: Math.max(150, Math.round(current.width + dx)), height: Math.max(100, Math.round(current.height + dy)), updatedAt: now() } : card) }).catch(console.error); if (current.kind === 'region') { const x = Math.max(0, Math.round(current.x + dx)); const y = Math.max(0, Math.round(current.y + dy)); saveWall({ ...wall, regions: wall.regions.map((region) => region.id === current.id ? { ...region, x, y, updatedAt: now() } : region), cards: wall.cards.map((card) => { const child = current.children.find((item) => item.id === card.id); return child ? { ...card, x: Math.max(0, Math.round(child.x + dx)), y: Math.max(0, Math.round(child.y + dy)), updatedAt: now() } : card; }) }).catch(console.error); } if (current.kind === 'region-resize') updateRegion(current.id, { width: Math.max(260, Math.round(current.width + dx)), height: Math.max(220, Math.round(current.height + dy)) }).catch(console.error); }
+
+  function linkCounts(source: Source, home?: WallCardRecord) { const appearances = home ? wall.cards.filter((card) => card.homeCardId === home.id).length : 0; const regionCount = new Set(wall.cards.filter((card) => card.sourceType === source.type && card.sourceId === source.id && card.regionId).map((card) => card.regionId)).size; return { books: source.bookIds.length, theories: source.theoryIds.length, suspicions: source.suspicionIds.length, dossiers: source.dossierIds.length, cards: appearances, regions: regionCount }; }
+  function fitBoard() { const node = viewport.current; if (!node) return; changeZoom(Math.min(1, (node.clientWidth - 30) / wall.canvasWidth, (node.clientHeight - 30) / wall.canvasHeight)); node.scrollTo({ left: 0, top: 0, behavior: 'smooth' }); }
 
   return <div className="wall-module">
-    <header className="wall-main-header">
-      <div><p>Investigation Board</p><h2>Conspiracy Wall</h2><span>{wall.cards.filter((card) => card.kind === 'home').length} dossiers · {wall.cards.filter((card) => card.kind === 'reference').length} appearances · {wall.regions.length} regions</span></div>
-      <div className="wall-header-actions"><button onClick={createBoard}>+ Board</button><button className="wall-icon-button" aria-label="More board options" onClick={() => setShowBoardMenu((value) => !value)}>☰</button>{showBoardMenu && <div className="wall-popover"><button onClick={duplicateBoard}>Duplicate board</button><button onClick={() => setShowRegions((value) => !value)}>{showRegions ? 'Hide' : 'Show'} regions</button><button className="is-danger" disabled={!archive.walls.some((item) => item.id === wall.id)} onClick={deleteBoard}>Delete board</button></div>}</div>
-    </header>
-
-    <section className="wall-compact-toolbar">
-      <label className="wall-board-switcher"><span>Wall</span><select value={wall.id} onChange={(event) => setActive(event.target.value)}>{archive.walls.length ? archive.walls.map((item) => <option key={item.id} value={item.id}>{item.title}</option>) : <option value={wall.id}>{wall.title}</option>}</select></label>
-      <div className="wall-toolbar-actions"><button onClick={addRegion}>+ Region</button><button onClick={() => setShowFilters((value) => !value)}>⌕ Filters</button><button disabled={!wall.regions.some((region) => region.autoSort)} onClick={autoSort}>Auto-sort</button><div className="wall-zoom-group"><button onClick={() => changeZoom(zoom - ZOOM_STEP)} disabled={zoom <= MIN_ZOOM}>−</button><strong>{Math.round(zoom * 100)}%</strong><button onClick={() => changeZoom(zoom + ZOOM_STEP)} disabled={zoom >= MAX_ZOOM}>+</button><button onClick={fitBoard}>Fit</button></div></div>
-    </section>
-
-    {showFilters && <section className="wall-filter-drawer">
-      <input value={cardSearch} onChange={(event) => setCardSearch(event.target.value)} placeholder="Search cards and notes…" />
-      <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}><option value="all">All types</option><option value="book">Books</option><option value="theory">Theories</option><option value="suspicion">Suspicions</option></select>
-      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}><option value="all">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option></select>
-      <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}><option value="all">All regions</option><option value="unassigned">Unassigned</option>{wall.regions.map((region) => <option key={region.id} value={region.id}>{region.title}</option>)}</select>
-      <button onClick={() => { setCardSearch(''); setTypeFilter('all'); setStatusFilter('all'); setRegionFilter('all'); }}>Clear</button>
-    </section>}
-
-    <section className="wall-add-source"><label>Add dossier<input value={sourceSearch} onChange={(event) => setSourceSearch(event.target.value)} placeholder="Search books, theories, or suspicions…" /></label>{sourceSearch && <div className="wall-source-results">{availableSources.length ? availableSources.map((source) => <button key={`${source.type}-${source.id}`} onClick={() => addHomeCard(source.type, source.id)}><strong>{source.title}</strong><span>{source.type} · {source.subtitle}</span></button>) : <p>No new dossiers match.</p>}</div>}</section>
-
-    <div className="wall-viewport" ref={viewportRef} onWheel={handleWheel}><div className="wall-zoom-surface" style={{ width: wall.canvasWidth * zoom, height: wall.canvasHeight * zoom }}><section className="wall-canvas" style={{ width: wall.canvasWidth, height: wall.canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-      {showRegions && wall.regions.map((region) => {
-        const children = wall.cards.filter((card) => card.regionId === region.id);
-        return <article key={region.id} className={`wall-region${region.collapsed ? ' is-collapsed' : ''}${region.locked ? ' is-locked' : ''}`} style={{ left: region.x, top: region.y, width: region.width, height: region.collapsed ? REGION_HEADER_HEIGHT : region.height, borderColor: region.color, backgroundColor: alphaColor(region.color, '12') }} onPointerDown={(event) => { if (region.locked) return; beginInteraction(event, { kind: 'region-move', id: region.id, startX: event.clientX, startY: event.clientY, x: region.x, y: region.y, children: children.map((card) => ({ id: card.id, x: card.x, y: card.y })) }); }} onPointerMove={moveInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction}>
-          <header><div><strong>{region.title}</strong><span>{region.description || `${children.length} placement${children.length === 1 ? '' : 's'}`}</span></div><nav><button onClick={() => focusRegion(region)}>Focus</button><button onClick={() => updateRegion(region.id, { collapsed: !region.collapsed })}>{region.collapsed ? 'Expand' : 'Collapse'}</button><button onClick={() => setSettingsRegionId(region.id)}>•••</button></nav></header>
-          {!region.collapsed && !region.locked && <button className="wall-resize-handle" aria-label={`Resize ${region.title}`} onPointerDown={(event) => { event.stopPropagation(); beginInteraction(event, { kind: 'region-resize', id: region.id, startX: event.clientX, startY: event.clientY, width: region.width, height: region.height }); }} onPointerMove={moveInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />}
-        </article>;
-      })}
-
-      {wall.cards.map((card) => {
-        const source = sourceFor(card);
-        const region = card.regionId ? wall.regions.find((item) => item.id === card.regionId) : undefined;
-        if (region?.collapsed || !filteredCardIds.has(card.id)) return null;
-        const color = card.color || '#a64f24';
-        const home = homeFor(card);
-        const appearances = card.kind === 'home' ? wall.cards.filter((item) => item.homeCardId === card.id).length : 0;
-        return <article key={card.id} data-wall-card-id={card.id} className={`wall-card is-${card.sourceType} is-${card.kind}`} style={{ left: card.x, top: card.y, width: card.width, height: card.height, borderColor: color, background: `linear-gradient(145deg, ${alphaColor(color, card.kind === 'reference' ? '26' : '42')}, rgba(17,9,6,.96))` }} onClick={() => openPreview(card)} onPointerDown={(event) => beginInteraction(event, { kind: 'card-move', id: card.id, startX: event.clientX, startY: event.clientY, x: card.x, y: card.y })} onPointerMove={moveInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction}>
-          <header><span>{card.kind === 'reference' ? '↗ Appearance' : source?.type}</span><button title="Remove placement" onClick={(event) => { event.stopPropagation(); removeCard(card.id); }}>×</button></header>
-          <h3>{source?.title || 'Missing record'}</h3>
-          {card.kind === 'home' ? <><p className="wall-card-body">{source?.body}</p>{home?.note && <blockquote>{home.note}</blockquote>}</> : <p className="wall-reference-copy">Linked to the home dossier{region ? ` · ${region.title}` : ''}</p>}
-          <footer><span>{source?.status || source?.subtitle}</span>{card.kind === 'home' && <span>{appearances} appearance{appearances === 1 ? '' : 's'}</span>}{card.kind === 'reference' && <button onClick={(event) => { event.stopPropagation(); jumpToHome(card); }}>Home</button>}</footer>
-          <button className="wall-resize-handle" aria-label={`Resize ${source?.title || 'card'}`} onPointerDown={(event) => { event.stopPropagation(); beginInteraction(event, { kind: 'card-resize', id: card.id, startX: event.clientX, startY: event.clientY, width: card.width, height: card.height }); }} onPointerMove={moveInteraction} onPointerUp={endInteraction} onPointerCancel={endInteraction} />
-        </article>;
-      })}
-      {!wall.cards.length && <div className="wall-empty"><span>✣</span><h3>Your wall is empty</h3><p>Search above to add the first dossier.</p></div>}
+    <header className="wall-main-header"><div><p>Investigation Board</p><h2>Conspiracy Wall</h2><span>{plural(wall.cards.filter((card) => card.kind === 'home').length, 'dossier')} · {plural(wall.cards.filter((card) => card.kind === 'reference').length, 'appearance')} · {plural(wall.regions.length, 'region')}</span></div><div className="wall-header-actions"><button onClick={() => setShowDossierForm(true)}>+ Dossier</button><button onClick={createBoard}>+ Board</button><button className="wall-icon-button" onClick={() => setShowBoardMenu((value) => !value)}>☰</button>{showBoardMenu && <div className="wall-popover"><button onClick={duplicateBoard}>Duplicate board</button><button className="is-danger" onClick={deleteBoard}>Delete board</button></div>}</div></header>
+    <section className="wall-compact-toolbar"><label><span>Wall</span><select value={wall.id} onChange={(event) => setActive(event.target.value)}>{archive.walls.length ? archive.walls.map((item) => <option key={item.id} value={item.id}>{item.title}</option>) : <option value={wall.id}>{wall.title}</option>}</select></label><div className="wall-toolbar-actions"><button onClick={addRegion}>+ Region</button><button onClick={() => setShowFilters((value) => !value)}>⌕ Filters</button><div className="wall-zoom-group"><button onClick={() => changeZoom(zoom - .1)}>−</button><strong>{Math.round(zoom * 100)}%</strong><button onClick={() => changeZoom(zoom + .1)}>+</button><button onClick={fitBoard}>Fit</button></div></div></section>
+    {showFilters && <section className="wall-filter-drawer"><select value={filterType} onChange={(event) => setFilterType(event.target.value as typeof filterType)}><option value="all">All card types</option><option value="book">Books</option><option value="theory">Theories</option><option value="suspicion">Suspicions</option><option value="dossier">Wall dossiers</option></select><select value={filterRegion} onChange={(event) => setFilterRegion(event.target.value)}><option value="all">All regions</option><option value="unassigned">Unassigned</option>{wall.regions.map((region) => <option key={region.id} value={region.id}>{region.title}</option>)}</select><button onClick={() => { setFilterType('all'); setFilterRegion('all'); }}>Clear</button></section>}
+    <section className="wall-add-source"><label>Add an existing record<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search books, theories, suspicions, or dossiers…" /></label>{search && <div className="wall-source-results">{available.length ? available.map((source) => <button key={`${source.type}-${source.id}`} onClick={() => addHome(source.type, source.id)}><strong>{source.title}</strong><span>{source.category} · {source.shortSummary}</span></button>) : <p>No new records match.</p>}</div>}</section>
+    <div className="wall-viewport" ref={viewport} onWheel={(event) => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); changeZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); }}><div className="wall-zoom-surface" style={{ width: wall.canvasWidth * zoom, height: wall.canvasHeight * zoom }}><section className="wall-canvas" style={{ width: wall.canvasWidth, height: wall.canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+      {wall.regions.map((region) => { const children = wall.cards.filter((card) => card.regionId === region.id); return <article key={region.id} className={`wall-region${region.collapsed ? ' is-collapsed' : ''}`} style={{ left: region.x, top: region.y, width: region.width, height: region.collapsed ? REGION_HEADER : region.height, borderColor: region.color, backgroundColor: alpha(region.color, '12') }} onPointerDown={(event) => { if (!region.locked) begin(event, { kind: 'region', id: region.id, startX: event.clientX, startY: event.clientY, x: region.x, y: region.y, children: children.map((card) => ({ id: card.id, x: card.x, y: card.y })) }); }} onPointerMove={move} onPointerUp={end}><header><div><strong>{region.title}</strong><span>{region.description || plural(children.length, 'placement')}</span></div><nav><button onClick={() => updateRegion(region.id, { collapsed: !region.collapsed })}>{region.collapsed ? 'Expand' : 'Collapse'}</button><button onClick={() => setRegionSettingsId(region.id)}>•••</button></nav></header>{!region.collapsed && !region.locked && <button className="wall-resize-handle" onPointerDown={(event) => { event.stopPropagation(); begin(event, { kind: 'region-resize', id: region.id, startX: event.clientX, startY: event.clientY, width: region.width, height: region.height }); }} onPointerMove={move} onPointerUp={end} />}</article>; })}
+      {wall.cards.map((card) => { const source = sourceFor(card); const home = homeFor(card); const region = card.regionId ? wall.regions.find((item) => item.id === card.regionId) : undefined; if (!source || region?.collapsed || !visibleIds.has(card.id)) return null; const counts = linkCounts(source, home); const color = card.color || '#a64f24'; return <article key={card.id} data-wall-card-id={card.id} className={`wall-card is-${card.kind}`} style={{ left: card.x, top: card.y, width: card.width, height: card.height, borderColor: color, background: `linear-gradient(150deg, ${alpha(color, card.kind === 'reference' ? '22' : '35')}, rgba(17,9,6,.97))` }} onClick={() => { if (!moved.current) setPreviewId(card.id); }} onPointerDown={(event) => begin(event, { kind: 'card', id: card.id, startX: event.clientX, startY: event.clientY, x: card.x, y: card.y })} onPointerMove={move} onPointerUp={end}>
+        <header><span>{card.kind === 'reference' ? 'Linked appearance' : source.category}</span><button onClick={(event) => { event.stopPropagation(); removeCard(card); }}>×</button></header><h3>{source.title}</h3><p className="wall-card-summary">{card.kind === 'reference' ? source.shortSummary : source.shortSummary}</p><div className="wall-card-counts">{counts.regions > 0 && <span>{plural(counts.regions, 'region')}</span>}{counts.books > 0 && <span>{plural(counts.books, 'book')}</span>}{counts.dossiers > 0 && <span>{plural(counts.dossiers, 'card')}</span>}{counts.theories > 0 && <span>{plural(counts.theories, 'theory')}</span>}{counts.suspicions > 0 && <span>{plural(counts.suspicions, 'suspicion')}</span>}{counts.cards > 0 && <span>{plural(counts.cards, 'appearance')}</span>}</div><footer><span>{source.status || 'Active record'}</span>{card.kind === 'reference' && <span>↗ Home dossier</span>}</footer><button className="wall-resize-handle" onPointerDown={(event) => { event.stopPropagation(); begin(event, { kind: 'card-resize', id: card.id, startX: event.clientX, startY: event.clientY, width: card.width, height: card.height }); }} onPointerMove={move} onPointerUp={end} /></article>; })}
+      {!wall.cards.length && <div className="wall-empty"><span>✣</span><h3>No dossiers pinned yet</h3><p>Create a wall-native dossier or search existing records above.</p></div>}
     </section></div></div>
 
-    {settingsRegion && <div className="wall-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsRegionId(null); }}><section className="wall-settings-modal" role="dialog" aria-modal="true"><header><div><p>Canvas Region</p><h3>Edit Region</h3></div><button onClick={() => setSettingsRegionId(null)}>×</button></header><div className="wall-settings-grid">
-      <label>Name<input value={settingsRegion.title} onChange={(event) => updateRegion(settingsRegion.id, { title: event.target.value })} /></label>
-      <label>Color<input type="color" value={settingsRegion.color} onChange={(event) => updateRegion(settingsRegion.id, { color: event.target.value })} /></label>
-      <label className="is-wide">Description<textarea rows={3} value={settingsRegion.description || ''} onChange={(event) => updateRegion(settingsRegion.id, { description: event.target.value })} /></label>
-      <label>Layout<select value={settingsRegion.layout || 'free'} onChange={(event) => updateRegion(settingsRegion.id, { layout: event.target.value as WallRegionLayout }, true)}><option value="free">Free</option><option value="grid">Grid</option><option value="list">List</option></select></label>
-      <label>Sort<select value={settingsRegion.sort || 'manual'} onChange={(event) => updateRegion(settingsRegion.id, { sort: event.target.value as WallRegionSort }, true)}><option value="manual">Manual</option><option value="alphabetical">Alphabetical</option><option value="updated">Recently updated</option><option value="confidence">Confidence</option></select></label>
-      <label>Assignment<select value={settingsRegion.rule} onChange={(event) => updateRegion(settingsRegion.id, { rule: event.target.value as WallRegionRule }, settingsRegion.autoSort)}>{Object.entries(RULE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <label className="wall-check"><input type="checkbox" checked={settingsRegion.autoSort} onChange={(event) => updateRegion(settingsRegion.id, { autoSort: event.target.checked }, event.target.checked)} />Automatic assignment</label>
-      <label className="wall-check"><input type="checkbox" checked={Boolean(settingsRegion.locked)} onChange={(event) => updateRegion(settingsRegion.id, { locked: event.target.checked })} />Lock region</label>
-    </div><footer><button onClick={() => focusRegion(settingsRegion)}>Focus</button><button onClick={() => updateRegion(settingsRegion.id, { collapsed: !settingsRegion.collapsed })}>{settingsRegion.collapsed ? 'Expand' : 'Collapse'}</button><button className="is-danger" onClick={() => removeRegion(settingsRegion.id)}>Delete Region</button><button className="is-primary" onClick={() => setSettingsRegionId(null)}>Done</button></footer></section></div>}
+    {showDossierForm && <div className="wall-modal-backdrop"><form className="wall-settings-modal wall-dossier-editor" onSubmit={createDossier}><header><div><p>Wall-native Record</p><h3>Create Dossier</h3></div><button type="button" onClick={() => setShowDossierForm(false)}>×</button></header><div className="wall-settings-grid"><label>Category<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value as WallDossierCategory })}>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required /></label><label className="is-wide">One-sentence summary<input value={draft.shortSummary} onChange={(event) => setDraft({ ...draft, shortSummary: event.target.value })} placeholder="The concise version shown on the wall card." /></label><label className="is-wide">Full overview<textarea rows={6} value={draft.overview} onChange={(event) => setDraft({ ...draft, overview: event.target.value })} /></label><label className="is-wide">Notes & lore<textarea rows={4} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} /></label><label>Linked books<select multiple value={draft.bookIds} onChange={(event) => setDraft({ ...draft, bookIds: selectedValues(event) })}>{archive.books.map((book) => <option key={book.id} value={book.id}>{book.title}</option>)}</select></label><label>Linked theories<select multiple value={draft.theoryIds} onChange={(event) => setDraft({ ...draft, theoryIds: selectedValues(event) })}>{archive.theories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label><label>Linked suspicions<select multiple value={draft.suspicionIds} onChange={(event) => setDraft({ ...draft, suspicionIds: selectedValues(event) })}>{archive.suspicions.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label><label>Linked dossiers<select multiple value={draft.dossierIds} onChange={(event) => setDraft({ ...draft, dossierIds: selectedValues(event) })}>{archive.dossiers.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label></div><footer><button type="button" onClick={() => setShowDossierForm(false)}>Cancel</button><button className="is-primary">Create & Pin</button></footer></form></div>}
 
-    {previewCard && previewSource && previewHome && <div className="wall-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewCardId(null); }}><section className="wall-dossier-modal" role="dialog" aria-modal="true"><header className="wall-dossier-hero" style={{ borderTopColor: previewHome.color || '#a64f24' }}><div className="wall-dossier-avatar">{previewSource.title.slice(0, 1).toUpperCase()}</div><div><p>{previewSource.type} Record</p><h3>{previewSource.title}</h3><div className="wall-dossier-tags"><span>{previewSource.status || 'Open'}</span>{previewSource.bookIds.map((bookId) => <span key={bookId}>{archive.books.find((book) => book.id === bookId)?.title || 'Linked book'}</span>)}</div></div><button className="wall-modal-close" onClick={() => setPreviewCardId(null)}>×</button></header><div className="wall-dossier-content">
-      <section><h4>Overview</h4><p>{previewSource.body || 'No overview has been added yet.'}</p></section>
-      {previewSource.confidence != null && <section><h4>Confidence</h4><div className="wall-confidence"><span style={{ width: `${previewSource.confidence}%` }} /><strong>{previewSource.confidence}%</strong></div></section>}
-      <section><div className="wall-section-heading"><h4>Wall Note</h4><span>Shared by every appearance</span></div><textarea rows={5} value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Record the clue, contradiction, or thread…" /><button onClick={savePreviewNote}>Save note</button></section>
-      <section><div className="wall-section-heading"><h4>Appearances</h4><span>{previewAppearances.length} linked placement{previewAppearances.length === 1 ? '' : 's'}</span></div>{previewAppearances.length ? <div className="wall-appearance-list">{previewAppearances.map((appearance) => <button key={appearance.id} onClick={() => { setPreviewCardId(appearance.id); const region = wall.regions.find((item) => item.id === appearance.regionId); if (region) focusRegion(region); }}>{wall.regions.find((region) => region.id === appearance.regionId)?.title || 'Unassigned appearance'}</button>)}</div> : <p>No reference appearances yet.</p>}
-        <div className="wall-add-appearance"><select value={appearanceRegionId} onChange={(event) => setAppearanceRegionId(event.target.value)}><option value="">Choose a region…</option>{wall.regions.filter((region) => region.id !== previewHome.regionId && !wall.cards.some((card) => card.kind === 'reference' && card.homeCardId === previewHome.id && card.regionId === region.id)).map((region) => <option key={region.id} value={region.id}>{region.title}</option>)}</select><button disabled={!appearanceRegionId} onClick={() => addAppearance(previewHome, appearanceRegionId)}>Add appearance</button></div>
-      </section>
-      <details><summary>Record details</summary><p>{previewSource.subtitle}</p><p>Home region: {wall.regions.find((region) => region.id === previewHome.regionId)?.title || 'Unassigned'}</p></details>
-    </div><footer><button onClick={() => jumpToHome(previewCard)}>Jump to home</button><button className="is-primary" onClick={() => setPreviewCardId(null)}>Close</button></footer></section></div>}
+    {regionSettings && <div className="wall-modal-backdrop"><section className="wall-settings-modal"><header><div><p>Canvas Region</p><h3>Region Settings</h3></div><button onClick={() => setRegionSettingsId(null)}>×</button></header><div className="wall-settings-grid"><label>Name<input value={regionSettings.title} onChange={(event) => updateRegion(regionSettings.id, { title: event.target.value })} /></label><label>Color<input type="color" value={regionSettings.color} onChange={(event) => updateRegion(regionSettings.id, { color: event.target.value })} /></label><label className="is-wide">Description<textarea rows={3} value={regionSettings.description || ''} onChange={(event) => updateRegion(regionSettings.id, { description: event.target.value })} /></label><label>Assignment<select value={regionSettings.rule} onChange={(event) => updateRegion(regionSettings.id, { rule: event.target.value as WallRegionRule })}>{RULES.map((rule) => <option key={rule.value} value={rule.value}>{rule.label}</option>)}</select></label><label className="wall-check"><input type="checkbox" checked={Boolean(regionSettings.locked)} onChange={(event) => updateRegion(regionSettings.id, { locked: event.target.checked })} />Lock region</label></div><footer><button onClick={() => updateRegion(regionSettings.id, { collapsed: !regionSettings.collapsed })}>{regionSettings.collapsed ? 'Expand' : 'Collapse'}</button><button className="is-danger" onClick={() => removeRegion(regionSettings.id)}>Delete Region</button><button className="is-primary" onClick={() => setRegionSettingsId(null)}>Done</button></footer></section></div>}
+
+    {previewCard && previewHome && previewSource && <div className="wall-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewId(null); }}><section className="wall-dossier-modal"><header className="wall-dossier-hero" style={{ borderTopColor: previewHome.color || '#a64f24' }}><div className="wall-dossier-avatar">{previewSource.title.slice(0, 1).toUpperCase()}</div><div><p>{previewSource.category} Record</p><h3>{previewSource.title}</h3><span>{previewSource.shortSummary}</span></div><button className="wall-modal-close" onClick={() => setPreviewId(null)}>×</button></header><div className="wall-dossier-content"><section><h4>Overview</h4><p>{previewSource.overview}</p></section>{previewSource.confidence != null && <section><h4>Confidence</h4><div className="wall-confidence"><span style={{ width: `${previewSource.confidence}%` }} /><strong>{previewSource.confidence}%</strong></div></section>}<section><h4>Connections</h4><div className="wall-link-groups">{previewSource.bookIds.length > 0 && <div><strong>Books</strong>{previewSource.bookIds.map((id) => <span key={id}>{archive.books.find((book) => book.id === id)?.title || 'Missing book'}</span>)}</div>}{previewSource.theoryIds.length > 0 && <div><strong>Theories</strong>{previewSource.theoryIds.map((id) => <span key={id}>{archive.theories.find((item) => item.id === id)?.title || 'Missing theory'}</span>)}</div>}{previewSource.suspicionIds.length > 0 && <div><strong>Suspicions</strong>{previewSource.suspicionIds.map((id) => <span key={id}>{archive.suspicions.find((item) => item.id === id)?.title || 'Missing suspicion'}</span>)}</div>}{previewSource.dossierIds.length > 0 && <div><strong>Other dossiers</strong>{previewSource.dossierIds.map((id) => <span key={id}>{archive.dossiers.find((item) => item.id === id)?.title || 'Missing dossier'}</span>)}</div>}</div></section><section><div className="wall-section-heading"><h4>Wall placements</h4><span>{plural(wall.cards.filter((card) => card.sourceType === previewSource.type && card.sourceId === previewSource.id).length, 'placement')}</span></div><div className="wall-add-appearance"><select value={appearanceRegion} onChange={(event) => setAppearanceRegion(event.target.value)}><option value="">Add a linked appearance…</option>{wall.regions.filter((region) => region.id !== previewHome.regionId && !wall.cards.some((card) => card.kind === 'reference' && card.homeCardId === previewHome.id && card.regionId === region.id)).map((region) => <option key={region.id} value={region.id}>{region.title}</option>)}</select><button disabled={!appearanceRegion} onClick={() => addAppearance(previewHome, appearanceRegion)}>Add</button></div></section></div><footer><button onClick={() => { const node = viewport.current; node?.scrollTo({ left: Math.max(0, previewHome.x * zoom - 100), top: Math.max(0, previewHome.y * zoom - 100), behavior: 'smooth' }); setPreviewId(null); }}>Jump to home</button><button className="is-primary" onClick={() => setPreviewId(null)}>Close</button></footer></section></div>}
   </div>;
 }

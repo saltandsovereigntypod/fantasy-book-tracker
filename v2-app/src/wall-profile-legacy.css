@@ -2,6 +2,17 @@
   padding-right: clamp(620px, 52vw, 900px);
 }
 
+.wall-module.has-profile-drawer::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  pointer-events: none;
+  background: rgba(4,2,2,.3);
+  backdrop-filter: blur(6px) saturate(.75);
+  -webkit-backdrop-filter: blur(6px) saturate(.75);
+}
+
 .wall-profile-drawer.wall-old-dossier-profile {
   width: clamp(620px, 52vw, 900px);
   min-width: 620px;
@@ -85,6 +96,51 @@
 .wall-old-dossier-profile .wall-profile-scroll {
   padding: 22px 28px 110px;
   gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #9c552d #160d09;
+}
+
+.wall-old-dossier-profile .wall-profile-scroll::-webkit-scrollbar,
+.wall-viewport::-webkit-scrollbar,
+.wall-source-results::-webkit-scrollbar,
+.wall-old-dossier-profile select::-webkit-scrollbar,
+.wall-old-dossier-profile textarea::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.wall-old-dossier-profile .wall-profile-scroll::-webkit-scrollbar-track,
+.wall-viewport::-webkit-scrollbar-track,
+.wall-source-results::-webkit-scrollbar-track,
+.wall-old-dossier-profile select::-webkit-scrollbar-track,
+.wall-old-dossier-profile textarea::-webkit-scrollbar-track {
+  background: #160d09;
+}
+
+.wall-old-dossier-profile .wall-profile-scroll::-webkit-scrollbar-thumb,
+.wall-viewport::-webkit-scrollbar-thumb,
+.wall-source-results::-webkit-scrollbar-thumb,
+.wall-old-dossier-profile select::-webkit-scrollbar-thumb,
+.wall-old-dossier-profile textarea::-webkit-scrollbar-thumb {
+  border: 3px solid #160d09;
+  border-radius: 999px;
+  background: #9c552d;
+}
+
+.wall-old-dossier-profile .wall-profile-scroll::-webkit-scrollbar-thumb:hover,
+.wall-viewport::-webkit-scrollbar-thumb:hover,
+.wall-source-results::-webkit-scrollbar-thumb:hover,
+.wall-old-dossier-profile select::-webkit-scrollbar-thumb:hover,
+.wall-old-dossier-profile textarea::-webkit-scrollbar-thumb:hover {
+  background: #c06a39;
+}
+
+.wall-viewport,
+.wall-source-results,
+.wall-old-dossier-profile select,
+.wall-old-dossier-profile textarea {
+  scrollbar-width: thin;
+  scrollbar-color: #9c552d #160d09;
 }
 
 .wall-old-dossier-profile .wall-profile-scroll > section {
@@ -224,18 +280,41 @@
 }
 
 .wall-dossier-card .wall-card-connection-footer {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% + 36px);
+  min-width: 0;
   margin: auto -18px 0;
-  padding: 12px 18px;
+  padding: 11px 18px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-top: 1px solid rgba(208,120,60,.2);
   background: rgba(12,7,5,.2);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.wall-dossier-card .wall-card-connection-footer::-webkit-scrollbar {
+  display: none;
+}
+
+.wall-dossier-card .wall-card-connection-footer span {
+  flex: 0 0 auto;
 }
 
 .wall-dossier-card .wall-card-status {
+  flex: 0 0 auto;
   margin: 0 -18px;
   padding: 7px 18px 10px;
+  overflow: hidden;
   color: #a98261;
   background: rgba(12,7,5,.2);
   font-size: .62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 1180px) {

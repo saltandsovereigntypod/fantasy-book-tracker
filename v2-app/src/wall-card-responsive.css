@@ -19,7 +19,7 @@
 @container (max-height: 175px) {
   .wall-card {
     gap: 6px;
-    padding: 11px 12px;
+    padding: 11px 12px 0;
   }
 
   .wall-card h3 {
@@ -28,13 +28,14 @@
     -webkit-line-clamp: 3;
   }
 
+  .wall-card-summary-block p,
   .wall-card-summary {
     font-size: .66rem;
     line-height: 1.32;
-    -webkit-line-clamp: 2;
   }
 
-  .wall-card-counts span {
+  .wall-card-counts span,
+  .wall-card-connection-footer span {
     padding: 2px 5px;
     font-size: .54rem;
   }
@@ -43,7 +44,7 @@
 @container (max-height: 138px) {
   .wall-card {
     gap: 5px;
-    padding: 9px 10px;
+    padding: 9px 10px 0;
   }
 
   .wall-card > header span {
@@ -61,13 +62,20 @@
     -webkit-line-clamp: 3;
   }
 
-  .wall-card-summary,
-  .wall-card footer {
-    display: none;
+  .wall-card-summary-block p,
+  .wall-card-summary {
+    font-size: .62rem;
+    line-height: 1.25;
   }
 
-  .wall-card-counts {
-    margin-top: auto;
+  .wall-card-connection-footer {
+    min-height: 30px;
+    padding-block: 7px;
+  }
+
+  .wall-card-status {
+    min-height: 22px;
+    padding-block: 5px 7px;
   }
 }
 
@@ -75,7 +83,7 @@
   .wall-card {
     justify-content: flex-start;
     gap: 4px;
-    padding: 8px 9px;
+    padding: 8px 9px 0;
   }
 
   .wall-card h3 {
@@ -84,8 +92,15 @@
     -webkit-line-clamp: 3;
   }
 
-  .wall-card-counts {
-    display: none;
+  .wall-card-summary-block,
+  .wall-card-summary {
+    font-size: .58rem;
+    line-height: 1.2;
+  }
+
+  .wall-card-connection-footer {
+    min-height: 28px;
+    padding-block: 6px;
   }
 }
 
@@ -95,7 +110,9 @@
     line-height: 1.14;
   }
 
+  .wall-card-summary-block p,
   .wall-card-summary {
-    -webkit-line-clamp: 2;
+    font-size: .61rem;
+    line-height: 1.25;
   }
 }

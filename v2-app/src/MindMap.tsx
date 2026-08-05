@@ -28,6 +28,15 @@ type GraphEdge = {
 
 type Point = { x: number; y: number };
 type Viewport = { x: number; y: number; zoom: number };
+type DragState = {
+  kind: 'pan' | 'node';
+  id?: string;
+  pointerId: number;
+  x: number;
+  y: number;
+  start: Point;
+  moved: boolean;
+};
 
 type PersistedMindMap = {
   kind: 'v2-mind-map';
@@ -73,6 +82,7 @@ const DEFAULT_MAP: PersistedMindMap = {
 
 const NODE_WIDTH = 184;
 const NODE_HEIGHT = 98;
+const DRAG_THRESHOLD = 6;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 function readPersistedMap(archive: V2ArchiveState): PersistedMindMap {
@@ -128,7 +138,6 @@ function archiveGraph(archive: V2ArchiveState, map: PersistedMindMap): { nodes: 
 
   map.customNodes.forEach((node) => nodes.push({ id: `custom:${node.id}`, recordId: node.id, type: 'custom', category: 'Note', title: node.title, summary: node.summary, bookIds: [] }));
   map.customEdges.forEach((edge) => addEdge(edge.from, edge.to, edge.label, edge.explanation));
-
   return { nodes, edges };
 }
 
@@ -208,7 +217,8 @@ export function MindMap({ archive, onSave }: { archive: V2ArchiveState; onSave: 
   const [positions, setPositions] = useState<Record<string, Point>>({});
   const [viewport, setViewport] = useState<Viewport>(map.viewport);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ kind: 'pan' | 'node'; id?: string; pointerId: number; x: number; y: number; start: Point } | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClickRef = useRef<string>('');
   const saveTimer = useRef<number | null>(null);
 
   const rawGraph = useMemo(() => archiveGraph(archive, map), [archive, map.customNodes, map.customEdges]);
@@ -249,7 +259,6 @@ export function MindMap({ archive, onSave }: { archive: V2ArchiveState; onSave: 
   }
 
   function updateMap(changes: Partial<PersistedMindMap>) { persist({ ...map, ...changes, updatedAt: new Date().toISOString() }); }
-
   function applyViewport(next: Viewport) { setViewport({ x: next.x, y: next.y, zoom: clamp(next.zoom, .25, 2.5) }); }
   function resetLayout() { const next = applyLayout(filtered.nodes, filtered.edges, map.layout, {}, selectedId); setPositions(next); updateMap({ positions: next }); }
   function fitAll() {
@@ -261,27 +270,40 @@ export function MindMap({ archive, onSave }: { archive: V2ArchiveState; onSave: 
     applyViewport({ x: (canvas.clientWidth - (maxX - minX) * zoom) / 2 - minX * zoom, y: (canvas.clientHeight - (maxY - minY) * zoom) / 2 - minY * zoom, zoom });
   }
   function centerSelected() { const point = positions[selectedId]; const canvas = canvasRef.current; if (!point || !canvas) return; applyViewport({ ...viewport, x: canvas.clientWidth / 2 - (point.x + NODE_WIDTH / 2) * viewport.zoom, y: canvas.clientHeight / 2 - (point.y + NODE_HEIGHT / 2) * viewport.zoom }); }
+  function openNode(id: string) { setSelectedId(id); setInspectorOpen(true); }
 
   function pointerDownCanvas(event: React.PointerEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget && !(event.target as HTMLElement).classList.contains('mind-map-world')) return;
-    dragRef.current = { kind: 'pan', pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: { x: viewport.x, y: viewport.y } };
+    dragRef.current = { kind: 'pan', pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: { x: viewport.x, y: viewport.y }, moved: false };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
   function pointerMove(event: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current; if (!drag || drag.pointerId !== event.pointerId) return;
-    if (drag.kind === 'pan') applyViewport({ ...viewport, x: drag.start.x + event.clientX - drag.x, y: drag.start.y + event.clientY - drag.y });
-    else if (drag.id) setPositions((current) => ({ ...current, [drag.id!]: { x: drag.start.x + (event.clientX - drag.x) / viewport.zoom, y: drag.start.y + (event.clientY - drag.y) / viewport.zoom } }));
+    const dx = event.clientX - drag.x; const dy = event.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) drag.moved = true;
+    if (drag.kind === 'pan') applyViewport({ ...viewport, x: drag.start.x + dx, y: drag.start.y + dy });
+    else if (drag.id) setPositions((current) => ({ ...current, [drag.id!]: { x: drag.start.x + dx / viewport.zoom, y: drag.start.y + dy / viewport.zoom } }));
   }
   function pointerUp(event: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current; if (!drag || drag.pointerId !== event.pointerId) return;
-    if (drag.kind === 'node' && drag.id) updateMap({ positions: { ...map.positions, [drag.id]: positions[drag.id] } });
+    if (drag.kind === 'node' && drag.id && drag.moved) {
+      suppressClickRef.current = drag.id;
+      const point = positions[drag.id];
+      if (point) updateMap({ positions: { ...map.positions, [drag.id]: point } });
+      window.setTimeout(() => { if (suppressClickRef.current === drag.id) suppressClickRef.current = ''; }, 0);
+    }
     dragRef.current = null;
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* released */ }
   }
   function startNodeDrag(event: React.PointerEvent<HTMLButtonElement>, id: string) {
-    event.stopPropagation(); const point = positions[id] || { x: 0, y: 0 };
-    dragRef.current = { kind: 'node', id, pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: point };
+    event.stopPropagation();
+    const point = positions[id] || { x: 0, y: 0 };
+    dragRef.current = { kind: 'node', id, pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: point, moved: false };
     event.currentTarget.setPointerCapture(event.pointerId);
+  }
+  function handleNodeClick(event: React.MouseEvent<HTMLButtonElement>, id: string) {
+    if (suppressClickRef.current === id) { event.preventDefault(); event.stopPropagation(); return; }
+    openNode(id);
   }
 
   const selected = filtered.nodes.find((node) => node.id === selectedId) || rawGraph.nodes.find((node) => node.id === selectedId);
@@ -307,7 +329,7 @@ export function MindMap({ archive, onSave }: { archive: V2ArchiveState; onSave: 
       <label>Layout<select value={map.layout} onChange={(event) => updateMap({ layout: event.target.value as LayoutMode })}><option value="force">Force-directed</option><option value="radial">Radial</option><option value="tree">Hierarchical tree</option><option value="flow">Left-to-right flow</option></select></label>
       <label className="mind-map-search">Search<input value={map.query} onChange={(event) => updateMap({ query: event.target.value })} placeholder="Find a record" /></label>
       <button onClick={() => setFiltersOpen((open) => !open)}>Filters{(map.typeFilter || map.bookId || map.status || map.hideIsolates) ? ' •' : ''}</button>
-      <button onClick={() => setInspectorOpen(true)}>+ Note</button>
+      <button onClick={() => { setSelectedId(''); setInspectorOpen(true); }}>+ Note</button>
     </div>
 
     {filtersOpen && <section className="mind-map-filters">
@@ -326,7 +348,11 @@ export function MindMap({ archive, onSave }: { archive: V2ArchiveState; onSave: 
         <svg className="mind-map-edges">
           {filtered.edges.map((edge) => { const from = positions[edge.from]; const to = positions[edge.to]; if (!from || !to) return null; const x1 = from.x + NODE_WIDTH / 2; const y1 = from.y + NODE_HEIGHT / 2; const x2 = to.x + NODE_WIDTH / 2; const y2 = to.y + NODE_HEIGHT / 2; return <g key={edge.id}><line x1={x1} y1={y1} x2={x2} y2={y2} />{map.showLabels && <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 7}>{edge.label}</text>}</g>; })}
         </svg>
-        {filtered.nodes.map((node) => { const point = positions[node.id] || { x: 0, y: 0 }; const connectionCount = filtered.edges.filter((edge) => edge.from === node.id || edge.to === node.id).length; return <button key={node.id} className={`mind-map-node is-${node.type} ${selectedId === node.id ? 'is-selected' : ''}`} style={{ left: point.x, top: point.y }} onPointerDown={(event) => startNodeDrag(event, node.id)} onClick={() => { setSelectedId(node.id); setInspectorOpen(true); }}><small>{node.category}</small><strong>{node.title}</strong><span>{node.status || node.summary || 'No summary recorded.'}</span><footer>{connectionCount} connection{connectionCount === 1 ? '' : 's'}{node.confidence == null ? '' : ` · ${node.confidence}%`}</footer></button>; })}
+        {filtered.nodes.map((node) => {
+          const point = positions[node.id] || { x: 0, y: 0 };
+          const connectionCount = filtered.edges.filter((edge) => edge.from === node.id || edge.to === node.id).length;
+          return <button key={node.id} className={`mind-map-node is-${node.type} ${selectedId === node.id ? 'is-selected' : ''}`} style={{ left: point.x, top: point.y }} aria-pressed={selectedId === node.id} onPointerDown={(event) => startNodeDrag(event, node.id)} onClick={(event) => handleNodeClick(event, node.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNode(node.id); } }}><small>{node.category}</small><strong>{node.title}</strong><span>{node.status || node.summary || 'No summary recorded.'}</span><footer>{connectionCount} connection{connectionCount === 1 ? '' : 's'}{node.confidence == null ? '' : ` · ${node.confidence}%`}</footer></button>;
+        })}
       </div>
       {!filtered.nodes.length && <div className="mind-map-empty"><strong>No records match this view.</strong><span>Clear filters, choose a broader scope, or add a custom note.</span></div>}
     </div>
@@ -335,7 +361,7 @@ export function MindMap({ archive, onSave }: { archive: V2ArchiveState; onSave: 
       <header><div><p>{selected?.category || 'Map note'}</p><h3>{selected?.title || 'Add custom note'}</h3></div><button onClick={() => setInspectorOpen(false)}>×</button></header>
       <div className="mind-map-inspector-body">
         {!selected && <section className="mind-map-note-form"><label>Title<input value={draftNote.title} onChange={(event) => setDraftNote((current) => ({ ...current, title: event.target.value }))} /></label><label>Summary<textarea value={draftNote.summary} onChange={(event) => setDraftNote((current) => ({ ...current, summary: event.target.value }))} /></label><button onClick={addCustomNote} disabled={!draftNote.title.trim()}>Add note to map</button></section>}
-        {selected && <><section><h4>Overview</h4><p>{selected.summary || 'No summary recorded.'}</p>{selected.status && <span className="mind-map-pill">{selected.status}</span>}{selected.confidence != null && <span className="mind-map-pill">{selected.confidence}% confidence</span>}</section><section><h4>Connections</h4>{selectedEdges.length ? selectedEdges.map((edge) => { const otherId = edge.from === selected.id ? edge.to : edge.from; const other = rawGraph.nodes.find((node) => node.id === otherId); return <button className="mind-map-connection" key={edge.id} onClick={() => setSelectedId(otherId)}><span>{edge.label}</span><strong>{other?.title || 'Missing record'}</strong></button>; }) : <p>No connections yet.</p>}</section><section className="mind-map-inspector-actions"><button onClick={centerSelected}>Center node</button><button onClick={() => { const neighborIds = new Set(selectedEdges.flatMap((edge) => [edge.from, edge.to])); updateMap({ hiddenIds: rawGraph.nodes.filter((node) => node.id !== selected.id && !neighborIds.has(node.id)).map((node) => node.id) }); }}>Focus neighborhood</button><button onClick={() => updateMap({ hiddenIds: [...new Set([...map.hiddenIds, selected.id])] })}>Hide node</button><button onClick={() => updateMap({ hiddenIds: [] })}>Show all nodes</button></section></>}
+        {selected && <><section><h4>Overview</h4><p>{selected.summary || 'No summary recorded.'}</p>{selected.status && <span className="mind-map-pill">{selected.status}</span>}{selected.confidence != null && <span className="mind-map-pill">{selected.confidence}% confidence</span>}</section><section><h4>Connections</h4>{selectedEdges.length ? selectedEdges.map((edge) => { const otherId = edge.from === selected.id ? edge.to : edge.from; const other = rawGraph.nodes.find((node) => node.id === otherId); return <button className="mind-map-connection" key={edge.id} onClick={() => openNode(otherId)}><span>{edge.label}</span><strong>{other?.title || 'Missing record'}</strong></button>; }) : <p>No connections yet.</p>}</section><section className="mind-map-inspector-actions"><button onClick={centerSelected}>Center node</button><button onClick={() => { const neighborIds = new Set(selectedEdges.flatMap((edge) => [edge.from, edge.to])); updateMap({ hiddenIds: rawGraph.nodes.filter((node) => node.id !== selected.id && !neighborIds.has(node.id)).map((node) => node.id) }); }}>Focus neighborhood</button><button onClick={() => updateMap({ hiddenIds: [...new Set([...map.hiddenIds, selected.id])] })}>Hide node</button><button onClick={() => updateMap({ hiddenIds: [] })}>Show all nodes</button></section></>}
       </div>
     </aside>}
   </div>;

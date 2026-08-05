@@ -2,13 +2,24 @@
 .mind-map-edge:focus-visible line:not(.mind-map-edge-hit){stroke:#ffd29c;stroke-width:5;stroke-opacity:1}
 .mind-map-edge.is-map text{fill:#f0c79c}
 .mind-map-edge.is-canonical text{fill:#b9d9ca}
+.mind-map-edge.is-map line:not(.mind-map-edge-hit){filter:drop-shadow(0 0 4px rgba(216,138,77,.3))}
+.mind-map-edge.is-canonical line:not(.mind-map-edge-hit){filter:drop-shadow(0 0 3px rgba(79,127,105,.24))}
+.mind-map-edge:hover text,.mind-map-edge:focus-visible text{font-size:11px;fill:#fff0dc}
 .mind-map-selection-bar{position:sticky;top:8px;z-index:25;box-shadow:0 12px 30px rgba(0,0,0,.32)}
+.mind-map-selection-bar strong::before{content:'Selected: ';color:#c57947;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.mind-map-selection-bar button:first-of-type{border-color:#9b5b31;background:#2b180f}
 .mind-map-note-form>button{justify-self:stretch;width:100%}
 .mind-map-note-form select{max-height:240px}
 .mind-map-connection-row:hover .mind-map-connection,.mind-map-connection-row:focus-within .mind-map-connection{border-color:#a65a2f;background:#25150e}
+.mind-map-connection-row:hover .mind-map-edge-open,.mind-map-connection-row:focus-within .mind-map-edge-open{border-color:#c97942;color:#ffd9b4}
 .mind-map-edge-open{font-size:1.1rem;line-height:1}
 .mind-map-pill.is-canonical::before{content:'◆ ';font-size:.7em}
 .mind-map-pill.is-map::before{content:'◇ ';font-size:.8em}
+.mind-map-pill.is-canonical,.mind-map-pill.is-map{font-weight:800;letter-spacing:.02em}
 .mind-map-readonly-note{padding:10px 12px;border:1px solid #4f7f69;border-radius:10px;background:rgba(79,127,105,.1)}
+.mind-map-edge-parties{position:relative}
+.mind-map-edge-parties::after{content:'Connection direction';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);padding:2px 6px;border-radius:999px;background:#1a0f0a;color:#9f8463;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.mind-map-inspector .mind-map-note-form label{font-size:.74rem;letter-spacing:.01em}
+.mind-map-inspector .mind-map-note-form input:focus,.mind-map-inspector .mind-map-note-form textarea:focus,.mind-map-inspector .mind-map-note-form select:focus{outline:2px solid #c66f3a;outline-offset:1px;border-color:#c66f3a}
 .mind-map-edge-parties button:focus-visible,.mind-map-connection:focus-visible,.mind-map-edge-open:focus-visible,.mind-map-selection-bar button:focus-visible,.mind-map-note-form button:focus-visible{outline:3px solid #df8a4e;outline-offset:2px}
-@media(max-width:640px){.mind-map-selection-bar{top:4px}.mind-map-edge-parties{grid-template-columns:1fr}.mind-map-edge-parties span{transform:rotate(90deg)}}
+@media(max-width:640px){.mind-map-selection-bar{top:4px}.mind-map-edge-parties{grid-template-columns:1fr}.mind-map-edge-parties span{transform:rotate(90deg)}.mind-map-edge-parties::after{position:static;grid-column:1;transform:none;text-align:center}}

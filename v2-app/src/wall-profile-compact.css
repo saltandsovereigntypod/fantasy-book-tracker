@@ -1,0 +1,127 @@
+.wall-profile-drawer {
+  width: min(430px, 38vw);
+  min-width: 360px;
+}
+
+.wall-dossier-hero {
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.wall-dossier-avatar {
+  width: 58px;
+  height: 58px;
+  font-size: 1.65rem;
+}
+
+.wall-dossier-hero h3 {
+  margin: 2px 0 4px;
+  font-size: clamp(1.25rem, 1.7vw, 1.65rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.wall-dossier-hero p,
+.wall-dossier-hero span {
+  font-size: .78rem;
+  line-height: 1.35;
+}
+
+.wall-profile-scroll {
+  padding: 18px 20px 92px;
+}
+
+.wall-profile-scroll > section {
+  padding: 0 0 18px;
+  margin: 0 0 18px;
+}
+
+.wall-profile-scroll h4,
+.wall-section-heading h4 {
+  font-size: 1rem;
+  margin: 0 0 10px;
+}
+
+.wall-profile-scroll p,
+.wall-link-groups,
+.wall-profile-editor,
+.wall-card-display-settings {
+  font-size: .86rem;
+  line-height: 1.45;
+}
+
+.wall-profile-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.wall-profile-editor label,
+.wall-card-display-settings > label {
+  display: grid;
+  gap: 5px;
+  font-size: .75rem;
+}
+
+.wall-profile-editor input,
+.wall-profile-editor textarea,
+.wall-profile-editor select,
+.wall-card-display-settings input,
+.wall-card-display-settings select,
+.wall-add-appearance select {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: .84rem;
+}
+
+.wall-profile-editor textarea {
+  min-height: 86px;
+}
+
+.wall-card-display-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.wall-card-display-settings .wall-section-heading,
+.wall-card-display-settings .wall-display-toggles {
+  grid-column: 1 / -1;
+}
+
+.wall-display-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.wall-display-toggles label {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: .78rem;
+}
+
+.wall-link-groups {
+  gap: 10px;
+}
+
+.wall-link-groups > div {
+  padding: 10px 12px;
+}
+
+.wall-profile-drawer > footer {
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+.wall-profile-drawer > footer button {
+  min-height: 42px;
+  padding: 9px 14px;
+}
+
+@media (max-width: 980px) {
+  .wall-profile-drawer {
+    width: min(420px, 92vw);
+    min-width: 0;
+  }
+}

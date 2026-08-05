@@ -2,6 +2,7 @@ import './mind-map-line-style.css';
 
 type MindMapLineStyle = 'solid' | 'dashed' | 'dotted' | 'arrow-forward' | 'arrow-backward' | 'arrow-both';
 type LineRules = Record<string, MindMapLineStyle>;
+type Box = { left: number; top: number; width: number; height: number; centerX: number; centerY: number };
 
 const STORAGE_KEY = 'empyrean-v2-mind-map-line-rules';
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -39,18 +40,19 @@ function saveRule(label: string, style: MindMapLineStyle) {
   scheduleApply();
 }
 
-function createMarker(id: string, orient: string) {
+function createMarker(id: string, direction: 'start' | 'end') {
   const marker = document.createElementNS(SVG_NS, 'marker');
   marker.id = id;
-  marker.setAttribute('viewBox', '0 0 10 10');
-  marker.setAttribute('refX', '8');
-  marker.setAttribute('refY', '5');
-  marker.setAttribute('markerWidth', '7');
-  marker.setAttribute('markerHeight', '7');
-  marker.setAttribute('orient', orient);
-  marker.setAttribute('markerUnits', 'strokeWidth');
+  marker.setAttribute('viewBox', '0 0 12 12');
+  marker.setAttribute('refX', direction === 'end' ? '10.5' : '1.5');
+  marker.setAttribute('refY', '6');
+  marker.setAttribute('markerWidth', '10');
+  marker.setAttribute('markerHeight', '10');
+  marker.setAttribute('orient', 'auto');
+  marker.setAttribute('markerUnits', 'userSpaceOnUse');
+  marker.setAttribute('overflow', 'visible');
   const path = document.createElementNS(SVG_NS, 'path');
-  path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+  path.setAttribute('d', direction === 'end' ? 'M 0 0 L 12 6 L 0 12 z' : 'M 12 0 L 0 6 L 12 12 z');
   path.setAttribute('fill', 'context-stroke');
   marker.appendChild(path);
   return marker;
@@ -58,11 +60,14 @@ function createMarker(id: string, orient: string) {
 
 function ensureMarkers(svg: SVGSVGElement) {
   let defs = svg.querySelector<SVGDefsElement>('defs[data-mind-map-line-markers]');
-  if (defs) return;
+  if (defs) {
+    defs.replaceChildren(createMarker('mind-map-arrow-end', 'end'), createMarker('mind-map-arrow-start', 'start'));
+    return;
+  }
   defs = document.createElementNS(SVG_NS, 'defs');
   defs.dataset.mindMapLineMarkers = 'true';
-  defs.append(createMarker('mind-map-arrow-end', 'auto'));
-  defs.append(createMarker('mind-map-arrow-start', 'auto-start-reverse'));
+  defs.append(createMarker('mind-map-arrow-end', 'end'));
+  defs.append(createMarker('mind-map-arrow-start', 'start'));
   svg.prepend(defs);
 }
 
@@ -141,6 +146,66 @@ function ensureControl(page: HTMLElement) {
   details.open = wasOpen;
 }
 
+function nodeBoxes(page: HTMLElement): Box[] {
+  return [...page.querySelectorAll<HTMLElement>('.mind-map-node')].map((node) => {
+    const left = node.offsetLeft;
+    const top = node.offsetTop;
+    const width = node.offsetWidth;
+    const height = node.offsetHeight;
+    return { left, top, width, height, centerX: left + width / 2, centerY: top + height / 2 };
+  });
+}
+
+function nearestBox(boxes: Box[], x: number, y: number) {
+  let best: Box | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  boxes.forEach((box) => {
+    const distance = Math.hypot(box.centerX - x, box.centerY - y);
+    if (distance < bestDistance) {
+      best = box;
+      bestDistance = distance;
+    }
+  });
+  return best;
+}
+
+function boundaryPoint(box: Box, towardX: number, towardY: number, gap = 7) {
+  const dx = towardX - box.centerX;
+  const dy = towardY - box.centerY;
+  if (!dx && !dy) return { x: box.centerX, y: box.centerY };
+  const halfWidth = Math.max(1, box.width / 2 + gap);
+  const halfHeight = Math.max(1, box.height / 2 + gap);
+  const scale = 1 / Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight);
+  return { x: box.centerX + dx * scale, y: box.centerY + dy * scale };
+}
+
+function trimGroupToNodes(group: SVGGElement, boxes: Box[]) {
+  const visibleLine = group.querySelector<SVGLineElement>('line:not(.mind-map-edge-hit)');
+  const hitLine = group.querySelector<SVGLineElement>('line.mind-map-edge-hit');
+  if (!visibleLine) return;
+  const originalX1 = Number(visibleLine.getAttribute('x1'));
+  const originalY1 = Number(visibleLine.getAttribute('y1'));
+  const originalX2 = Number(visibleLine.getAttribute('x2'));
+  const originalY2 = Number(visibleLine.getAttribute('y2'));
+  const fromBox = nearestBox(boxes, originalX1, originalY1);
+  const toBox = nearestBox(boxes, originalX2, originalY2);
+  if (!fromBox || !toBox || fromBox === toBox) return;
+  const start = boundaryPoint(fromBox, toBox.centerX, toBox.centerY);
+  const end = boundaryPoint(toBox, fromBox.centerX, fromBox.centerY);
+  [visibleLine, hitLine].forEach((line) => {
+    if (!line) return;
+    line.setAttribute('x1', String(start.x));
+    line.setAttribute('y1', String(start.y));
+    line.setAttribute('x2', String(end.x));
+    line.setAttribute('y2', String(end.y));
+  });
+  const label = group.querySelector<SVGTextElement>('text');
+  if (label) {
+    label.setAttribute('x', String((start.x + end.x) / 2));
+    label.setAttribute('y', String((start.y + end.y) / 2 - 9));
+  }
+}
+
 function applyGroupStyle(group: SVGGElement) {
   const label = group.querySelector('text')?.textContent || '';
   const style = rules[normalizeLabel(label)] || 'solid';
@@ -158,9 +223,13 @@ function applyLineRules() {
   const page = document.querySelector<HTMLElement>('.mind-map-page--enhanced');
   if (!page) return;
   ensureControl(page);
+  const boxes = nodeBoxes(page);
   page.querySelectorAll<SVGSVGElement>('svg.mind-map-edges').forEach((svg) => {
     ensureMarkers(svg);
-    svg.querySelectorAll<SVGGElement>('.mind-map-edge').forEach(applyGroupStyle);
+    svg.querySelectorAll<SVGGElement>('.mind-map-edge').forEach((group) => {
+      trimGroupToNodes(group, boxes);
+      applyGroupStyle(group);
+    });
   });
 }
 
@@ -171,13 +240,20 @@ function scheduleApply() {
 }
 
 const observer = new MutationObserver((mutations) => {
-  const relevant = mutations.some((mutation) => [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element && (node.matches('.mind-map-page--enhanced, .mind-map-edge, .mind-map-toolbar, .mind-map-inspector') || Boolean(node.querySelector('.mind-map-page--enhanced, .mind-map-edge, .mind-map-toolbar, .mind-map-inspector')))));
+  const relevant = mutations.some((mutation) => {
+    if (mutation.type === 'attributes') {
+      const target = mutation.target;
+      return target instanceof Element && (target.matches('.mind-map-node, .mind-map-world') || Boolean(target.closest('.mind-map-node, .mind-map-world')));
+    }
+    return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element && (node.matches('.mind-map-page--enhanced, .mind-map-edge, .mind-map-toolbar, .mind-map-inspector') || Boolean(node.querySelector('.mind-map-page--enhanced, .mind-map-edge, .mind-map-toolbar, .mind-map-inspector'))));
+  });
   if (relevant) scheduleApply();
 });
 
 function start() {
   scheduleApply();
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  window.addEventListener('resize', scheduleApply);
   window.addEventListener('storage', (event) => {
     if (event.key !== STORAGE_KEY) return;
     rules = readRules();

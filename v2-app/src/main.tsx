@@ -11,9 +11,11 @@ import './wall-profile-drawer.css';
 import './wall-profile-legacy.css';
 import './wall-v1-dossier.css';
 import './wall-footer-and-editor-header.css';
+import './editor-density-and-sidebar.css';
 import './wall-v1-dossier-runtime';
 import './editor-shell';
 import './editor-toolbar-dock';
+import './sidebar-collapse';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

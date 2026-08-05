@@ -1,0 +1,195 @@
+/* Compact the editor so the contextual controls fit without horizontal scrolling. */
+.v2-view--editor .app-header,
+.v2-view--editor .app-header.is-context-header {
+  padding: 8px 10px !important;
+}
+
+.v2-view--editor .editor-context-dock {
+  overflow: visible !important;
+  scrollbar-width: thin;
+  scrollbar-color: #8a4c25 #160d09;
+}
+
+.v2-view--editor .editor-context-dock::-webkit-scrollbar {
+  height: 7px;
+}
+.v2-view--editor .editor-context-dock::-webkit-scrollbar-track {
+  background: #160d09;
+  border-radius: 999px;
+}
+.v2-view--editor .editor-context-dock::-webkit-scrollbar-thumb {
+  background: #8a4c25;
+  border-radius: 999px;
+}
+
+.v2-view--editor .editor-context-dock .card-inline-tools,
+.v2-view--editor .editor-context-dock .object-toolbar-group,
+.v2-view--editor .editor-context-dock .selection-toolbar-group,
+.v2-view--editor .editor-context-dock .card-style-group {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.v2-view--editor .editor-context-dock .object-toolbar-group,
+.v2-view--editor .editor-context-dock .selection-toolbar-group,
+.v2-view--editor .editor-context-dock .card-style-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.v2-view--editor .editor-context-dock button,
+.v2-view--editor .editor-context-dock select,
+.v2-view--editor .editor-context-dock input {
+  min-height: 34px;
+  font-size: .82rem;
+}
+
+.v2-view--editor .editor-context-dock button {
+  padding: 7px 10px;
+}
+
+.v2-view--editor .editor-context-dock select {
+  padding: 6px 30px 6px 10px;
+}
+
+.v2-view--editor .toolbar-font-select {
+  flex: 1 1 180px;
+  min-width: 150px;
+  max-width: 230px;
+}
+
+.v2-view--editor .toolbar-number-control {
+  flex: 0 0 auto;
+}
+
+.v2-view--editor .toolbar-opacity {
+  flex: 1 1 150px;
+  max-width: 210px;
+}
+
+.v2-view--editor .editor-toolbar-menu {
+  flex: 0 0 auto;
+}
+
+.v2-view--editor .history-controls button,
+.v2-view--editor .size-switcher button,
+.v2-view--editor .header-actions > .primary-button {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: .9rem;
+}
+
+/* Never make the custom-rating creator wider than the book panel. */
+.v2-view--editor .book-panel {
+  min-width: 0;
+  overflow-x: hidden !important;
+}
+
+.v2-view--editor .ratings-panel,
+.v2-view--editor .custom-ratings-section,
+.v2-view--editor .custom-rating-create,
+.v2-view--editor .custom-rating-row {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.v2-view--editor .custom-rating-create {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto auto auto auto !important;
+  gap: 6px !important;
+  padding: 10px !important;
+  background: #1b100b;
+}
+
+.v2-view--editor .custom-rating-create::before,
+.v2-view--editor .custom-rating-create > input,
+.v2-view--editor .custom-rating-create::after,
+.v2-view--editor .custom-rating-create > select,
+.v2-view--editor .custom-rating-create > button {
+  grid-column: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.v2-view--editor .custom-rating-create::before { grid-row: 1 !important; }
+.v2-view--editor .custom-rating-create > input { grid-row: 2 !important; }
+.v2-view--editor .custom-rating-create::after { grid-row: 3 !important; }
+.v2-view--editor .custom-rating-create > select { grid-row: 4 !important; }
+.v2-view--editor .custom-rating-create > button { grid-row: 5 !important; }
+
+/* Collapsible application navigation. */
+.v2-sidebar-toggle {
+  position: absolute;
+  top: 16px;
+  right: -15px;
+  z-index: 160;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #6b3d21;
+  border-radius: 999px;
+  background: #1a0f0a;
+  color: #f2dfc2;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  cursor: pointer;
+}
+
+.v2-app-sidebar {
+  position: relative;
+  transition: width .18s ease, min-width .18s ease, padding .18s ease;
+}
+
+.v2-full-app.is-sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr) !important;
+}
+
+.v2-full-app.is-sidebar-collapsed .v2-app-sidebar {
+  width: 72px;
+  min-width: 72px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.v2-full-app.is-sidebar-collapsed .v2-brand div,
+.v2-full-app.is-sidebar-collapsed .v2-app-sidebar nav button:not(.v2-sidebar-toggle) > :not(span),
+.v2-full-app.is-sidebar-collapsed .v2-sidebar-footer small,
+.v2-full-app.is-sidebar-collapsed .v2-sidebar-footer strong,
+.v2-full-app.is-sidebar-collapsed .v2-sidebar-footer button {
+  display: none !important;
+}
+
+.v2-full-app.is-sidebar-collapsed .v2-brand,
+.v2-full-app.is-sidebar-collapsed .v2-app-sidebar nav button {
+  justify-content: center;
+}
+
+.v2-full-app.is-sidebar-collapsed .v2-app-sidebar nav button {
+  padding-left: 0;
+  padding-right: 0;
+  font-size: 0;
+}
+
+.v2-full-app.is-sidebar-collapsed .v2-app-sidebar nav button span {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.v2-full-app.is-sidebar-collapsed .v2-sidebar-footer {
+  border-top: 0;
+  padding: 0;
+}

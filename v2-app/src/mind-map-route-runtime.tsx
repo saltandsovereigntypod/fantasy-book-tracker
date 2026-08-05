@@ -8,6 +8,9 @@ import './mind-map-line-style';
 let cachedArchive: V2ArchiveState | null = null;
 let cachedUserId = '';
 let archiveLoad: Promise<V2ArchiveState> | null = null;
+let pendingCloudArchive: V2ArchiveState | null = null;
+let cloudSaveTimer: number | null = null;
+let cloudSaveRunning = false;
 
 async function resolveArchive(): Promise<V2ArchiveState> {
   const { user } = await getAuthSnapshot();
@@ -22,6 +25,33 @@ async function resolveArchive(): Promise<V2ArchiveState> {
     })
     .finally(() => { archiveLoad = null; });
   return archiveLoad;
+}
+
+async function flushCloudSave() {
+  if (cloudSaveRunning || !pendingCloudArchive) return;
+  cloudSaveRunning = true;
+  const next = pendingCloudArchive;
+  pendingCloudArchive = null;
+  try {
+    const { user } = await getAuthSnapshot();
+    cachedUserId = user?.id || 'local';
+    if (user) await saveCloudArchive(user, next);
+  } catch (reason) {
+    console.warn('Mind Map cloud save deferred after an error.', reason);
+    pendingCloudArchive = cachedArchive;
+  } finally {
+    cloudSaveRunning = false;
+    if (pendingCloudArchive) {
+      if (cloudSaveTimer) window.clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = window.setTimeout(flushCloudSave, 2500);
+    }
+  }
+}
+
+function queueCloudSave(next: V2ArchiveState) {
+  pendingCloudArchive = next;
+  if (cloudSaveTimer) window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(flushCloudSave, 1400);
 }
 
 function MindMapRoute() {
@@ -41,9 +71,7 @@ function MindMapRoute() {
     cachedArchive = next;
     setArchive(next);
     saveLocalArchive(next);
-    const { user } = await getAuthSnapshot();
-    cachedUserId = user?.id || 'local';
-    if (user) await saveCloudArchive(user, next);
+    queueCloudSave(next);
   }
 
   if (error) return <div className="v2-app-error" role="alert">{error}</div>;
@@ -65,12 +93,7 @@ function ensureOverlayRoot() {
   overlayHost.className = 'v2-mind-map-route-root v2-mind-map-route-overlay';
   overlayHost.hidden = true;
   Object.assign(overlayHost.style, {
-    position: 'fixed',
-    zIndex: '2147483000',
-    overflow: 'auto',
-    background: 'var(--ink, #160b08)',
-    contain: 'layout paint',
-    isolation: 'isolate',
+    position: 'fixed', zIndex: '2147483000', overflow: 'auto', background: 'var(--ink, #160b08)', contain: 'layout paint', isolation: 'isolate',
   });
   document.body.appendChild(overlayHost);
   overlayRoot = createRoot(overlayHost);
@@ -84,8 +107,7 @@ function isVisibleView(element: HTMLElement) {
 }
 
 function findVisibleMindMapTarget() {
-  const candidates = [...document.querySelectorAll<HTMLElement>('.v2-view--mindmap')];
-  return candidates.find(isVisibleView) || null;
+  return [...document.querySelectorAll<HTMLElement>('.v2-view--mindmap')].find(isVisibleView) || null;
 }
 
 function positionOverlay() {
@@ -95,12 +117,10 @@ function positionOverlay() {
   const top = Math.max(0, rect.top);
   const availableWidth = Math.max(0, window.innerWidth - left);
   const availableHeight = Math.max(0, window.innerHeight - top);
-  const width = Math.max(280, Math.min(rect.width || availableWidth, availableWidth));
-  const height = Math.max(240, Math.min(rect.height || availableHeight, availableHeight));
   overlayHost.style.left = `${left}px`;
   overlayHost.style.top = `${top}px`;
-  overlayHost.style.width = `${width}px`;
-  overlayHost.style.height = `${height}px`;
+  overlayHost.style.width = `${Math.max(280, Math.min(rect.width || availableWidth, availableWidth))}px`;
+  overlayHost.style.height = `${Math.max(240, Math.min(rect.height || availableHeight, availableHeight))}px`;
 }
 
 function watchTarget(target: HTMLElement | null) {
@@ -114,20 +134,17 @@ function watchTarget(target: HTMLElement | null) {
 function syncMindMapRoute() {
   scheduled = false;
   const target = findVisibleMindMapTarget();
-
   if (!target) {
     activeTarget = null;
     watchTarget(null);
     if (overlayHost) overlayHost.hidden = true;
     return;
   }
-
   ensureOverlayRoot();
   if (activeTarget !== target) {
     activeTarget = target;
     watchTarget(target);
   }
-
   if (target.style.minHeight !== 'calc(100vh - 150px)') target.style.minHeight = 'calc(100vh - 150px)';
   if (overlayHost) overlayHost.hidden = false;
   positionOverlay();
@@ -140,13 +157,9 @@ function scheduleSync() {
 }
 
 const observer = new MutationObserver((mutations) => {
-  const relevant = mutations.some((mutation) => {
-    if (mutation.type === 'attributes') {
-      const target = mutation.target;
-      return target instanceof Element && (target.matches('.v2-view--mindmap') || Boolean(target.closest('.v2-view--mindmap')));
-    }
-    return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap'))));
-  });
+  const relevant = mutations.some((mutation) => mutation.type === 'attributes'
+    ? mutation.target instanceof Element && Boolean(mutation.target.closest('.v2-view--mindmap'))
+    : [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap')))));
   if (relevant) scheduleSync();
 });
 
@@ -155,8 +168,7 @@ function performWheelZoom() {
   const direction = wheelDelta > 0 ? '−' : '+';
   wheelDelta = 0;
   const buttons = [...document.querySelectorAll<HTMLButtonElement>('.mind-map-page--enhanced .mind-map-view-controls button')];
-  const button = buttons.find((item) => item.textContent?.trim() === direction);
-  button?.click();
+  buttons.find((item) => item.textContent?.trim() === direction)?.click();
 }
 
 function handleMindMapWheel(event: WheelEvent) {

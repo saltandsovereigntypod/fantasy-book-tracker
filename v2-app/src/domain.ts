@@ -15,6 +15,7 @@ export type WallPropertyStyle = 'text' | 'link' | 'tag' | 'pill' | 'count';
 export interface BookNote { id: string; text: string; createdAt: string; updatedAt: string; }
 export interface ReadingSession { id: string; startedAt: string; completedAt?: string; startProgress: number; endProgress: number; pagesRead?: number; minutesRead?: number; notes?: string; }
 export interface BookRelationship { id: string; targetBookId: string; type: string; explanation?: string; notes?: string; createdAt: string; updatedAt: string; }
+export interface CustomBookRating { id: string; label: string; value: number; max: number; icon: string; emptyIcon: string; }
 export interface EvidenceNote { id: string; text: string; createdAt: string; }
 export interface InvestigationRevision { id: string; editedAt: string; title: string; body: string; confidence: number; status: TheoryStatus | SuspicionStatus; bookIds: string[]; }
 export interface TheoryRecord { id: string; title: string; statement: string; status: TheoryStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; history: InvestigationRevision[]; createdAt: string; updatedAt: string; }
@@ -48,6 +49,7 @@ export interface WallRecord { id: string; title: string; cards: WallCardRecord[]
 
 export interface BookRecord {
   id: string; title: string; author: string; series: string; status: ReadingStatus; progress: number; rating: number; spice: number; impact: number; reaction: string; coverUrl: string;
+  customRatings?: CustomBookRating[];
   summary?: string; about?: string; genres?: string[]; tags?: string[]; notes?: BookNote[]; readingSessions?: ReadingSession[]; relationships?: BookRelationship[];
   mindMapNodeIds: string[]; wallCardIds: string[]; theoryIds: string[]; suspicionIds?: string[];
 }
@@ -57,7 +59,7 @@ export interface TextElement extends ElementBase { type: 'text'; text?: string; 
 export interface ImageElement extends ElementBase { type: 'image'; src?: string; fit?: 'cover' | 'contain'; borderRadius?: number; }
 export interface ShapeElement extends ElementBase { type: 'shape'; fill: string; stroke?: string; strokeWidth?: number; borderRadius?: number; }
 export interface ProgressElement extends ElementBase { type: 'progress'; trackColor: string; fillColor: string; borderRadius?: number; }
-export interface RatingElement extends ElementBase { type: 'rating'; metric: 'rating' | 'spice' | 'impact'; label: string; icon: string; emptyIcon: string; color: string; fontFamily: string; fontSize: number; }
+export interface RatingElement extends ElementBase { type: 'rating'; metric: 'rating' | 'spice' | 'impact' | 'custom'; customRatingId?: string; label: string; icon: string; emptyIcon: string; color: string; fontFamily: string; fontSize: number; }
 export type DesignElement = TextElement | ImageElement | ShapeElement | ProgressElement | RatingElement;
 
 export interface CardDesign { id: string; width: 420; height: 380; background: string; elements: DesignElement[]; version: number; }

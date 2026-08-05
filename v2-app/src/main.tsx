@@ -17,6 +17,7 @@ import './editor-shell';
 import './editor-toolbar-dock';
 import './sidebar-collapse';
 import './mind-map-route-runtime';
+import './mind-map-line-rules-position';
 import './mind-map-relationship-polish.css';
 
 const root = document.getElementById('root');

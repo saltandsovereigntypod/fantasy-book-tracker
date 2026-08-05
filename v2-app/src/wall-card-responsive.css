@@ -1,0 +1,101 @@
+.wall-card {
+  container-type: size;
+}
+
+.wall-card > header,
+.wall-card h3 {
+  flex: 0 0 auto;
+}
+
+.wall-card h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 1.2em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  text-overflow: ellipsis;
+}
+
+@container (max-height: 175px) {
+  .wall-card {
+    gap: 6px;
+    padding: 11px 12px;
+  }
+
+  .wall-card h3 {
+    font-size: .78rem;
+    line-height: 1.18;
+    -webkit-line-clamp: 3;
+  }
+
+  .wall-card-summary {
+    font-size: .66rem;
+    line-height: 1.32;
+    -webkit-line-clamp: 2;
+  }
+
+  .wall-card-counts span {
+    padding: 2px 5px;
+    font-size: .54rem;
+  }
+}
+
+@container (max-height: 138px) {
+  .wall-card {
+    gap: 5px;
+    padding: 9px 10px;
+  }
+
+  .wall-card > header span {
+    font-size: .53rem;
+  }
+
+  .wall-card > header button {
+    width: 22px;
+    height: 22px;
+  }
+
+  .wall-card h3 {
+    font-size: .72rem;
+    line-height: 1.15;
+    -webkit-line-clamp: 3;
+  }
+
+  .wall-card-summary,
+  .wall-card footer {
+    display: none;
+  }
+
+  .wall-card-counts {
+    margin-top: auto;
+  }
+}
+
+@container (max-height: 112px) {
+  .wall-card {
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 8px 9px;
+  }
+
+  .wall-card h3 {
+    font-size: .66rem;
+    line-height: 1.12;
+    -webkit-line-clamp: 3;
+  }
+
+  .wall-card-counts {
+    display: none;
+  }
+}
+
+@container (max-width: 175px) {
+  .wall-card h3 {
+    font-size: .7rem;
+    line-height: 1.14;
+  }
+
+  .wall-card-summary {
+    -webkit-line-clamp: 2;
+  }
+}

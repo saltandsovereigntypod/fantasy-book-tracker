@@ -1,3 +1,5 @@
+import './mind-map-line-style.css';
+
 type MindMapLineStyle = 'solid' | 'dashed' | 'dotted' | 'arrow-forward' | 'arrow-backward' | 'arrow-both';
 
 const STORAGE_KEY = 'empyrean-v2-mind-map-line-style';

@@ -10,6 +10,7 @@ import './wall-card-responsive.css';
 import './wall-profile-drawer.css';
 import './wall-profile-legacy.css';
 import './wall-v1-dossier.css';
+import './wall-footer-and-editor-header.css';
 import './wall-v1-dossier-runtime';
 import './editor-shell';
 import './editor-toolbar-dock';

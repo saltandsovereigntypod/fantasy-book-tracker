@@ -1,0 +1,126 @@
+.book-connection-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(3, 4, 10, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.book-connection-dialog {
+  width: min(680px, 100%);
+  max-height: min(760px, 90vh);
+  display: grid;
+  grid-template-rows: auto auto minmax(160px, 1fr) auto;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--v2-border, #30365a);
+  border-radius: 20px;
+  color: var(--v2-text, #f1efff);
+  background: var(--v2-panel, #101225);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+}
+
+.book-connection-dialog header,
+.book-connection-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.book-connection-dialog header p {
+  margin: 0 0 4px;
+  color: var(--v2-accent, #7872b9);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.book-connection-dialog h2 {
+  margin: 0;
+  font-family: 'Libre Baskerville', Georgia, serif;
+}
+
+.book-connection-dialog button,
+.book-connection-search {
+  min-height: 44px;
+  border: 1px solid var(--v2-border, #30365a);
+  border-radius: 12px;
+  color: var(--v2-text, #f1efff);
+  background: var(--v2-panel-raised, #171a33);
+}
+
+.book-connection-dialog button {
+  padding: 0 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.book-connection-dialog [data-close] {
+  width: 44px;
+  padding: 0;
+  font-size: 1.5rem;
+}
+
+.book-connection-search {
+  width: 100%;
+  padding: 0 14px;
+  font: inherit;
+}
+
+.book-connection-options {
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.book-connection-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--v2-border, #30365a);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--v2-panel-raised, #171a33) 86%, transparent);
+  cursor: pointer;
+}
+
+.book-connection-option input {
+  width: 20px;
+  height: 20px;
+}
+
+.book-connection-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.book-connection-option small,
+.book-connection-dialog footer span,
+.book-connection-empty {
+  color: var(--v2-muted, #aaa8c9);
+}
+
+.book-connection-dialog [data-save] {
+  border-color: var(--v2-accent, #7872b9);
+  background: var(--v2-accent, #7872b9);
+}
+
+@media (max-width: 600px) {
+  .book-connection-backdrop { padding: 10px; }
+  .book-connection-dialog {
+    max-height: 94vh;
+    padding: 16px;
+    border-radius: 16px;
+  }
+  .book-connection-dialog footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

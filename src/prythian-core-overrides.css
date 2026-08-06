@@ -1,0 +1,119 @@
+html[data-universe='prythian'] .mind-map-workspace,
+html[data-universe='prythian'] .mind-map-page,
+html[data-universe='prythian'] .mind-map-page--enhanced {
+  color: var(--v2-text) !important;
+  background: var(--v2-bg) !important;
+}
+
+html[data-universe='prythian'] .mind-map-suite-bar,
+html[data-universe='prythian'] .mind-map-record-picker,
+html[data-universe='prythian'] .mind-map-selection-bar,
+html[data-universe='prythian'] .mind-map-toolbar,
+html[data-universe='prythian'] .mind-map-filters,
+html[data-universe='prythian'] .mind-map-inspector,
+html[data-universe='prythian'] .mind-map-inspector > header,
+html[data-universe='prythian'] .mind-map-empty-map,
+html[data-universe='prythian'] .mind-map-minimap {
+  border-color: var(--v2-border) !important;
+  color: var(--v2-text) !important;
+  background: var(--v2-panel) !important;
+}
+
+html[data-universe='prythian'] .mind-map-suite-bar input,
+html[data-universe='prythian'] .mind-map-suite-bar select,
+html[data-universe='prythian'] .mind-map-suite-bar button,
+html[data-universe='prythian'] .mind-map-record-picker input,
+html[data-universe='prythian'] .mind-map-record-picker button,
+html[data-universe='prythian'] .mind-map-selection-bar button,
+html[data-universe='prythian'] .mind-map-view-controls button,
+html[data-universe='prythian'] .mind-map-toolbar input,
+html[data-universe='prythian'] .mind-map-toolbar select,
+html[data-universe='prythian'] .mind-map-toolbar button,
+html[data-universe='prythian'] .mind-map-filters input,
+html[data-universe='prythian'] .mind-map-filters select,
+html[data-universe='prythian'] .mind-map-filters button,
+html[data-universe='prythian'] .mind-map-note-form input,
+html[data-universe='prythian'] .mind-map-note-form select,
+html[data-universe='prythian'] .mind-map-note-form textarea,
+html[data-universe='prythian'] .mind-map-edge-form input,
+html[data-universe='prythian'] .mind-map-edge-form select,
+html[data-universe='prythian'] .mind-map-edge-form textarea,
+html[data-universe='prythian'] .mind-map-inspector button {
+  border-color: var(--v2-border) !important;
+  color: var(--v2-text) !important;
+  background: var(--v2-panel-raised) !important;
+}
+
+html[data-universe='prythian'] .mind-map-suite-bar label,
+html[data-universe='prythian'] .mind-map-toolbar label,
+html[data-universe='prythian'] .mind-map-filters label,
+html[data-universe='prythian'] .mind-map-note-form label,
+html[data-universe='prythian'] .mind-map-edge-form label,
+html[data-universe='prythian'] .mind-map-header strong,
+html[data-universe='prythian'] .mind-map-minimap header span,
+html[data-universe='prythian'] .mind-map-record-picker header span {
+  color: var(--v2-muted) !important;
+}
+
+html[data-universe='prythian'] .mind-map-header p,
+html[data-universe='prythian'] .mind-map-selection-bar strong,
+html[data-universe='prythian'] .mind-map-node small,
+html[data-universe='prythian'] .mind-map-view-controls output {
+  color: var(--v2-accent) !important;
+}
+
+html[data-universe='prythian'] .mind-map-canvas {
+  border-color: var(--v2-border) !important;
+  background-color: var(--v2-bg) !important;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--v2-accent) 26%, transparent) 1px, transparent 1.5px) !important;
+}
+
+html[data-universe='prythian'] .mind-map-node {
+  border-color: var(--v2-border) !important;
+  border-left-color: var(--v2-accent) !important;
+  color: var(--v2-text) !important;
+  background: linear-gradient(160deg, var(--v2-panel-raised), var(--v2-panel)) !important;
+}
+
+html[data-universe='prythian'] .mind-map-node span,
+html[data-universe='prythian'] .mind-map-node footer,
+html[data-universe='prythian'] .mind-map-inspector-body p,
+html[data-universe='prythian'] .mind-map-readonly-note {
+  color: var(--v2-muted) !important;
+}
+
+html[data-universe='prythian'] .mind-map-edge line:not(.mind-map-edge-hit) {
+  stroke: var(--v2-accent) !important;
+}
+
+html[data-universe='prythian'] .mind-map-edge text {
+  fill: var(--v2-text) !important;
+  stroke: var(--v2-bg) !important;
+}
+
+html[data-universe='prythian'] .mind-map-minimap svg {
+  border-color: var(--v2-border) !important;
+  background-color: var(--v2-bg) !important;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--v2-accent) 28%, transparent) 1px, transparent 1.5px) !important;
+}
+
+html[data-universe='prythian'] .mind-map-minimap circle {
+  fill: var(--v2-accent) !important;
+  stroke: var(--v2-text) !important;
+}
+
+html[data-universe='prythian'][data-court='night'] .v2-sidebar-footer::before {
+  content: '“To the stars who listen and the dreams that are answered.”\A\A“I am the rock against which the surf crashes. Nothing can break me.”';
+  display: block;
+  margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid var(--v2-border);
+  border-radius: 14px;
+  color: var(--v2-text);
+  background: color-mix(in srgb, var(--v2-panel-raised) 88%, transparent);
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  line-height: 1.55;
+  white-space: pre-line;
+}

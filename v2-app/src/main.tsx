@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import FullApp from './FullApp';
+import CoreFullApp from './CoreFullApp';
 import './creative-libraries.css';
 import './stage-controls.css';
 import './editor-shell.css';
@@ -20,15 +20,12 @@ import './mind-map-route-runtime';
 import './mind-map-line-rules-position';
 import './mind-map-relationship-polish.css';
 import './questionnaire-gate-runtime';
-import './path-experience-runtime';
-import './path-switch-fix-runtime';
-import './path-final-overrides.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');
 
 createRoot(root).render(
   <StrictMode>
-    <FullApp />
+    <CoreFullApp />
   </StrictMode>,
 );

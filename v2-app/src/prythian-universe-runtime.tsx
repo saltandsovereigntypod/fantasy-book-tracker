@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { loadCloudArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState } from './archive';
 import { getAuthSnapshot } from './supabase';
+import { PATH_IDS, PATHS, rankIndexForPoints, type PathId } from './paths';
 import { PRYTHIAN_COURT_IDS, PRYTHIAN_COURTS, freshUniverseProfiles, type PrythianCourtId, type UniverseId, type UniverseProfiles } from './universes';
 import './prythian-universe-runtime.css';
 
@@ -27,7 +28,7 @@ function captureOriginalTheme(app: HTMLElement) {
   originalsCaptured = true;
 }
 
-function restoreEmpyreanTheme() {
+function restoreEmpyreanTheme(pathId?: PathId) {
   const app = document.querySelector<HTMLElement>('.core-path-app');
   if (!app) return;
   THEME_KEYS.forEach((key) => {
@@ -35,6 +36,11 @@ function restoreEmpyreanTheme() {
     if (value) app.style.setProperty(key, value);
     else app.style.removeProperty(key);
   });
+  if (pathId) {
+    app.dataset.path = pathId;
+    document.documentElement.dataset.path = pathId;
+    document.body.dataset.path = pathId;
+  }
   document.documentElement.dataset.universe = 'empyrean';
   document.body.dataset.universe = 'empyrean';
   delete document.documentElement.dataset.court;
@@ -85,7 +91,7 @@ function replaceVisibleCopy(universe: UniverseId, courtId?: PrythianCourtId) {
       const icon = button.querySelector('span')?.textContent || '';
       button.textContent = '';
       const span = document.createElement('span'); span.textContent = icon;
-      button.append(span, document.createTextNode(labels[index] || button.textContent || ''));
+      button.append(span, document.createTextNode(labels[index] || ''));
     });
   }
 }
@@ -109,7 +115,7 @@ function PrythianUniverseManager() {
       const normalized = { ...next, universes };
       setArchive(normalized);
       if (universes.activeUniverse === 'prythian' && universes.prythian.court) applyCourtTheme(universes.prythian.court);
-      else restoreEmpyreanTheme();
+      else restoreEmpyreanTheme((next.profile.path || universes.empyrean.path) as PathId);
       replaceVisibleCopy(universes.activeUniverse, universes.prythian.court);
     }).catch(() => undefined);
     return () => { active = false; observer.disconnect(); };
@@ -127,9 +133,14 @@ function PrythianUniverseManager() {
 
   const universes = useMemo(() => archive ? profilesFor(archive) : null, [archive]);
 
-  async function persist(nextUniverses: UniverseProfiles, message: string) {
+  async function persist(nextUniverses: UniverseProfiles, message: string, profileChanges?: Partial<V2ArchiveState['profile']>) {
     if (!archive) return;
-    const next = { ...archive, universes: nextUniverses, updatedAt: new Date().toISOString() };
+    const next = {
+      ...archive,
+      profile: profileChanges ? { ...archive.profile, ...profileChanges } : archive.profile,
+      universes: nextUniverses,
+      updatedAt: new Date().toISOString(),
+    };
     setArchive(next);
     saveLocalArchive(next);
     setStatus('Saving…');
@@ -147,9 +158,23 @@ function PrythianUniverseManager() {
     if (!universes || universe === universes.activeUniverse) return;
     const next = { ...universes, activeUniverse: universe };
     if (universe === 'prythian' && next.prythian.court) applyCourtTheme(next.prythian.court);
-    else restoreEmpyreanTheme();
+    else restoreEmpyreanTheme((archive?.profile.path || next.empyrean.path) as PathId);
     replaceVisibleCopy(universe, next.prythian.court);
     await persist(next, universe === 'prythian' ? 'Entered Prythian.' : 'Returned to the Empyrean.');
+  }
+
+  async function chooseEmpyreanPath(pathId: PathId) {
+    if (!universes || !archive) return;
+    const path = PATHS[pathId];
+    const points = Number(archive.profile.points) || 0;
+    const rankIndex = rankIndexForPoints(pathId, points);
+    const next: UniverseProfiles = {
+      ...universes,
+      activeUniverse: 'empyrean',
+      empyrean: { ...universes.empyrean, path: pathId, points, rankIndex },
+    };
+    restoreEmpyreanTheme(pathId);
+    await persist(next, `Your Empyrean path is now ${path.name}.`, { path: pathId, rankIndex });
   }
 
   async function chooseCourt(courtId: PrythianCourtId) {
@@ -167,6 +192,7 @@ function PrythianUniverseManager() {
 
   if (!visible || !archive || !universes) return null;
   const activeCourt = universes.prythian.court ? PRYTHIAN_COURTS[universes.prythian.court] : null;
+  const activePathId = (archive.profile.path || universes.empyrean.path || 'rider') as PathId;
 
   return <section className="prythian-universe-panel">
     <header><div><p>Story universe</p><h2>Choose the world your story follows</h2><span>Your books, points, theories, walls, and card designs remain account-wide.</span></div></header>
@@ -174,6 +200,10 @@ function PrythianUniverseManager() {
       <button className={universes.activeUniverse === 'empyrean' ? 'is-active' : ''} onClick={() => void chooseUniverse('empyrean')}><span>🐉</span><strong>The Empyrean</strong><small>Your existing path, creature, signet, and rank story</small></button>
       <button className={universes.activeUniverse === 'prythian' ? 'is-active' : ''} onClick={() => void chooseUniverse('prythian')}><span>✦</span><strong>Prythian</strong><small>Your court, magic, distinctions, and court story</small></button>
     </div>
+    {universes.activeUniverse === 'empyrean' && <>
+      <div className="prythian-court-heading"><div><p>Empyrean path</p><h3>{PATHS[activePathId].glyph} {PATHS[activePathId].name}</h3><span>{PATHS[activePathId].short} · {PATHS[activePathId].progressName} progression</span></div><aside><strong>Your assignment remains intact</strong><small>Changing paths preserves your books, points, stories, and previously assigned results.</small></aside></div>
+      <div className="prythian-court-grid empyrean-path-grid">{PATH_IDS.map((id) => { const path = PATHS[id]; return <button key={id} className={activePathId === id ? 'is-active' : ''} style={{ '--court-accent': path.theme.accent, '--court-soft': path.theme.accentSoft } as React.CSSProperties} onClick={() => void chooseEmpyreanPath(id)}><span>{path.glyph}</span><strong>{path.name}</strong><small>{path.short}</small><em>{path.ranks[path.rankIndexForPoints ? 0 : 0] || path.ranks[0]} · {path.progressName}</em></button>; })}</div>
+    </>}
     {universes.activeUniverse === 'prythian' && <>
       <div className="prythian-court-heading"><div><p>Court allegiance</p><h3>{activeCourt ? `${activeCourt.glyph} ${activeCourt.name}` : 'Choose your court'}</h3>{activeCourt && <span>{activeCourt.family === 'solar' ? 'Solar Court' : 'Seasonal Court'} · Ruled by {activeCourt.ruler}</span>}</div>{activeCourt && <aside><strong>Power assessment sealed</strong><small>The court questionnaire will determine your primary gift and rare affinity next.</small></aside>}</div>
       <div className="prythian-court-grid">{PRYTHIAN_COURT_IDS.map((id) => { const court = PRYTHIAN_COURTS[id]; return <button key={id} className={activeCourt?.id === id ? 'is-active' : ''} style={{ '--court-accent': court.theme.accent, '--court-soft': court.theme.accentSoft } as React.CSSProperties} onClick={() => void chooseCourt(id)}><span>{court.glyph}</span><strong>{court.name}</strong><small>{court.family === 'solar' ? 'Solar' : 'Seasonal'} · {court.ruler}</small><em>{court.powers.map((power) => power.name).join(' · ')}</em></button>; })}</div>
@@ -185,7 +215,6 @@ function PrythianUniverseManager() {
 function start() {
   const host = document.createElement('div');
   host.id = 'prythian-universe-runtime';
-  document.querySelector('.v2-view--profile')?.prepend(host);
   document.body.appendChild(host);
   createRoot(host).render(<StrictMode><PrythianUniverseManager /></StrictMode>);
 }

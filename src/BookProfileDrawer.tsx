@@ -7,6 +7,23 @@ function splitList(value: string): string[] {
   return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
 }
 
+function safeBook(book: V2BookRecord): V2BookRecord {
+  return {
+    ...book,
+    genres: book.genres ?? [],
+    tags: book.tags ?? [],
+    notes: book.notes ?? [],
+    readingSessions: book.readingSessions ?? [],
+    relationships: book.relationships ?? [],
+    mindMapNodeIds: book.mindMapNodeIds ?? [],
+    wallCardIds: book.wallCardIds ?? [],
+    theoryIds: book.theoryIds ?? [],
+    suspicionIds: book.suspicionIds ?? [],
+    summary: book.summary ?? '',
+    about: book.about ?? '',
+  };
+}
+
 export function BookProfileDrawer({
   book,
   archive,
@@ -22,20 +39,20 @@ export function BookProfileDrawer({
   onDelete: () => void;
   onSave: (book: V2BookRecord) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState(book);
+  const [draft, setDraft] = useState(() => safeBook(book));
   const [editingDetails, setEditingDetails] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [sessionNotes, setSessionNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setDraft(book); }, [book]);
+  useEffect(() => { setDraft(safeBook(book)); }, [book]);
 
   const relationshipNames = draft.relationships.map((relationship) => archive.books.find((item) => item.id === relationship.targetBookId)?.title || 'Missing book');
 
   async function commit(next: V2BookRecord) {
     setSaving(true);
     try {
-      const stamped = { ...next, updatedAt: new Date().toISOString() };
+      const stamped = safeBook({ ...next, updatedAt: new Date().toISOString() });
       setDraft(stamped);
       await onSave(stamped);
     } finally {

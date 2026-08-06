@@ -18,6 +18,8 @@ export interface V2ArchiveState {
 }
 
 const LOCAL_KEY = 'empyrean-v2-archive';
+const CLOUD_READ_TIMEOUT_MS = 5000;
+
 export function freshArchive(user?: User | null): V2ArchiveState { return { version: 1, profile: { displayName: String(user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader'), path: 'rider', points: 0, rankIndex: 0, onboarded: false }, books: [], theories: [], suspicions: [], dossiers: [], walls: [], mindMapNodes: [], updatedAt: new Date().toISOString() }; }
 
 function normalizeStrings(values: unknown): string[] { return Array.isArray(values) ? [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))] : []; }
@@ -59,5 +61,37 @@ function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord { const now = 
 export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState { const source = value && typeof value === 'object' ? value as Partial<V2ArchiveState> : {}; const base = freshArchive(user); return { ...base, ...source, version: 1, profile: { ...base.profile, ...(source.profile || {}) }, books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [], theories: normalizeTheories(source.theories), suspicions: normalizeSuspicions(source.suspicions), dossiers: normalizeDossiers(source.dossiers), walls: normalizeWalls(source.walls), mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [], updatedAt: String(source.updatedAt || base.updatedAt) }; }
 export function loadLocalArchive(user?: User | null): V2ArchiveState { try { const raw = localStorage.getItem(LOCAL_KEY); return raw ? normalizeArchive(JSON.parse(raw), user) : freshArchive(user); } catch { return freshArchive(user); } }
 export function saveLocalArchive(state: V2ArchiveState): void { localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }
-export async function loadCloudArchive(user: User): Promise<V2ArchiveState> { const { data, error } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle(); if (error) throw error; if (!data?.state) return loadLocalArchive(user); const raw = data.state as Record<string, unknown>; if (raw.v2Archive && typeof raw.v2Archive === 'object') return normalizeArchive(raw.v2Archive, user); return loadLocalArchive(user); }
-export async function saveCloudArchive(user: User, state: V2ArchiveState): Promise<void> { const next = { ...state, updatedAt: new Date().toISOString() }; saveLocalArchive(next); const { data: existing, error: readError } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle(); if (readError) throw readError; const legacyState = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {}; const { error } = await supabase.from('archive_states').upsert({ user_id: user.id, state: { ...legacyState, v2Archive: next }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }); if (error) throw error; }
+
+function hasLocalArchive(): boolean { try { return Boolean(localStorage.getItem(LOCAL_KEY)); } catch { return false; } }
+function timeoutAfter(ms: number): Promise<never> { return new Promise((_, reject) => window.setTimeout(() => reject(new Error('Cloud archive request timed out.')), ms)); }
+
+export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
+  const local = loadLocalArchive(user);
+  if (hasLocalArchive()) return local;
+
+  try {
+    const request = supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await Promise.race([request, timeoutAfter(CLOUD_READ_TIMEOUT_MS)]);
+    if (error) throw error;
+    if (!data?.state) return local;
+    const raw = data.state as Record<string, unknown>;
+    if (raw.v2Archive && typeof raw.v2Archive === 'object') {
+      const cloud = normalizeArchive(raw.v2Archive, user);
+      saveLocalArchive(cloud);
+      return cloud;
+    }
+    return local;
+  } catch {
+    return local;
+  }
+}
+
+export async function saveCloudArchive(user: User, state: V2ArchiveState): Promise<void> {
+  const next = { ...state, updatedAt: new Date().toISOString() };
+  saveLocalArchive(next);
+  const { data: existing, error: readError } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
+  if (readError) throw readError;
+  const legacyState = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {};
+  const { error } = await supabase.from('archive_states').upsert({ user_id: user.id, state: { ...legacyState, v2Archive: next }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  if (error) throw error;
+}

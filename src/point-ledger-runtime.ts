@@ -45,9 +45,7 @@ function replacePointLanguage(root: ParentNode = document): void {
     const parent = node.parentElement;
     if (!parent || parent.closest('script, style, input, textarea, option, [data-point-ledger]')) return;
     const original = node.nodeValue || '';
-    const replaced = original
-      .replace(/\baccount points\b/gi, currency)
-      .replace(/\bpoints\b/gi, currency);
+    const replaced = original.replace(/\baccount points\b/gi, currency).replace(/\bpoints\b/gi, currency);
     if (replaced !== original) node.nodeValue = replaced;
   });
 }
@@ -72,19 +70,21 @@ function renderLedger(): void {
   const archive = readArchive();
   if (!archive) return;
 
+  const currency = currencyName();
+  const events = Array.isArray(archive.pointLog) ? archive.pointLog : [];
+  const signature = `${currency}:${events.map((event) => `${event.id}:${event.amount}`).join('|')}`;
   let panel = profile.querySelector<HTMLElement>('[data-point-ledger]');
+  if (panel?.dataset.signature === signature) return;
   if (!panel) {
     panel = document.createElement('section');
     panel.dataset.pointLedger = 'true';
     panel.className = 'point-ledger-panel';
     profile.appendChild(panel);
   }
+  panel.dataset.signature = signature;
 
-  const currency = currencyName();
-  const events = Array.isArray(archive.pointLog) ? archive.pointLog : [];
   const total = events.reduce((sum, event) => sum + Number(event.amount || 0), 0);
   panel.innerHTML = '';
-
   const header = document.createElement('header');
   header.innerHTML = `<div><p>Activity ledger</p><h2>${currency}</h2></div><strong>${total.toLocaleString()}</strong>`;
   panel.appendChild(header);

@@ -1,0 +1,94 @@
+.point-ledger-panel {
+  grid-column: 1 / -1;
+  display: grid !important;
+  gap: 16px !important;
+}
+
+.point-ledger-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.point-ledger-panel > header p {
+  margin: 0 0 4px;
+  color: var(--v2-accent);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.point-ledger-panel > header h2,
+.point-ledger-panel > header strong {
+  margin: 0;
+}
+
+.point-ledger-panel > header > strong {
+  font-size: 2rem;
+  color: var(--v2-accent);
+}
+
+.point-ledger-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.point-ledger-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--v2-panel-raised) 88%, transparent);
+}
+
+.point-ledger-list article div {
+  display: grid;
+  gap: 3px;
+}
+
+.point-ledger-list article span,
+.point-ledger-list article small {
+  color: var(--v2-muted);
+}
+
+.point-ledger-list article b {
+  color: var(--v2-accent);
+  white-space: nowrap;
+}
+
+/* The selection control belongs to the card frame, never to the grid cell center. */
+.v2-library-grid > article {
+  position: relative !important;
+  justify-items: stretch !important;
+  align-items: start !important;
+}
+
+.v2-library-grid > article > .v2-library-select {
+  position: absolute !important;
+  inset: 20px auto auto 20px !important;
+  translate: none !important;
+  transform: none !important;
+  z-index: 100 !important;
+}
+
+.v2-library-grid > article > .v2-library-card-open {
+  justify-self: start !important;
+}
+
+.v2-drawer-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+}
+
+@media (max-width: 700px) {
+  .point-ledger-panel > header { align-items: flex-start; }
+  .point-ledger-list article { align-items: flex-start; }
+}

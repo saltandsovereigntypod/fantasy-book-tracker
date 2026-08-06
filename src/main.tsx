@@ -1,8 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './prythian-experience-bootstrap';
-import './prythian-reveal-gates';
-import './night-court-aspect-runtime';
 import CoreFullApp from './CoreFullApp';
 import './creative-libraries.css';
 import './stage-controls.css';
@@ -30,15 +28,11 @@ import './library-metadata-runtime';
 import './extra-small-library-runtime';
 import './wall-dossier-resize-fix';
 import './prythian-universe-runtime';
-import './prythian-assessment-runtime';
-import './prythian-progression-runtime';
-import './prythian-progression-mount';
 import './extra-small-library.css';
 import './library-card-sizing-fix.css';
 import './core-theme-system.css';
 import './prythian-court-atmospheres.css';
 import './night-court-experience.css';
-import './night-court-aspect.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

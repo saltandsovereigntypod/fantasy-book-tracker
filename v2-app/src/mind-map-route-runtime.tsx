@@ -157,9 +157,16 @@ function scheduleSync() {
 }
 
 const observer = new MutationObserver((mutations) => {
-  const relevant = mutations.some((mutation) => mutation.type === 'attributes'
-    ? mutation.target instanceof Element && Boolean(mutation.target.closest('.v2-view--mindmap'))
-    : [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element && (node.matches('.v2-view--mindmap') || Boolean(node.querySelector('.v2-view--mindmap')))));
+  const relevant = mutations.some((mutation) => {
+    if (mutation.type === 'attributes') {
+      if (!(mutation.target instanceof Element)) return false;
+      const wasMindMap = String(mutation.oldValue || '').includes('v2-view--mindmap');
+      const isAppView = mutation.target.matches('.v2-view') || Boolean(mutation.target.closest('.v2-view'));
+      return wasMindMap || isAppView;
+    }
+    return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node instanceof Element
+      && (node.matches('.v2-view, .v2-view--mindmap') || Boolean(node.querySelector('.v2-view, .v2-view--mindmap'))));
+  });
   if (relevant) scheduleSync();
 });
 
@@ -183,7 +190,13 @@ function handleMindMapWheel(event: WheelEvent) {
 function startMindMapRoute() {
   scheduleSync();
   const root = document.getElementById('root');
-  if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'] });
+  if (root) observer.observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeOldValue: true,
+    attributeFilter: ['class', 'style', 'hidden', 'aria-hidden'],
+  });
   window.addEventListener('resize', scheduleSync);
   window.addEventListener('scroll', positionOverlay, true);
   document.addEventListener('wheel', handleMindMapWheel, { passive: false, capture: true });

@@ -28,15 +28,29 @@ html[data-universe='empyrean'] .core-path-app[data-path='rider']::before {
   opacity: .96;
 }
 
-/* Fine, low-contrast rain with two speeds and irregular spacing. */
+/* Tiny, sparse raindrops. No long streaks or stripe textures. */
 html[data-universe='empyrean'] .core-path-app[data-path='rider']::after {
   background-image:
-    repeating-linear-gradient(101deg, transparent 0 28px, rgba(205, 220, 235, .09) 29px 30px, transparent 31px 63px),
-    repeating-linear-gradient(100deg, transparent 0 54px, rgba(228, 236, 245, .055) 55px 56px, transparent 57px 111px),
-    linear-gradient(180deg, rgba(9, 14, 20, .03), rgba(5, 9, 14, .26));
-  background-size: 190px 280px, 330px 460px, 100% 100%;
-  background-position: 0 -280px, 70px -460px, center;
-  opacity: .72;
+    radial-gradient(ellipse at center, rgba(213, 226, 239, .2) 0 28%, transparent 45%),
+    radial-gradient(ellipse at center, rgba(232, 239, 247, .13) 0 26%, transparent 44%),
+    radial-gradient(ellipse at center, rgba(177, 198, 219, .11) 0 30%, transparent 48%),
+    linear-gradient(180deg, rgba(9, 14, 20, .025), rgba(5, 9, 14, .22));
+  background-size:
+    2px 6px,
+    2px 5px,
+    1px 4px,
+    100% 100%;
+  background-repeat:
+    repeat,
+    repeat,
+    repeat,
+    no-repeat;
+  background-position:
+    0 -24px,
+    37px -61px,
+    81px -103px,
+    center;
+  opacity: .55;
 }
 
 html[data-universe='empyrean'] .core-path-app[data-path='rider'] > * {
@@ -112,7 +126,7 @@ html[data-universe='empyrean'] .core-path-app[data-path='rider']:not(.is-sidebar
   }
 
   html[data-universe='empyrean'] .core-path-app[data-path='rider']::after {
-    animation: rider-rain-fall 1.35s linear infinite;
+    animation: rider-rain-fall 1.9s linear infinite;
   }
 }
 
@@ -121,7 +135,7 @@ html[data-universe='empyrean'] .core-path-app[data-path='rider']:not(.is-sidebar
 }
 
 @keyframes rider-rain-fall {
-  to { background-position: -24px 0, 32px 0, center; }
+  to { background-position: 4px 42px, 39px 54px, 82px 68px, center; }
 }
 
 /* Lightning is an occasional atmospheric flash, not a permanent white line. */

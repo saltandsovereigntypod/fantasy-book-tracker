@@ -1,13 +1,53 @@
 import type { User } from '@supabase/supabase-js';
-import type { BookNote, BookRecord, BookRelationship, CardDesign, CustomBookRating, EvidenceNote, InvestigationRevision, ReadingSession, SuspicionRecord, TheoryRecord, WallCardDisplay, WallCardKind, WallCardRecord, WallDossierCategory, WallDossierRecord, WallRecord, WallRegionLayout, WallRegionRecord, WallRegionRule, WallRegionSort, WallSourceType } from './domain';
+import type {
+  BookRecord,
+  CardDesign,
+  SuspicionRecord,
+  TheoryRecord,
+  WallDossierRecord,
+  WallRecord,
+} from './domain';
 import { defaultDesign } from './defaults';
 import { supabase } from './supabase';
+import {
+  PRYTHIAN_COURT_IDS,
+  freshUniverseProfiles,
+  prythianRankIndex,
+  type PrythianCourtId,
+  type UniverseProfiles,
+} from './universes';
 
-export interface V2BookRecord extends BookRecord { design: CardDesign; createdAt: string; updatedAt: string; favorite?: boolean; archived?: boolean; }
-export interface V2Profile { displayName: string; path: string; points: number; rankIndex: number; onboarded: boolean; }
+export interface V2BookRecord extends BookRecord {
+  design: CardDesign;
+  createdAt: string;
+  updatedAt: string;
+  favorite?: boolean;
+  archived?: boolean;
+}
+
+export interface V2Profile {
+  displayName: string;
+  path: string;
+  points: number;
+  rankIndex: number;
+  onboarded: boolean;
+  abilityId?: string;
+  abilityName?: string;
+  abilityDescription?: string;
+  creature?: { kind: 'dragon' | 'gryphon' | 'wyvern'; name: string; color: string; tail?: string };
+  primaryPowerId?: string;
+  primaryPowerName?: string;
+  primaryPowerDescription?: string;
+  rareAffinityId?: string;
+  rareAffinityName?: string;
+  role?: 'high-fae' | 'lesser-fae' | 'illyrian';
+  court?: PrythianCourtId;
+}
+
 export interface V2ArchiveState {
   version: 1;
   profile: V2Profile;
+  universes: UniverseProfiles;
   books: V2BookRecord[];
   theories: TheoryRecord[];
   suspicions: SuspicionRecord[];
@@ -20,50 +60,228 @@ export interface V2ArchiveState {
 const LOCAL_KEY = 'empyrean-v2-archive';
 const CLOUD_READ_TIMEOUT_MS = 5000;
 
-export function freshArchive(user?: User | null): V2ArchiveState { return { version: 1, profile: { displayName: String(user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader'), path: 'rider', points: 0, rankIndex: 0, onboarded: false }, books: [], theories: [], suspicions: [], dossiers: [], walls: [], mindMapNodes: [], updatedAt: new Date().toISOString() }; }
-
-function normalizeStrings(values: unknown): string[] { return Array.isArray(values) ? [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))] : []; }
-function normalizeNotes(values: unknown): BookNote[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const note = value && typeof value === 'object' ? value as Partial<BookNote> : {}; return { id: String(note.id || crypto.randomUUID()), text: String(note.text || ''), createdAt: String(note.createdAt || now), updatedAt: String(note.updatedAt || note.createdAt || now) }; }).filter((note) => note.text) : []; }
-function normalizeSessions(values: unknown): ReadingSession[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const session = value && typeof value === 'object' ? value as Partial<ReadingSession> : {}; return { id: String(session.id || crypto.randomUUID()), startedAt: String(session.startedAt || now), completedAt: session.completedAt ? String(session.completedAt) : undefined, startProgress: Number(session.startProgress) || 0, endProgress: Number(session.endProgress) || 0, pagesRead: session.pagesRead == null ? undefined : Number(session.pagesRead) || 0, minutesRead: session.minutesRead == null ? undefined : Number(session.minutesRead) || 0, notes: session.notes ? String(session.notes) : undefined }; }) : []; }
-function normalizeRelationships(values: unknown): BookRelationship[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const relationship = value && typeof value === 'object' ? value as Partial<BookRelationship> : {}; return { id: String(relationship.id || crypto.randomUUID()), targetBookId: String(relationship.targetBookId || ''), type: String(relationship.type || ''), explanation: relationship.explanation ? String(relationship.explanation) : undefined, notes: relationship.notes ? String(relationship.notes) : undefined, createdAt: String(relationship.createdAt || now), updatedAt: String(relationship.updatedAt || relationship.createdAt || now) }; }).filter((relationship) => relationship.targetBookId && relationship.type) : []; }
-function normalizeCustomRatings(values: unknown): CustomBookRating[] { return Array.isArray(values) ? values.map((value) => { const rating = value && typeof value === 'object' ? value as Partial<CustomBookRating> : {}; const max = Math.max(1, Math.min(10, Number(rating.max) || 5)); return { id: String(rating.id || crypto.randomUUID()), label: String(rating.label || 'Custom rating'), value: Math.max(0, Math.min(max, Number(rating.value) || 0)), max, icon: String(rating.icon || '★'), emptyIcon: String(rating.emptyIcon || '☆') }; }).filter((rating) => rating.label.trim()) : []; }
-function normalizeEvidence(values: unknown): EvidenceNote[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const evidence = value && typeof value === 'object' ? value as Partial<EvidenceNote> : {}; return { id: String(evidence.id || crypto.randomUUID()), text: String(evidence.text || ''), createdAt: String(evidence.createdAt || now) }; }).filter((item) => item.text) : []; }
-function normalizeHistory(values: unknown): InvestigationRevision[] { return Array.isArray(values) ? values.map((value) => { const revision = value && typeof value === 'object' ? value as Partial<InvestigationRevision> : {}; const status = revision.status === 'confirmed' || revision.status === 'disproven' || revision.status === 'dormant' || revision.status === 'resolved' || revision.status === 'dismissed' ? revision.status : 'open'; return { id: String(revision.id || crypto.randomUUID()), editedAt: String(revision.editedAt || new Date().toISOString()), title: String(revision.title || ''), body: String(revision.body || ''), confidence: Math.max(0, Math.min(100, Number(revision.confidence) || 0)), status, bookIds: normalizeStrings(revision.bookIds) }; }) : []; }
-function normalizeTheories(values: unknown): TheoryRecord[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const theory = value && typeof value === 'object' ? value as Partial<TheoryRecord> : {}; const status = theory.status === 'confirmed' || theory.status === 'disproven' || theory.status === 'dormant' ? theory.status : 'open'; return { id: String(theory.id || crypto.randomUUID()), title: String(theory.title || 'Untitled theory'), statement: String(theory.statement || ''), status, confidence: Math.max(0, Math.min(100, Number(theory.confidence) || 0)), bookIds: normalizeStrings(theory.bookIds), evidence: normalizeEvidence(theory.evidence), history: normalizeHistory(theory.history), createdAt: String(theory.createdAt || now), updatedAt: String(theory.updatedAt || theory.createdAt || now) }; }) : []; }
-function normalizeSuspicions(values: unknown): SuspicionRecord[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const suspicion = value && typeof value === 'object' ? value as Partial<SuspicionRecord> : {}; const status = suspicion.status === 'resolved' || suspicion.status === 'dismissed' ? suspicion.status : 'open'; return { id: String(suspicion.id || crypto.randomUUID()), title: String(suspicion.title || 'Untitled suspicion'), details: String(suspicion.details || ''), status, confidence: Math.max(0, Math.min(100, Number(suspicion.confidence) || 0)), bookIds: normalizeStrings(suspicion.bookIds), evidence: normalizeEvidence(suspicion.evidence), history: normalizeHistory(suspicion.history), createdAt: String(suspicion.createdAt || now), updatedAt: String(suspicion.updatedAt || suspicion.createdAt || now) }; }) : []; }
-function normalizeDossierCategory(value: unknown): WallDossierCategory { return value === 'location' || value === 'faction' || value === 'object' || value === 'event' || value === 'creature' || value === 'custom' ? value : 'character'; }
-function normalizeDossiers(values: unknown): WallDossierRecord[] { const now = new Date().toISOString(); return Array.isArray(values) ? values.map((value) => { const dossier = value && typeof value === 'object' ? value as Partial<WallDossierRecord> : {}; return { id: String(dossier.id || crypto.randomUUID()), category: normalizeDossierCategory(dossier.category), title: String(dossier.title || 'Untitled dossier'), shortSummary: String(dossier.shortSummary || ''), overview: String(dossier.overview || ''), notes: dossier.notes ? String(dossier.notes) : undefined, bookIds: normalizeStrings(dossier.bookIds), theoryIds: normalizeStrings(dossier.theoryIds), suspicionIds: normalizeStrings(dossier.suspicionIds), dossierIds: normalizeStrings(dossier.dossierIds), createdAt: String(dossier.createdAt || now), updatedAt: String(dossier.updatedAt || dossier.createdAt || now) }; }) : []; }
-function normalizeRegionRule(value: unknown): WallRegionRule { return value === 'any' || value === 'book' || value === 'theory' || value === 'suspicion' || value === 'dossier' || value === 'open-investigation' || value === 'resolved-investigation' ? value : 'manual'; }
-function normalizeRegionLayout(value: unknown): WallRegionLayout { return value === 'grid' || value === 'list' ? value : 'free'; }
-function normalizeRegionSort(value: unknown): WallRegionSort { return value === 'alphabetical' || value === 'updated' || value === 'confidence' ? value : 'manual'; }
-function normalizeCardKind(value: unknown): WallCardKind { return value === 'reference' ? 'reference' : 'home'; }
-function normalizeCardDisplay(value: unknown, kind: WallCardKind): WallCardDisplay {
-  const display = value && typeof value === 'object' ? value as Partial<WallCardDisplay> : {};
-  const density = display.density === 'minimal' || display.density === 'detailed' ? display.density : 'standard';
-  const categoryStyle = display.categoryStyle === 'link' || display.categoryStyle === 'tag' || display.categoryStyle === 'pill' || display.categoryStyle === 'count' ? display.categoryStyle : 'text';
-  const countsStyle = display.countsStyle === 'text' || display.countsStyle === 'link' || display.countsStyle === 'tag' || display.countsStyle === 'count' ? display.countsStyle : 'pill';
-  return { density, showCategory: display.showCategory ?? true, showSummary: display.showSummary ?? kind !== 'reference', showCounts: display.showCounts ?? kind !== 'reference', showStatus: display.showStatus ?? kind !== 'reference', categoryStyle, countsStyle };
+function now(): string {
+  return new Date().toISOString();
 }
-function normalizeWalls(values: unknown): WallRecord[] {
-  const now = new Date().toISOString();
-  return Array.isArray(values) ? values.map((value) => {
-    const wall = value && typeof value === 'object' ? value as Partial<WallRecord> : {};
-    const regions: WallRegionRecord[] = Array.isArray(wall.regions) ? wall.regions.map((entry) => { const region = entry && typeof entry === 'object' ? entry as Partial<WallRegionRecord> : {}; return { id: String(region.id || crypto.randomUUID()), title: String(region.title || 'Untitled region'), description: region.description ? String(region.description) : undefined, x: Number.isFinite(Number(region.x)) ? Number(region.x) : 40, y: Number.isFinite(Number(region.y)) ? Number(region.y) : 40, width: Math.max(260, Number(region.width) || 520), height: Math.max(220, Number(region.height) || 380), color: String(region.color || '#6f4427'), rule: normalizeRegionRule(region.rule), autoSort: Boolean(region.autoSort), collapsed: Boolean(region.collapsed), locked: Boolean(region.locked), layout: normalizeRegionLayout(region.layout), sort: normalizeRegionSort(region.sort), createdAt: String(region.createdAt || now), updatedAt: String(region.updatedAt || region.createdAt || now) }; }) : [];
-    const rawCards: WallCardRecord[] = Array.isArray(wall.cards) ? wall.cards.map((entry) => { const card = entry && typeof entry === 'object' ? entry as Partial<WallCardRecord> : {}; const sourceType: WallSourceType = card.sourceType === 'theory' || card.sourceType === 'suspicion' || card.sourceType === 'dossier' ? card.sourceType : 'book'; const kind = normalizeCardKind(card.kind); return { id: String(card.id || crypto.randomUUID()), sourceType, sourceId: String(card.sourceId || ''), kind, homeCardId: card.homeCardId ? String(card.homeCardId) : undefined, x: Number.isFinite(Number(card.x)) ? Number(card.x) : 80, y: Number.isFinite(Number(card.y)) ? Number(card.y) : 80, width: Math.max(kind === 'reference' ? 140 : 170, Number(card.width) || (kind === 'reference' ? 180 : 230)), height: Math.max(kind === 'reference' ? 90 : 150, Number(card.height) || (kind === 'reference' ? 120 : 260)), note: card.note ? String(card.note) : undefined, color: String(card.color || '#a64f24'), display: normalizeCardDisplay(card.display, kind), regionId: card.regionId && regions.some((region) => region.id === card.regionId) ? String(card.regionId) : undefined, createdAt: String(card.createdAt || now), updatedAt: String(card.updatedAt || card.createdAt || now) }; }).filter((card) => card.sourceId) : [];
-    const homeBySource = new Map<string, string>(); rawCards.forEach((card) => { if (card.kind === 'home') homeBySource.set(`${card.sourceType}:${card.sourceId}`, card.id); });
-    const cards = rawCards.map((card) => card.kind === 'reference' ? { ...card, homeCardId: card.homeCardId && rawCards.some((item) => item.id === card.homeCardId && item.kind === 'home') ? card.homeCardId : homeBySource.get(`${card.sourceType}:${card.sourceId}`) } : { ...card, homeCardId: undefined });
-    return { id: String(wall.id || crypto.randomUUID()), title: String(wall.title || 'Primary Conspiracy Wall'), cards, regions, canvasWidth: Math.max(1200, Number(wall.canvasWidth) || 1800), canvasHeight: Math.max(800, Number(wall.canvasHeight) || 1100), createdAt: String(wall.createdAt || now), updatedAt: String(wall.updatedAt || wall.createdAt || now) };
-  }) : [];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
-function normalizeDesign(value: Partial<CardDesign> | undefined): CardDesign { const source = value || defaultDesign; const { actions: _actions, ...cleanSource } = source as Partial<CardDesign> & { actions?: unknown }; return { ...structuredClone(defaultDesign), ...structuredClone(cleanSource), width: 420, height: 380, elements: Array.isArray(source.elements) ? structuredClone(source.elements) : structuredClone(defaultDesign.elements), version: Math.max(4, Number(source.version) || 1) }; }
-function normalizeBook(book: Partial<V2BookRecord>): V2BookRecord { const now = new Date().toISOString(); return { id: String(book.id || crypto.randomUUID()), title: String(book.title || 'Untitled Book'), author: String(book.author || ''), series: String(book.series || ''), status: book.status || 'want', progress: Number(book.progress) || 0, rating: Number(book.rating) || 0, spice: Number(book.spice) || 0, impact: Number(book.impact) || 0, reaction: String(book.reaction || ''), coverUrl: String(book.coverUrl || ''), customRatings: normalizeCustomRatings(book.customRatings), summary: String(book.summary || ''), about: String(book.about || ''), genres: normalizeStrings(book.genres), tags: normalizeStrings(book.tags), notes: normalizeNotes(book.notes), readingSessions: normalizeSessions(book.readingSessions), relationships: normalizeRelationships(book.relationships), mindMapNodeIds: normalizeStrings(book.mindMapNodeIds), wallCardIds: normalizeStrings(book.wallCardIds), theoryIds: normalizeStrings(book.theoryIds), suspicionIds: normalizeStrings(book.suspicionIds), design: normalizeDesign(book.design), createdAt: String(book.createdAt || now), updatedAt: String(book.updatedAt || now), favorite: Boolean(book.favorite), archived: Boolean(book.archived) }; }
 
-export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState { const source = value && typeof value === 'object' ? value as Partial<V2ArchiveState> : {}; const base = freshArchive(user); return { ...base, ...source, version: 1, profile: { ...base.profile, ...(source.profile || {}) }, books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [], theories: normalizeTheories(source.theories), suspicions: normalizeSuspicions(source.suspicions), dossiers: normalizeDossiers(source.dossiers), walls: normalizeWalls(source.walls), mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [], updatedAt: String(source.updatedAt || base.updatedAt) }; }
-export function loadLocalArchive(user?: User | null): V2ArchiveState { try { const raw = localStorage.getItem(LOCAL_KEY); return raw ? normalizeArchive(JSON.parse(raw), user) : freshArchive(user); } catch { return freshArchive(user); } }
-export function saveLocalArchive(state: V2ArchiveState): void { localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }
+function numberOr(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
-function hasLocalArchive(): boolean { try { return Boolean(localStorage.getItem(LOCAL_KEY)); } catch { return false; } }
-function timeoutAfter(ms: number): Promise<never> { return new Promise((_, reject) => window.setTimeout(() => reject(new Error('Cloud archive request timed out.')), ms)); }
+function strings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))]
+    : [];
+}
+
+function validCourt(value: unknown): PrythianCourtId | undefined {
+  return PRYTHIAN_COURT_IDS.includes(value as PrythianCourtId)
+    ? value as PrythianCourtId
+    : undefined;
+}
+
+function hasLegacyPrythianIdentity(profile: Record<string, unknown>, source: Record<string, unknown>): boolean {
+  return Boolean(
+    validCourt(profile.court)
+    || validCourt(source.court)
+    || profile.primaryPowerId
+    || profile.primaryPowerName
+    || profile.primaryPowerDescription
+    || profile.rareAffinityId
+    || profile.rareAffinityName
+    || profile.role
+  );
+}
+
+function normalizeProfile(value: unknown, user?: User | null): V2Profile {
+  const source = isRecord(value) ? value : {};
+  return {
+    displayName: String(source.displayName || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader'),
+    path: String(source.path || 'rider'),
+    points: numberOr(source.points),
+    rankIndex: numberOr(source.rankIndex),
+    onboarded: Boolean(source.onboarded),
+    abilityId: source.abilityId ? String(source.abilityId) : undefined,
+    abilityName: source.abilityName ? String(source.abilityName) : undefined,
+    abilityDescription: source.abilityDescription ? String(source.abilityDescription) : undefined,
+    creature: isRecord(source.creature) && source.creature.name
+      ? {
+          kind: source.creature.kind === 'gryphon' || source.creature.kind === 'wyvern' ? source.creature.kind : 'dragon',
+          name: String(source.creature.name),
+          color: String(source.creature.color || ''),
+          tail: source.creature.tail ? String(source.creature.tail) : undefined,
+        }
+      : undefined,
+    primaryPowerId: source.primaryPowerId ? String(source.primaryPowerId) : undefined,
+    primaryPowerName: source.primaryPowerName ? String(source.primaryPowerName) : undefined,
+    primaryPowerDescription: source.primaryPowerDescription ? String(source.primaryPowerDescription) : undefined,
+    rareAffinityId: source.rareAffinityId ? String(source.rareAffinityId) : undefined,
+    rareAffinityName: source.rareAffinityName ? String(source.rareAffinityName) : undefined,
+    role: source.role === 'lesser-fae' || source.role === 'illyrian' ? source.role : source.role === 'high-fae' ? 'high-fae' : undefined,
+    court: validCourt(source.court),
+  };
+}
+
+function normalizeUniverses(value: unknown, profile: V2Profile, archiveSource: Record<string, unknown>): UniverseProfiles {
+  const raw = isRecord(value) ? value : {};
+  const rawEmpyrean = isRecord(raw.empyrean) ? raw.empyrean : {};
+  const rawPrythian = isRecord(raw.prythian) ? raw.prythian : {};
+  const base = freshUniverseProfiles(profile.path);
+  const migratedPrythian = hasLegacyPrythianIdentity(profile as unknown as Record<string, unknown>, archiveSource);
+  const activeUniverse = raw.activeUniverse === 'prythian' || raw.activeUniverse === 'empyrean'
+    ? raw.activeUniverse
+    : migratedPrythian
+      ? 'prythian'
+      : 'empyrean';
+  const sharedPoints = numberOr(profile.points);
+  const court = validCourt(rawPrythian.court) || profile.court || validCourt(archiveSource.court) || (migratedPrythian ? 'night' : undefined);
+  const prythianPoints = numberOr(rawPrythian.points, migratedPrythian ? sharedPoints : 0);
+  const empyreanPoints = numberOr(rawEmpyrean.points, activeUniverse === 'empyrean' ? sharedPoints : 0);
+
+  return {
+    activeUniverse,
+    empyrean: {
+      ...base.empyrean,
+      path: String(rawEmpyrean.path || profile.path || 'rider'),
+      onboarded: rawEmpyrean.onboarded == null ? Boolean(profile.onboarded && activeUniverse === 'empyrean') : Boolean(rawEmpyrean.onboarded),
+      points: empyreanPoints,
+      rankIndex: numberOr(rawEmpyrean.rankIndex, profile.rankIndex),
+      completedEvents: strings(rawEmpyrean.completedEvents),
+      stories: Array.isArray(rawEmpyrean.stories) ? rawEmpyrean.stories as UniverseProfiles['empyrean']['stories'] : [],
+    },
+    prythian: {
+      ...base.prythian,
+      court,
+      onboarded: rawPrythian.onboarded == null ? Boolean(migratedPrythian || activeUniverse === 'prythian') : Boolean(rawPrythian.onboarded),
+      points: prythianPoints,
+      rankIndex: numberOr(rawPrythian.rankIndex, prythianRankIndex(prythianPoints)),
+      completedEvents: strings(rawPrythian.completedEvents),
+      stories: Array.isArray(rawPrythian.stories) ? rawPrythian.stories as UniverseProfiles['prythian']['stories'] : [],
+      primaryPowerId: rawPrythian.primaryPowerId ? String(rawPrythian.primaryPowerId) : profile.primaryPowerId,
+      primaryPowerName: rawPrythian.primaryPowerName ? String(rawPrythian.primaryPowerName) : profile.primaryPowerName,
+      primaryPowerDescription: rawPrythian.primaryPowerDescription ? String(rawPrythian.primaryPowerDescription) : profile.primaryPowerDescription,
+      rareAffinityId: rawPrythian.rareAffinityId ? String(rawPrythian.rareAffinityId) : profile.rareAffinityId,
+      rareAffinityName: rawPrythian.rareAffinityName ? String(rawPrythian.rareAffinityName) : profile.rareAffinityName,
+      role: rawPrythian.role === 'lesser-fae' || rawPrythian.role === 'illyrian' || rawPrythian.role === 'high-fae'
+        ? rawPrythian.role
+        : profile.role,
+      distinctions: strings(rawPrythian.distinctions),
+    },
+  };
+}
+
+function normalizeDesign(value: unknown): CardDesign {
+  const source = isRecord(value) ? value as Partial<CardDesign> : {};
+  const { actions: _actions, ...cleanSource } = source as Partial<CardDesign> & { actions?: unknown };
+  return {
+    ...structuredClone(defaultDesign),
+    ...structuredClone(cleanSource),
+    width: numberOr(source.width, 420),
+    height: numberOr(source.height, 380),
+    elements: Array.isArray(source.elements) ? structuredClone(source.elements) : structuredClone(defaultDesign.elements),
+    version: Math.max(4, numberOr(source.version, 1)),
+  };
+}
+
+function normalizeBook(value: unknown): V2BookRecord {
+  const book = isRecord(value) ? value as Partial<V2BookRecord> : {};
+  const timestamp = now();
+  return {
+    ...(book as BookRecord),
+    id: String(book.id || crypto.randomUUID()),
+    title: String(book.title || 'Untitled Book'),
+    author: String(book.author || ''),
+    series: String(book.series || ''),
+    status: book.status || 'want',
+    progress: numberOr(book.progress),
+    rating: numberOr(book.rating),
+    spice: numberOr(book.spice),
+    impact: numberOr(book.impact),
+    reaction: String(book.reaction || ''),
+    coverUrl: String(book.coverUrl || ''),
+    genres: strings(book.genres),
+    tags: strings(book.tags),
+    design: normalizeDesign(book.design),
+    createdAt: String(book.createdAt || timestamp),
+    updatedAt: String(book.updatedAt || timestamp),
+    favorite: Boolean(book.favorite),
+    archived: Boolean(book.archived),
+  };
+}
+
+export function freshArchive(user?: User | null): V2ArchiveState {
+  const profile = normalizeProfile({}, user);
+  return {
+    version: 1,
+    profile,
+    universes: freshUniverseProfiles(profile.path),
+    books: [],
+    theories: [],
+    suspicions: [],
+    dossiers: [],
+    walls: [],
+    mindMapNodes: [],
+    updatedAt: now(),
+  };
+}
+
+export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState {
+  const source = isRecord(value) ? value : {};
+  const profile = normalizeProfile(source.profile, user);
+  const universes = normalizeUniverses(source.universes, profile, source);
+  const activePoints = universes.activeUniverse === 'prythian' ? universes.prythian.points : universes.empyrean.points;
+  const activeRank = universes.activeUniverse === 'prythian' ? universes.prythian.rankIndex : universes.empyrean.rankIndex;
+  const synchronizedProfile: V2Profile = {
+    ...profile,
+    path: universes.empyrean.path,
+    points: activePoints,
+    rankIndex: activeRank,
+    onboarded: universes.activeUniverse === 'prythian' ? universes.prythian.onboarded : universes.empyrean.onboarded,
+  };
+
+  return {
+    version: 1,
+    profile: synchronizedProfile,
+    universes,
+    books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [],
+    theories: Array.isArray(source.theories) ? source.theories as TheoryRecord[] : [],
+    suspicions: Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [],
+    dossiers: Array.isArray(source.dossiers) ? source.dossiers as WallDossierRecord[] : [],
+    walls: Array.isArray(source.walls) ? source.walls as WallRecord[] : [],
+    mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [],
+    updatedAt: String(source.updatedAt || now()),
+  };
+}
+
+export function loadLocalArchive(user?: User | null): V2ArchiveState {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? normalizeArchive(JSON.parse(raw), user) : freshArchive(user);
+  } catch {
+    return freshArchive(user);
+  }
+}
+
+export function saveLocalArchive(state: V2ArchiveState): void {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(normalizeArchive(state)));
+}
+
+function hasLocalArchive(): boolean {
+  try {
+    return Boolean(localStorage.getItem(LOCAL_KEY));
+  } catch {
+    return false;
+  }
+}
+
+function timeoutAfter(ms: number): Promise<never> {
+  return new Promise((_, reject) => window.setTimeout(() => reject(new Error('Cloud archive request timed out.')), ms));
+}
 
 export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
   const local = loadLocalArchive(user);
@@ -75,23 +293,24 @@ export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
     if (error) throw error;
     if (!data?.state) return local;
     const raw = data.state as Record<string, unknown>;
-    if (raw.v2Archive && typeof raw.v2Archive === 'object') {
-      const cloud = normalizeArchive(raw.v2Archive, user);
-      saveLocalArchive(cloud);
-      return cloud;
-    }
-    return local;
+    const candidate = raw.v2Archive && typeof raw.v2Archive === 'object' ? raw.v2Archive : raw;
+    const cloud = normalizeArchive(candidate, user);
+    saveLocalArchive(cloud);
+    return cloud;
   } catch {
     return local;
   }
 }
 
 export async function saveCloudArchive(user: User, state: V2ArchiveState): Promise<void> {
-  const next = { ...state, updatedAt: new Date().toISOString() };
+  const next = normalizeArchive({ ...state, updatedAt: now() }, user);
   saveLocalArchive(next);
   const { data: existing, error: readError } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
   if (readError) throw readError;
   const legacyState = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {};
-  const { error } = await supabase.from('archive_states').upsert({ user_id: user.id, state: { ...legacyState, v2Archive: next }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  const { error } = await supabase.from('archive_states').upsert(
+    { user_id: user.id, state: { ...legacyState, v2Archive: next }, updated_at: now() },
+    { onConflict: 'user_id' },
+  );
   if (error) throw error;
 }

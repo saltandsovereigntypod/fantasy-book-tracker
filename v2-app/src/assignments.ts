@@ -15,9 +15,11 @@ export interface CreatureAssignment {
   name: string;
   color: string;
   tail?: string;
+  flameColor?: 'Red' | 'Green' | 'Blue';
+  strength?: number;
 }
 
-// Rider and Dark Wielder intentionally share this complete signet pool.
+// Riders and Dark Wielders intentionally draw from the same complete signet pool.
 export const SIGNETS: readonly AbilityDefinition[] = [
   { id: 'storm-wielding', name: 'Storm Wielding', description: 'Shapes wind, rain, pressure, and broader weather patterns.', traits: ['power', 'discipline'], category: 'Elemental', paths: ['rider', 'dark'] },
   { id: 'ward-manifestation', name: 'Ward Manifestation', description: 'Creates and reinforces protective magical boundaries.', traits: ['protection', 'discipline'], category: 'Wardcraft', paths: ['rider', 'dark'] },
@@ -53,36 +55,23 @@ export const GRYPHON_GIFTS: readonly AbilityDefinition[] = [
   { id: 'emotion-siphoning', name: 'Emotion Siphoning', description: 'Draws emotional intensity away from another person.', traits: ['protection', 'empathy'], category: 'Emotion', paths: ['gryphon'] }
 ];
 
-// Canon names from the guide are reserved so generated creatures never reuse them.
 export const RESERVED_CREATURE_NAMES = new Set([
   'Aimsir', 'Teine', 'Cath', 'Codagh', 'Sgaeyl', 'Tairn', 'Andarna', 'Baide', 'Feirge', 'Aotrom', 'Sliseag', 'Smachd', 'Deigh', 'Claidh', 'Glane', 'Cruth', 'Fuil', 'Chradh', 'Marbh', 'Solas', 'Breugan', 'Cuir', 'Thoirt',
   'Kiralair', 'Dajalair', 'Cibbelair', 'Sila'
 ].map((name) => name.toLocaleLowerCase()));
 
 const CREATURE_NAME_PARTS = {
-  dragon: {
-    starts: ['Ail', 'Brae', 'Caer', 'Dra', 'Eir', 'Fae', 'Glen', 'Ior', 'Mael', 'Nair', 'Rhi', 'Sio', 'Tav', 'Vey'],
-    ends: ['ach', 'airn', 'eth', 'ion', 'och', 'ryn', 'var', 'wen', 'yth']
-  },
-  gryphon: {
-    starts: ['Aera', 'Cira', 'Daja', 'Eila', 'Fira', 'Kira', 'Luma', 'Mara', 'Niva', 'Sela', 'Tira', 'Vela'],
-    ends: ['lair', 'ra', 'riel', 'sa', 'vain', 'wyn']
-  },
-  wyvern: {
-    starts: ['Ash', 'Dreth', 'Kael', 'Mord', 'Neth', 'Rav', 'Serr', 'Thyr', 'Vael', 'Vor'],
-    ends: ['ak', 'eth', 'ir', 'oth', 'rax', 'ul', 'yr']
-  }
+  dragon: { starts: ['Ail', 'Brae', 'Caer', 'Dra', 'Eir', 'Fae', 'Glen', 'Ior', 'Mael', 'Nair', 'Rhi', 'Sio', 'Tav', 'Vey'], ends: ['ach', 'airn', 'eth', 'ion', 'och', 'ryn', 'var', 'wen', 'yth'] },
+  gryphon: { starts: ['Aera', 'Cira', 'Daja', 'Eila', 'Fira', 'Kira', 'Luma', 'Mara', 'Niva', 'Sela', 'Tira', 'Vela'], ends: ['lair', 'ra', 'riel', 'sa', 'vain', 'wyn'] },
+  wyvern: { starts: ['Ash', 'Dreth', 'Kael', 'Mord', 'Neth', 'Rav', 'Serr', 'Thyr', 'Vael', 'Vor'], ends: ['ak', 'eth', 'ir', 'oth', 'rax', 'ul', 'yr'] }
 } as const;
 
-const COLORS = {
-  dragon: ['Black', 'Blue', 'Brown', 'Green', 'Orange', 'Red'],
-  gryphon: ['Silver', 'Brown and white', 'Ash grey', 'Copper', 'Cream and gold'],
-  wyvern: ['Onyx', 'Ash', 'Blood red', 'Deep violet', 'Iron grey']
-} as const;
-
+const DRAGON_COLORS = ['Black', 'Blue', 'Brown', 'Green', 'Orange', 'Red'] as const;
+const GRYPHON_COLORS = ['Warm brown and gold', 'Tawny brown and cream', 'White and pale gold', 'Chestnut and ivory', 'Sand, bronze, and white', 'Deep brown and copper'] as const;
+const WYVERN_FLAMES = ['Red', 'Green', 'Blue'] as const;
 const DRAGON_TAILS = ['swordtail', 'daggertail', 'morningstartail', 'scorpiontail', 'clubtail', 'feathertail'] as const;
 
-function stableNumber(seed: string): number {
+export function stableNumber(seed: string): number {
   let hash = 2166136261;
   for (let index = 0; index < seed.length; index += 1) { hash ^= seed.charCodeAt(index); hash = Math.imul(hash, 16777619); }
   return hash >>> 0;
@@ -120,11 +109,7 @@ export function generateUniqueCreatureName(kind: CreatureAssignment['kind'], use
 
 export function createCreatureAssignment(kind: CreatureAssignment['kind'], usedNames: Iterable<string>, seed: string): CreatureAssignment {
   const number = stableNumber(seed);
-  const colors = COLORS[kind];
-  return {
-    kind,
-    name: generateUniqueCreatureName(kind, usedNames, seed),
-    color: colors[number % colors.length],
-    tail: kind === 'dragon' ? DRAGON_TAILS[Math.floor(number / 7) % DRAGON_TAILS.length] : undefined
-  };
+  if (kind === 'dragon') return { kind, name: generateUniqueCreatureName(kind, usedNames, seed), color: DRAGON_COLORS[number % DRAGON_COLORS.length], tail: DRAGON_TAILS[Math.floor(number / 7) % DRAGON_TAILS.length] };
+  if (kind === 'gryphon') return { kind, name: generateUniqueCreatureName(kind, usedNames, seed), color: GRYPHON_COLORS[number % GRYPHON_COLORS.length] };
+  return { kind, name: generateUniqueCreatureName(kind, usedNames, seed), color: 'Grey', flameColor: WYVERN_FLAMES[number % WYVERN_FLAMES.length], strength: 1 };
 }

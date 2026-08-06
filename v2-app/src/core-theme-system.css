@@ -1,34 +1,34 @@
-/* Final, shared V2 theme layer. Loaded after every feature stylesheet. */
+/* Final shared V2 theme layer. The palette values below are copied exactly from main/styles.css. */
 
 html:has(.core-path-app[data-path="rider"]),
 .core-path-app[data-path="rider"] {
   --theme-bg:#0c0c0d!important;--theme-panel:#141416!important;--theme-raised:#1a1a1d!important;--theme-surface:#202024!important;
-  --theme-text:#f5f2ea!important;--theme-muted:#aaa59b!important;--theme-accent:#9f3442!important;--theme-accent-soft:rgba(159,52,66,.2)!important;--theme-border:#343238!important;--theme-paper:#d8c4a4!important;
+  --theme-text:#f5f2ea!important;--theme-muted:#aaa59b!important;--theme-accent:#8f1f2f!important;--theme-accent-contrast:#fff!important;--theme-accent-soft:rgba(143,31,47,.18)!important;--theme-border:#343238!important;--theme-paper:#d8c4a4!important;
 }
 html:has(.core-path-app[data-path="scribe"]),
 .core-path-app[data-path="scribe"] {
-  --theme-bg:#100e0b!important;--theme-panel:#1b1711!important;--theme-raised:#241e16!important;--theme-surface:#2d261d!important;
-  --theme-text:#f4ead7!important;--theme-muted:#b8aa91!important;--theme-accent:#b8863b!important;--theme-accent-soft:rgba(184,134,59,.2)!important;--theme-border:#423725!important;--theme-paper:#dbcaa8!important;
+  --theme-bg:#17140f!important;--theme-panel:#211d16!important;--theme-raised:#2a241b!important;--theme-surface:#342d22!important;
+  --theme-text:#f4ead2!important;--theme-muted:#c1b392!important;--theme-accent:#9b7434!important;--theme-accent-contrast:#17140f!important;--theme-accent-soft:rgba(155,116,52,.18)!important;--theme-border:#4b402f!important;--theme-paper:#eadbb9!important;
 }
 html:has(.core-path-app[data-path="gryphon"]),
 .core-path-app[data-path="gryphon"] {
-  --theme-bg:#081117!important;--theme-panel:#101c24!important;--theme-raised:#172a35!important;--theme-surface:#203946!important;
-  --theme-text:#edf6fa!important;--theme-muted:#9cb5c2!important;--theme-accent:#4f9fc6!important;--theme-accent-soft:rgba(79,159,198,.2)!important;--theme-border:#2d4b5b!important;--theme-paper:#d4c9ad!important;
+  --theme-bg:#17100b!important;--theme-panel:#21170f!important;--theme-raised:#2b1d13!important;--theme-surface:#39271a!important;
+  --theme-text:#f0dfc2!important;--theme-muted:#bca786!important;--theme-accent:#a75b2b!important;--theme-accent-contrast:#fff!important;--theme-accent-soft:rgba(167,91,43,.18)!important;--theme-border:#4a3524!important;--theme-paper:#d8c4a4!important;
 }
 html:has(.core-path-app[data-path="dark"]),
 .core-path-app[data-path="dark"] {
-  --theme-bg:#09080c!important;--theme-panel:#141019!important;--theme-raised:#1c1523!important;--theme-surface:#271c30!important;
-  --theme-text:#f1eaf4!important;--theme-muted:#aa9caf!important;--theme-accent:#8a55ae!important;--theme-accent-soft:rgba(138,85,174,.22)!important;--theme-border:#3e2b49!important;--theme-paper:#cbbbc8!important;
+  --theme-bg:#100814!important;--theme-panel:#190d20!important;--theme-raised:#24102e!important;--theme-surface:#32143e!important;
+  --theme-text:#f4e7f7!important;--theme-muted:#c2a5c9!important;--theme-accent:#a13bc2!important;--theme-accent-contrast:#fff!important;--theme-accent-soft:rgba(161,59,194,.2)!important;--theme-border:#472354!important;--theme-paper:#d8c4a4!important;
 }
 html:has(.core-path-app[data-path="infantry"]),
 .core-path-app[data-path="infantry"] {
-  --theme-bg:#0c100d!important;--theme-panel:#151b16!important;--theme-raised:#1d251f!important;--theme-surface:#273129!important;
-  --theme-text:#eef1e8!important;--theme-muted:#a4ad9d!important;--theme-accent:#7b925f!important;--theme-accent-soft:rgba(123,146,95,.21)!important;--theme-border:#384438!important;--theme-paper:#d1c7aa!important;
+  --theme-bg:#0a1019!important;--theme-panel:#101a27!important;--theme-raised:#152234!important;--theme-surface:#1c2b40!important;
+  --theme-text:#e6edf7!important;--theme-muted:#9cabbd!important;--theme-accent:#365f94!important;--theme-accent-contrast:#fff!important;--theme-accent-soft:rgba(54,95,148,.2)!important;--theme-border:#283a51!important;--theme-paper:#d8c4a4!important;
 }
 html:has(.core-path-app[data-path="healer"]),
 .core-path-app[data-path="healer"] {
-  --theme-bg:#091009!important;--theme-panel:#121b12!important;--theme-raised:#192619!important;--theme-surface:#233323!important;
-  --theme-text:#eff6ed!important;--theme-muted:#a8b9a4!important;--theme-accent:#70a96f!important;--theme-accent-soft:rgba(112,169,111,.21)!important;--theme-border:#344a34!important;--theme-paper:#d7ceb6!important;
+  --theme-bg:#0d171b!important;--theme-panel:#142126!important;--theme-raised:#1a2b31!important;--theme-surface:#21373f!important;
+  --theme-text:#eaf4f5!important;--theme-muted:#a8c0c6!important;--theme-accent:#5faac3!important;--theme-accent-contrast:#071216!important;--theme-accent-soft:rgba(95,170,195,.18)!important;--theme-border:#2b4751!important;--theme-paper:#d8c4a4!important;
 }
 
 html:has(.core-path-app) {
@@ -38,7 +38,9 @@ html:has(.core-path-app) {
   --path-background:var(--theme-bg)!important;--path-panel:var(--theme-panel)!important;--path-panel-alt:var(--theme-raised)!important;
   --path-surface:var(--theme-surface)!important;--path-text:var(--theme-text)!important;--path-muted:var(--theme-muted)!important;
   --path-accent:var(--theme-accent)!important;--path-accent-soft:var(--theme-accent-soft)!important;--path-border:var(--theme-border)!important;--path-paper:var(--theme-paper)!important;
-  --ink:var(--theme-bg)!important;--panel:var(--theme-panel)!important;--paper:var(--theme-paper)!important;--accent:var(--theme-accent)!important;
+  --bg:var(--theme-bg)!important;--ink:var(--theme-bg)!important;--panel:var(--theme-panel)!important;--panel-2:var(--theme-raised)!important;
+  --surface:var(--theme-surface)!important;--text:var(--theme-text)!important;--muted:var(--theme-muted)!important;--paper:var(--theme-paper)!important;
+  --accent:var(--theme-accent)!important;--accent-contrast:var(--theme-accent-contrast)!important;--accent-soft:var(--theme-accent-soft)!important;--border:var(--theme-border)!important;
 }
 
 html:has(.core-path-app) body,
@@ -116,7 +118,7 @@ html:has(.core-path-app) body,
 .core-path-app .investigation-form button[type="submit"],
 .core-path-app .core-path-picker button.is-active,
 .core-path-app button.is-active:not(.is-danger) {
-  border-color:var(--theme-accent)!important;background:var(--theme-accent)!important;color:var(--theme-text)!important;
+  border-color:var(--theme-accent)!important;background:var(--theme-accent)!important;color:var(--theme-accent-contrast)!important;
 }
 
 .core-path-app .v2-topbar p,
@@ -137,7 +139,6 @@ html:has(.core-path-app) body,
 .core-path-app .mind-map-node.is-selected{outline-color:var(--theme-accent)!important}
 .core-path-app input[type="range"]{accent-color:var(--theme-accent)!important}
 
-/* Keep the overview inside the canvas and away from controls at normal browser zoom. */
 .core-path-app .mind-map-overview,
 .core-path-app .mind-map-minimap,
 .core-path-app [class*="mind-map-overview"] {
@@ -145,9 +146,7 @@ html:has(.core-path-app) body,
   width:min(250px,24vw)!important;max-width:calc(100% - 28px)!important;z-index:20!important;
 }
 @media(max-width:1050px){
-  .core-path-app .mind-map-overview,.core-path-app .mind-map-minimap,.core-path-app [class*="mind-map-overview"]{
-    width:min(210px,26vw)!important;
-  }
+  .core-path-app .mind-map-overview,.core-path-app .mind-map-minimap,.core-path-app [class*="mind-map-overview"]{width:min(210px,26vw)!important}
 }
 @media(max-width:760px){
   .core-path-app .mind-map-overview,.core-path-app .mind-map-minimap,.core-path-app [class*="mind-map-overview"]{display:none!important}

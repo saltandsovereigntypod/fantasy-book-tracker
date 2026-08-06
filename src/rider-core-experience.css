@@ -1,0 +1,131 @@
+/* Rider-specific atmosphere owned by the core app theme. */
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+}
+
+html[data-universe='empyrean'] .core-path-app[data-path='rider']::before,
+html[data-universe='empyrean'] .core-path-app[data-path='rider']::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Layered storm sky, mountain stone, and fortress masonry. */
+html[data-universe='empyrean'] .core-path-app[data-path='rider']::before {
+  background:
+    radial-gradient(circle at 76% 8%, rgba(190, 207, 225, .13), transparent 18%),
+    radial-gradient(circle at 22% 18%, rgba(122, 145, 164, .12), transparent 24%),
+    linear-gradient(155deg, transparent 0 38%, rgba(32, 40, 47, .46) 39% 50%, transparent 51%),
+    linear-gradient(205deg, transparent 0 45%, rgba(14, 19, 23, .72) 46% 61%, transparent 62%),
+    repeating-linear-gradient(0deg, rgba(194, 203, 207, .025) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(90deg, rgba(194, 203, 207, .02) 0 1px, transparent 1px 72px),
+    linear-gradient(180deg, #111820 0%, #0c1117 44%, #080b0e 100%);
+}
+
+html[data-universe='empyrean'] .core-path-app[data-path='rider']::after {
+  opacity: .58;
+  background:
+    linear-gradient(90deg, transparent 0 4%, rgba(90, 101, 108, .13) 4% 6%, transparent 6% 18%, rgba(90, 101, 108, .1) 18% 20%, transparent 20%),
+    repeating-linear-gradient(0deg, transparent 0 52px, rgba(186, 193, 198, .045) 53px 55px),
+    repeating-linear-gradient(90deg, transparent 0 92px, rgba(186, 193, 198, .035) 93px 95px),
+    radial-gradient(ellipse at 50% 104%, rgba(88, 98, 105, .24), transparent 42%);
+  mask-image: linear-gradient(to bottom, transparent 0 35%, #000 64% 100%);
+}
+
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-topbar,
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-app-sidebar,
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-view > section,
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-view > div > section {
+  backdrop-filter: blur(10px);
+}
+
+/* Fortress battlements and distant dragon silhouettes. */
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-topbar::after {
+  content: '♜   🐉';
+  position: absolute;
+  right: 118px;
+  top: 12px;
+  color: var(--v2-accent);
+  font-family: Georgia, serif;
+  font-size: 2.6rem;
+  letter-spacing: .2rem;
+  opacity: .18;
+  pointer-events: none;
+}
+
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-hero::after,
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .core-profile-assignment::after {
+  content: '🐉';
+  position: absolute;
+  right: 30px;
+  bottom: 18px;
+  color: var(--v2-accent);
+  font-size: 4.5rem;
+  filter: grayscale(1);
+  opacity: .12;
+  pointer-events: none;
+}
+
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-hero,
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .core-profile-assignment {
+  position: relative;
+  overflow: hidden;
+}
+
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-view h2::after,
+html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-view h3::after {
+  content: '◆';
+  display: inline-block;
+  margin-left: .55rem;
+  color: var(--v2-accent);
+  font-size: .58em;
+  opacity: .68;
+  vertical-align: .12em;
+}
+
+/* Rider quotes remain visible with the full navigation, and disappear with it. */
+html[data-universe='empyrean'] .core-path-app[data-path='rider']:not(.is-sidebar-collapsed) .v2-sidebar-footer::before {
+  content: '“I am the sky and the power of every storm that has ever been. I am infinite.”\A\A“There’s nowhere in existence you could go that I wouldn’t find you, Violence.”';
+  display: block;
+  margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid var(--v2-border);
+  border-radius: 14px;
+  color: var(--v2-text);
+  background:
+    linear-gradient(145deg, rgba(78, 91, 101, .18), transparent 48%),
+    color-mix(in srgb, var(--v2-panel-raised) 90%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: .78rem;
+  font-style: italic;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+/* All universe quote panels collapse with the sidebar. */
+.core-path-app.is-sidebar-collapsed .v2-sidebar-footer::before {
+  content: none !important;
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-universe='empyrean'] .core-path-app[data-path='rider']::before {
+    animation: rider-storm-drift 22s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes rider-storm-drift {
+  to { background-position: 22px 10px, -18px 14px, 18px 0, -20px 0, 0 8px, 12px 0, center; }
+}
+
+@media (max-width: 760px) {
+  html[data-universe='empyrean'] .core-path-app[data-path='rider'] .v2-topbar::after {
+    right: 70px;
+    font-size: 2rem;
+  }
+}

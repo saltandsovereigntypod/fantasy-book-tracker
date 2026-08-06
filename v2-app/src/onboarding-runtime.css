@@ -1,0 +1,98 @@
+:root {
+  --path-background: #0c0c0d;
+  --path-panel: #141416;
+  --path-panel-alt: #1a1a1d;
+  --path-surface: #202024;
+  --path-text: #f5f2ea;
+  --path-muted: #aaa59b;
+  --path-accent: #8f1f2f;
+  --path-accent-soft: rgba(143,31,47,.18);
+  --path-border: #343238;
+  --path-paper: #d8c4a4;
+}
+
+body[data-path] .v2-full-app,
+body[data-path] .v2-app-main { background: var(--path-background); color: var(--path-text); }
+body[data-path] .v2-app-sidebar { background: color-mix(in srgb, var(--path-background) 88%, black); border-color: var(--path-border); }
+body[data-path] .v2-topbar,
+body[data-path] .v2-app-sidebar nav button.is-active { border-color: var(--path-border); }
+body[data-path] .v2-app-sidebar nav button.is-active { background: var(--path-accent-soft); box-shadow: inset 3px 0 var(--path-accent); }
+body[data-path] .v2-app-sidebar small,
+body[data-path] .v2-topbar p { color: var(--path-accent); }
+
+.v2-onboarding-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--path-accent) 22%, transparent), transparent 38%), rgba(7, 5, 5, .96);
+  color: #f7efe2;
+}
+.v2-onboarding-card {
+  width: min(820px, 100%);
+  border: 1px solid #63351d;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #160c09;
+  box-shadow: 0 28px 90px rgba(0,0,0,.62);
+}
+.v2-onboarding-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 32px 22px;
+  border-bottom: 1px solid #4a2819;
+}
+.v2-onboarding-card header p,
+.v2-assignment-card > p { margin: 0 0 6px; color: #d77536; font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.v2-onboarding-card h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(30px, 5vw, 48px); }
+.v2-onboarding-card header > strong { color: #d8b899; white-space: nowrap; }
+.v2-onboarding-progress { height: 4px; background: #2b1710; }
+.v2-onboarding-progress span { display: block; height: 100%; background: #d26b2c; transition: width .2s ease; }
+.v2-onboarding-card main { padding: 30px 32px 34px; }
+.v2-question-context { margin: 0 0 14px; color: #bca28f; line-height: 1.6; }
+.v2-onboarding-card h2 { margin: 0 0 24px; font-family: Georgia, serif; font-size: clamp(22px, 3.2vw, 32px); line-height: 1.25; }
+.v2-answer-list { display: grid; gap: 12px; }
+.v2-answer-list button {
+  width: 100%;
+  padding: 17px 18px;
+  border: 1px solid #5c321f;
+  border-radius: 12px;
+  background: #21110c;
+  color: #f5e9dd;
+  text-align: left;
+  font: inherit;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.v2-answer-list button:hover,
+.v2-answer-list button:focus-visible { border-color: #dd7a39; background: #2b160e; outline: none; transform: translateY(-1px); }
+.v2-answer-list button:disabled { opacity: .55; cursor: wait; }
+.v2-onboarding-error { margin: 18px 0 0; color: #ff9a8d; }
+
+.v2-assignment-card {
+  margin: 0 0 24px;
+  padding: 24px;
+  border: 1px solid var(--path-border);
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--path-accent-soft), var(--path-panel));
+  color: var(--path-text);
+}
+.v2-assignment-card h2 { margin: 0 0 18px; font-family: Georgia, serif; font-size: 30px; }
+.v2-assignment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.v2-assignment-grid article { padding: 16px; border: 1px solid var(--path-border); border-radius: 12px; background: color-mix(in srgb, var(--path-panel) 88%, transparent); }
+.v2-assignment-grid span,
+.v2-assignment-grid small { display: block; color: var(--path-muted); }
+.v2-assignment-grid span { margin-bottom: 7px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.v2-assignment-grid strong { display: block; margin-bottom: 5px; font-size: 18px; }
+.v2-assignment-grid small { line-height: 1.45; }
+
+@media (max-width: 640px) {
+  .v2-onboarding-gate { padding: 0; place-items: stretch; }
+  .v2-onboarding-card { min-height: 100%; border: 0; border-radius: 0; }
+  .v2-onboarding-card header, .v2-onboarding-card main { padding-left: 20px; padding-right: 20px; }
+}

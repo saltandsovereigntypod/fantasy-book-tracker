@@ -23,6 +23,7 @@ import './questionnaire-gate-runtime';
 import './rank-story-runtime';
 import './instant-path-preview';
 import './card-theme-manager-runtime';
+import './card-theme-refresh-runtime';
 import './core-theme-system.css';
 
 const root = document.getElementById('root');

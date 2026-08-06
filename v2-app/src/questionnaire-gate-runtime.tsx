@@ -64,20 +64,23 @@ function Gate() {
       const ability = chooseAbility(path, scores, seed);
       const definition = PATHS[path];
       const creature = definition.creatureKind ? createCreatureAssignment(definition.creatureKind, [], seed) : undefined;
+      const profile = {
+        ...archive.profile,
+        path,
+        rankIndex: rankIndexForPoints(path, archive.profile.points || 0),
+        onboarded: true,
+        traitScores: scores,
+        onboardingVersion: 2,
+        ...(ability ? {
+          abilityId: ability.id,
+          abilityName: ability.name,
+          abilityDescription: ability.description,
+        } : {}),
+        ...(creature ? { creature } : {}),
+      } as V2ArchiveState['profile'];
       const next: V2ArchiveState = {
         ...archive,
-        profile: {
-          ...archive.profile,
-          path,
-          rankIndex: rankIndexForPoints(path, archive.profile.points || 0),
-          onboarded: true,
-          abilityId: ability?.id,
-          abilityName: ability?.name,
-          abilityDescription: ability?.description,
-          creature,
-          traitScores: scores,
-          onboardingVersion: 2,
-        } as V2ArchiveState['profile'],
+        profile,
         updatedAt: new Date().toISOString(),
       };
       saveLocalArchive(next);

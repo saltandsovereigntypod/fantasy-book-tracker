@@ -27,14 +27,12 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: v2-app/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: v2-app
         run: npm ci
 
       - name: Build V2 app
-        working-directory: v2-app
         run: npm run build
 
       - name: Configure Pages
@@ -43,7 +41,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: v2-app/dist
+          path: dist
 
   deploy:
     environment:

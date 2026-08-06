@@ -1,0 +1,35 @@
+/* Keep the library card button as the single interactive surface. The rendered
+   design is visual content in library mode and must not intercept taps. */
+.v2-library-grid > article {
+  position: relative;
+}
+
+.v2-library-card-open {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.v2-library-card-open .card-editor-shell,
+.v2-library-card-open .card-renderer,
+.v2-library-card-open .design-element,
+.v2-library-card-open .design-element-content {
+  pointer-events: none !important;
+}
+
+.v2-library-select {
+  position: relative;
+  z-index: 4;
+  pointer-events: auto !important;
+}
+
+.v2-library-select input,
+.v2-library-select span {
+  pointer-events: auto !important;
+}
+
+/* The selection control must sit above scaled card canvases on every size. */
+.v2-library-grid > article > .v2-library-select {
+  isolation: isolate;
+}

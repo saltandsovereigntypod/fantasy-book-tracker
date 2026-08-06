@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import CoreFullApp from './CoreFullApp';
+import { bootstrapUniverse } from './bootstrap-universe';
 import './creative-libraries.css';
 import './stage-controls.css';
 import './editor-shell.css';
@@ -31,6 +32,8 @@ import './night-court-experience.css';
 import './prythian-core-overrides.css';
 import './rider-core-experience.css';
 import './mobile-core-polish.css';
+
+bootstrapUniverse();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

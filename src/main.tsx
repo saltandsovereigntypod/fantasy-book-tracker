@@ -31,6 +31,7 @@ import './library-card-sizing-fix.css';
 import './core-theme-system.css';
 import './prythian-court-atmospheres.css';
 import './night-court-experience.css';
+import './prythian-core-overrides.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

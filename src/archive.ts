@@ -180,7 +180,7 @@ function normalizeDesign(value: unknown): CardDesign {
   const { actions: _actions, ...cleanSource } = source as Partial<CardDesign> & { actions?: unknown };
   return {
     ...structuredClone(defaultDesign),
-    ...structuredClone(cleanSource),
+    ...cleanSource,
     width: numberOr(source.width, 420),
     height: numberOr(source.height, 380),
     elements: Array.isArray(source.elements) ? structuredClone(source.elements) : structuredClone(defaultDesign.elements),
@@ -206,6 +206,16 @@ function normalizeBook(value: unknown): V2BookRecord {
     coverUrl: String(book.coverUrl || ''),
     genres: strings(book.genres),
     tags: strings(book.tags),
+    about: String(book.about || ''),
+    summary: String(book.summary || ''),
+    notes: Array.isArray(book.notes) ? book.notes : [],
+    readingSessions: Array.isArray(book.readingSessions) ? book.readingSessions : [],
+    relationships: Array.isArray(book.relationships) ? book.relationships : [],
+    theoryIds: strings(book.theoryIds),
+    suspicionIds: strings(book.suspicionIds),
+    wallCardIds: strings(book.wallCardIds),
+    mindMapNodeIds: strings(book.mindMapNodeIds),
+    customRatings: Array.isArray(book.customRatings) ? book.customRatings : [],
     design: normalizeDesign(book.design),
     createdAt: String(book.createdAt || timestamp),
     updatedAt: String(book.updatedAt || timestamp),
@@ -288,11 +298,17 @@ export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
   if (hasLocalArchive()) return local;
 
   try {
-    const request = supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
+    const request = supabase
+      .from('archive_states')
+      .select('state')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1);
     const { data, error } = await Promise.race([request, timeoutAfter(CLOUD_READ_TIMEOUT_MS)]);
     if (error) throw error;
-    if (!data?.state) return local;
-    const raw = data.state as Record<string, unknown>;
+    const row = Array.isArray(data) ? data[0] : undefined;
+    if (!row?.state) return local;
+    const raw = row.state as Record<string, unknown>;
     const candidate = raw.v2Archive && typeof raw.v2Archive === 'object' ? raw.v2Archive : raw;
     const cloud = normalizeArchive(candidate, user);
     saveLocalArchive(cloud);
@@ -305,12 +321,32 @@ export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
 export async function saveCloudArchive(user: User, state: V2ArchiveState): Promise<void> {
   const next = normalizeArchive({ ...state, updatedAt: now() }, user);
   saveLocalArchive(next);
-  const { data: existing, error: readError } = await supabase.from('archive_states').select('state').eq('user_id', user.id).maybeSingle();
+
+  const { data: rows, error: readError } = await supabase
+    .from('archive_states')
+    .select('state')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false })
+    .limit(1);
   if (readError) throw readError;
-  const legacyState = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {};
-  const { error } = await supabase.from('archive_states').upsert(
-    { user_id: user.id, state: { ...legacyState, v2Archive: next }, updated_at: now() },
-    { onConflict: 'user_id' },
-  );
-  if (error) throw error;
+
+  const existing = Array.isArray(rows) ? rows[0] : undefined;
+  const legacyState = existing?.state && typeof existing.state === 'object'
+    ? existing.state as Record<string, unknown>
+    : {};
+  const payload = { state: { ...legacyState, v2Archive: next }, updated_at: now() };
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from('archive_states')
+      .update(payload)
+      .eq('user_id', user.id);
+    if (updateError) throw updateError;
+    return;
+  }
+
+  const { error: insertError } = await supabase
+    .from('archive_states')
+    .insert({ user_id: user.id, ...payload });
+  if (insertError) throw insertError;
 }

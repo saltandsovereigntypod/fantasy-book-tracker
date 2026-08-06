@@ -1,4 +1,4 @@
-export type CardSize = 'small' | 'medium' | 'large';
+export type CardSize = 'extra-small' | 'small' | 'medium' | 'large';
 export type ReadingStatus = 'want' | 'reading' | 'paused' | 'completed' | 'dnf';
 export type BookFieldPath = 'title' | 'author' | 'series' | 'status' | 'progress' | 'rating' | 'spice' | 'impact' | 'reaction' | 'coverUrl';
 export type TheoryStatus = 'open' | 'confirmed' | 'disproven' | 'dormant';
@@ -49,6 +49,7 @@ export interface WallRecord { id: string; title: string; cards: WallCardRecord[]
 
 export interface BookRecord {
   id: string; title: string; author: string; series: string; status: ReadingStatus; progress: number; rating: number; spice: number; impact: number; reaction: string; coverUrl: string;
+  seriesPosition?: number | null;
   customRatings?: CustomBookRating[];
   summary?: string; about?: string; genres?: string[]; tags?: string[]; notes?: BookNote[]; readingSessions?: ReadingSession[]; relationships?: BookRelationship[];
   mindMapNodeIds: string[]; wallCardIds: string[]; theoryIds: string[]; suspicionIds?: string[];
@@ -64,5 +65,5 @@ export type DesignElement = TextElement | ImageElement | ShapeElement | Progress
 
 export interface CardDesign { id: string; width: 420; height: 380; background: string; elements: DesignElement[]; version: number; }
 export interface WorkspaceState { book: BookRecord; design: CardDesign; selectedElementId: string | null; cardSize: CardSize; dirty: boolean; }
-export const CARD_WIDTHS: Record<CardSize, number> = { small: 300, medium: 420, large: 560 };
+export const CARD_WIDTHS: Record<CardSize, number> = { 'extra-small': 220, small: 300, medium: 420, large: 560 };
 export const FIELD_LABELS: Record<BookFieldPath, string> = { title: 'Title', author: 'Author', series: 'Series', status: 'Reading status', progress: 'Progress', rating: 'Overall rating', spice: 'Spice', impact: 'Emotional impact', reaction: 'Reaction', coverUrl: 'Cover image' };

@@ -1,0 +1,81 @@
+html[data-universe="prythian"] .core-path-app{position:relative;isolation:isolate;overflow-x:hidden}
+html[data-universe="prythian"] .core-path-app::before,
+html[data-universe="prythian"] .core-path-app::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none}
+html[data-universe="prythian"] .core-path-app::before{opacity:.72;background-repeat:repeat;background-position:center top}
+html[data-universe="prythian"] .core-path-app::after{opacity:.42;background-repeat:no-repeat;background-size:cover}
+html[data-universe="prythian"] .v2-topbar,
+html[data-universe="prythian"] .v2-app-sidebar,
+html[data-universe="prythian"] .prythian-universe-panel,
+html[data-universe="prythian"] .v2-view>section,
+html[data-universe="prythian"] .v2-view>div>section{position:relative;overflow:hidden;backdrop-filter:blur(10px)}
+html[data-universe="prythian"] .prythian-universe-panel::before,
+html[data-universe="prythian"] .core-profile-assignment::before,
+html[data-universe="prythian"] .v2-topbar::after{position:absolute;pointer-events:none;color:var(--path-accent);font-family:Georgia,serif;line-height:1;opacity:.2}
+html[data-universe="prythian"] .prythian-universe-panel::before{right:22px;top:12px;font-size:4.5rem}
+html[data-universe="prythian"] .core-profile-assignment::before{right:26px;bottom:18px;font-size:6rem}
+html[data-universe="prythian"] .v2-topbar::after{right:120px;top:9px;font-size:3.8rem}
+html[data-universe="prythian"] .v2-view h2::after,
+html[data-universe="prythian"] .v2-view h3::after{display:inline-block;margin-left:.55rem;color:var(--path-accent);font-size:.72em;opacity:.72;vertical-align:.08em}
+html[data-universe="prythian"] .v2-app-sidebar::after{content:"";position:absolute;inset:auto 10px 18px;height:170px;pointer-events:none;opacity:.25;background-repeat:no-repeat;background-position:center bottom;background-size:contain}
+
+html[data-universe="prythian"][data-court="night"] .core-path-app::before{background-image:radial-gradient(circle at 12% 18%,rgba(255,255,255,.7) 0 1px,transparent 1.8px),radial-gradient(circle at 78% 9%,rgba(173,165,255,.8) 0 1px,transparent 2px),radial-gradient(circle at 42% 34%,rgba(255,255,255,.42) 0 1px,transparent 1.6px),radial-gradient(circle at 88% 67%,rgba(149,137,236,.55) 0 1.2px,transparent 2px);background-size:120px 120px,180px 180px,240px 240px,300px 300px}
+html[data-universe="prythian"][data-court="night"] .core-path-app::after{background-image:radial-gradient(circle at 84% 5%,rgba(118,106,201,.2),transparent 28%),linear-gradient(145deg,transparent 50%,rgba(42,36,91,.2))}
+html[data-universe="prythian"][data-court="night"] .prythian-universe-panel::before{content:"☾"}
+html[data-universe="prythian"][data-court="night"] .core-profile-assignment::before{content:"✦ ✧"}
+html[data-universe="prythian"][data-court="night"] .v2-topbar::after{content:"⋆｡°✩"}
+html[data-universe="prythian"][data-court="night"] .v2-view h2::after,html[data-universe="prythian"][data-court="night"] .v2-view h3::after{content:"✦"}
+html[data-universe="prythian"][data-court="night"] .v2-app-sidebar::after{background-image:radial-gradient(circle at 50% 82%,transparent 31px,rgba(180,171,255,.7) 32px 34px,transparent 35px),radial-gradient(circle at 68% 68%,rgba(255,255,255,.8) 0 2px,transparent 3px),radial-gradient(circle at 34% 48%,rgba(255,255,255,.6) 0 1.5px,transparent 2.5px)}
+
+html[data-universe="prythian"][data-court="spring"] .core-path-app::before{background-image:radial-gradient(ellipse at 20% 30%,rgba(152,183,111,.16) 0 5px,transparent 6px),radial-gradient(ellipse at 75% 15%,rgba(226,192,190,.13) 0 6px,transparent 7px),radial-gradient(ellipse at 55% 72%,rgba(160,194,121,.12) 0 7px,transparent 8px);background-size:110px 90px,170px 140px,230px 190px}
+html[data-universe="prythian"][data-court="spring"] .core-path-app::after{background-image:linear-gradient(120deg,rgba(94,127,70,.16),transparent 32%),radial-gradient(circle at 92% 12%,rgba(221,179,184,.14),transparent 25%)}
+html[data-universe="prythian"][data-court="spring"] .prythian-universe-panel::before{content:"❀"}
+html[data-universe="prythian"][data-court="spring"] .core-profile-assignment::before{content:"❦"}
+html[data-universe="prythian"][data-court="spring"] .v2-topbar::after{content:"✿"}
+html[data-universe="prythian"][data-court="spring"] .v2-view h2::after,html[data-universe="prythian"][data-court="spring"] .v2-view h3::after{content:"❀"}
+html[data-universe="prythian"][data-court="spring"] .v2-app-sidebar::after{background-image:radial-gradient(ellipse at 48% 72%,rgba(150,184,105,.55) 0 12px,transparent 13px),radial-gradient(ellipse at 31% 58%,rgba(150,184,105,.4) 0 9px,transparent 10px),radial-gradient(circle at 62% 42%,rgba(221,177,184,.7) 0 8px,transparent 9px)}
+
+html[data-universe="prythian"][data-court="summer"] .core-path-app::before{background-image:repeating-radial-gradient(ellipse at 50% 120%,transparent 0 28px,rgba(88,184,194,.12) 30px 32px,transparent 34px 52px)}
+html[data-universe="prythian"][data-court="summer"] .core-path-app::after{background-image:radial-gradient(circle at 88% 6%,rgba(251,219,132,.17),transparent 25%),linear-gradient(180deg,transparent 55%,rgba(29,119,137,.18))}
+html[data-universe="prythian"][data-court="summer"] .prythian-universe-panel::before{content:"☼"}
+html[data-universe="prythian"][data-court="summer"] .core-profile-assignment::before{content:"≈"}
+html[data-universe="prythian"][data-court="summer"] .v2-topbar::after{content:"◌ ≋"}
+html[data-universe="prythian"][data-court="summer"] .v2-view h2::after,html[data-universe="prythian"][data-court="summer"] .v2-view h3::after{content:"≈"}
+html[data-universe="prythian"][data-court="summer"] .v2-app-sidebar::after{background-image:repeating-radial-gradient(ellipse at 50% 100%,transparent 0 18px,rgba(95,201,209,.5) 20px 22px,transparent 24px 34px)}
+
+html[data-universe="prythian"][data-court="autumn"] .core-path-app::before{background-image:linear-gradient(35deg,transparent 46%,rgba(191,93,45,.11) 47% 49%,transparent 50%),radial-gradient(ellipse at 24% 35%,rgba(180,80,37,.13) 0 8px,transparent 9px),radial-gradient(ellipse at 72% 62%,rgba(222,142,62,.11) 0 10px,transparent 11px);background-size:190px 150px,120px 100px,180px 160px}
+html[data-universe="prythian"][data-court="autumn"] .core-path-app::after{background-image:radial-gradient(circle at 89% 8%,rgba(222,95,38,.17),transparent 24%),linear-gradient(160deg,transparent 60%,rgba(116,42,18,.2))}
+html[data-universe="prythian"][data-court="autumn"] .prythian-universe-panel::before{content:"❧"}
+html[data-universe="prythian"][data-court="autumn"] .core-profile-assignment::before{content:"♨"}
+html[data-universe="prythian"][data-court="autumn"] .v2-topbar::after{content:"❦"}
+html[data-universe="prythian"][data-court="autumn"] .v2-view h2::after,html[data-universe="prythian"][data-court="autumn"] .v2-view h3::after{content:"❧"}
+html[data-universe="prythian"][data-court="autumn"] .v2-app-sidebar::after{background-image:radial-gradient(ellipse at 45% 72%,rgba(205,100,42,.62) 0 13px,transparent 14px),radial-gradient(ellipse at 64% 54%,rgba(223,145,60,.48) 0 10px,transparent 11px)}
+
+html[data-universe="prythian"][data-court="winter"] .core-path-app::before{background-image:linear-gradient(30deg,transparent 47%,rgba(174,220,239,.11) 48% 49%,transparent 50%),linear-gradient(150deg,transparent 47%,rgba(174,220,239,.1) 48% 49%,transparent 50%);background-size:90px 90px}
+html[data-universe="prythian"][data-court="winter"] .core-path-app::after{background-image:radial-gradient(circle at 85% 4%,rgba(190,230,247,.2),transparent 28%),linear-gradient(180deg,rgba(128,184,211,.08),transparent 35%)}
+html[data-universe="prythian"][data-court="winter"] .prythian-universe-panel::before{content:"❄"}
+html[data-universe="prythian"][data-court="winter"] .core-profile-assignment::before{content:"✧"}
+html[data-universe="prythian"][data-court="winter"] .v2-topbar::after{content:"❄︎"}
+html[data-universe="prythian"][data-court="winter"] .v2-view h2::after,html[data-universe="prythian"][data-court="winter"] .v2-view h3::after{content:"❄"}
+html[data-universe="prythian"][data-court="winter"] .v2-app-sidebar::after{background-image:linear-gradient(30deg,transparent 45%,rgba(199,235,249,.62) 46% 48%,transparent 49%),linear-gradient(150deg,transparent 45%,rgba(199,235,249,.62) 46% 48%,transparent 49%);background-size:46px 46px}
+
+html[data-universe="prythian"][data-court="day"] .core-path-app::before{background-image:radial-gradient(circle at center,rgba(255,223,136,.13) 0 2px,transparent 3px),linear-gradient(45deg,transparent 49%,rgba(238,188,74,.08) 50%,transparent 51%);background-size:90px 90px,160px 160px}
+html[data-universe="prythian"][data-court="day"] .core-path-app::after{background-image:radial-gradient(circle at 88% 4%,rgba(255,211,92,.24),transparent 26%),linear-gradient(135deg,rgba(205,142,39,.1),transparent 38%)}
+html[data-universe="prythian"][data-court="day"] .prythian-universe-panel::before{content:"☀"}
+html[data-universe="prythian"][data-court="day"] .core-profile-assignment::before{content:"☼"}
+html[data-universe="prythian"][data-court="day"] .v2-topbar::after{content:"☀︎"}
+html[data-universe="prythian"][data-court="day"] .v2-view h2::after,html[data-universe="prythian"][data-court="day"] .v2-view h3::after{content:"☀"}
+html[data-universe="prythian"][data-court="day"] .v2-app-sidebar::after{background-image:radial-gradient(circle at center,rgba(245,197,84,.12) 0 25px,rgba(245,197,84,.7) 26px 29px,transparent 30px),conic-gradient(from 0deg,transparent 0 8deg,rgba(245,197,84,.58) 9deg 13deg,transparent 14deg 45deg)}
+
+html[data-universe="prythian"][data-court="dawn"] .core-path-app::before{background-image:radial-gradient(ellipse at 50% 120%,rgba(232,164,181,.13) 0 14px,transparent 15px),radial-gradient(ellipse at 16% 22%,rgba(244,198,154,.1) 0 10px,transparent 11px);background-size:130px 110px,190px 170px}
+html[data-universe="prythian"][data-court="dawn"] .core-path-app::after{background-image:linear-gradient(180deg,rgba(236,172,160,.16),transparent 32%),radial-gradient(circle at 88% 8%,rgba(245,200,163,.2),transparent 28%)}
+html[data-universe="prythian"][data-court="dawn"] .prythian-universe-panel::before{content:"☼"}
+html[data-universe="prythian"][data-court="dawn"] .core-profile-assignment::before{content:"✦"}
+html[data-universe="prythian"][data-court="dawn"] .v2-topbar::after{content:"◡☼◡"}
+html[data-universe="prythian"][data-court="dawn"] .v2-view h2::after,html[data-universe="prythian"][data-court="dawn"] .v2-view h3::after{content:"☼"}
+html[data-universe="prythian"][data-court="dawn"] .v2-app-sidebar::after{background-image:radial-gradient(ellipse at 50% 100%,rgba(239,181,177,.56) 0 24px,transparent 25px),radial-gradient(ellipse at 50% 100%,transparent 0 39px,rgba(247,205,165,.58) 40px 43px,transparent 44px)}
+
+@media(prefers-reduced-motion:no-preference){html[data-universe="prythian"][data-court="night"] .core-path-app::before{animation:prythian-stars 18s linear infinite alternate}html[data-universe="prythian"][data-court="summer"] .core-path-app::before{animation:prythian-tide 12s ease-in-out infinite alternate}html[data-universe="prythian"][data-court="spring"] .core-path-app::before,html[data-universe="prythian"][data-court="autumn"] .core-path-app::before{animation:prythian-drift 16s ease-in-out infinite alternate}}
+@keyframes prythian-stars{to{background-position:28px 14px,-18px 22px,34px -18px,-30px 8px}}
+@keyframes prythian-tide{to{background-position:center 18px}}
+@keyframes prythian-drift{to{background-position:20px 14px,-14px 20px,24px -12px}}
+@media(max-width:760px){html[data-universe="prythian"] .core-profile-assignment::before{font-size:4rem;opacity:.12}html[data-universe="prythian"] .v2-topbar::after{right:72px;font-size:2.8rem}}

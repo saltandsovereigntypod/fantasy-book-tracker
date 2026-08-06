@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useState } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { CardDesign } from './domain';
 import { loadCloudArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState, type V2BookRecord } from './archive';
@@ -15,6 +15,7 @@ type CardThemePreset = {
 };
 
 type ArchiveWithThemes = V2ArchiveState & { cardThemes?: CardThemePreset[] };
+type ThemeView = 'hidden' | 'editor' | 'library';
 
 function cloneDesign(design: CardDesign): CardDesign {
   return structuredClone(design);
@@ -32,20 +33,23 @@ function designForBook(theme: CardThemePreset, book: V2BookRecord): CardDesign {
 
 function CardThemeManager() {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<ThemeView>('hidden');
   const [archive, setArchive] = useState<ArchiveWithThemes | null>(null);
   const [name, setName] = useState('');
   const [selectedThemeId, setSelectedThemeId] = useState('');
   const [selectedBookIds, setSelectedBookIds] = useState<string[]>([]);
   const [status, setStatus] = useState('');
-  const [visible, setVisible] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let active = true;
-    const syncVisibility = () => {
-      setVisible(Boolean(document.querySelector('.v2-view--editor, .v2-view--library')));
+    const syncView = () => {
+      if (document.querySelector('.v2-view--editor')) setView('editor');
+      else if (document.querySelector('.v2-view--library')) setView('library');
+      else setView('hidden');
     };
-    syncVisibility();
-    const observer = new MutationObserver(syncVisibility);
+    syncView();
+    const observer = new MutationObserver(syncView);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     getAuthSnapshot().then(async ({ user }) => {
       if (!user || !active) return;
@@ -56,6 +60,11 @@ function CardThemeManager() {
     }).catch(() => undefined);
     return () => { active = false; observer.disconnect(); };
   }, []);
+
+  useEffect(() => {
+    if (!open || view !== 'editor') return;
+    window.setTimeout(() => nameInputRef.current?.focus(), 0);
+  }, [open, view]);
 
   const themes = archive?.cardThemes || [];
   const selectedTheme = useMemo(() => themes.find((theme) => theme.id === selectedThemeId) || null, [themes, selectedThemeId]);
@@ -77,9 +86,10 @@ function CardThemeManager() {
   async function saveCurrentDesign() {
     const cleanName = name.trim();
     if (!archive || !cleanName) return;
+    setStatus('Reading the current editor design…');
     const draft = await loadWorkspaceDraft();
     if (!draft?.design) {
-      setStatus('Open a book in the design editor first.');
+      setStatus('No editor design is available yet. Open a book, make a design change, and try again.');
       return;
     }
     const now = new Date().toISOString();
@@ -91,7 +101,7 @@ function CardThemeManager() {
     const next = { ...archive, cardThemes: nextThemes, updatedAt: now };
     setSelectedThemeId(preset.id);
     setName('');
-    await persist(next, existing ? 'Theme updated.' : 'Theme saved.');
+    await persist(next, existing ? `Updated “${preset.name}”.` : `Saved “${preset.name}” as a reusable card theme.`);
   }
 
   async function applyTo(ids: string[]) {
@@ -112,24 +122,26 @@ function CardThemeManager() {
     await persist({ ...archive, cardThemes: nextThemes, updatedAt: new Date().toISOString() }, 'Theme deleted.');
   }
 
-  if (!visible || !archive) return null;
+  if (view === 'hidden' || !archive) return null;
 
   return <>
-    <button className="card-theme-launcher" type="button" onClick={() => setOpen(true)}>Card Themes</button>
+    <button className={`card-theme-launcher is-${view}`} type="button" onClick={() => { setStatus(''); setOpen(true); }}>
+      {view === 'editor' ? 'Save Design as Theme' : 'Card Themes'}
+    </button>
     {open && <div className="card-theme-backdrop" role="dialog" aria-modal="true" aria-label="Card theme manager">
       <section className="card-theme-modal">
-        <header><div><p>Design library</p><h2>Custom Card Themes</h2><span>Save the current editor design, then apply it without changing any book data.</span></div><button type="button" onClick={() => setOpen(false)}>×</button></header>
-        <div className="card-theme-grid">
+        <header><div><p>{view === 'editor' ? 'Current card design' : 'Design library'}</p><h2>{view === 'editor' ? 'Save Design as a Theme' : 'Custom Card Themes'}</h2><span>{view === 'editor' ? 'Name this exact layout and save it for reuse on other book cards.' : 'Choose a saved design and apply it without changing book data.'}</span></div><button type="button" onClick={() => setOpen(false)}>×</button></header>
+        <div className={`card-theme-grid is-${view}`}>
           <section className="card-theme-create">
-            <h3>Save current design</h3>
-            <p>Open a book in the design editor, finish the layout, then save it as a reusable theme.</p>
-            <label>Theme name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Midnight parchment" /></label>
-            <button type="button" className="is-primary" disabled={!name.trim()} onClick={() => void saveCurrentDesign()}>Save Current Design</button>
+            <h3>{view === 'editor' ? 'Save this design' : 'Save current editor design'}</h3>
+            <p>The theme includes the card background, layout, typography, shapes, images, colors, ratings, progress bar, and bound fields.</p>
+            <label>Theme name<input ref={nameInputRef} value={name} onChange={(event) => setName(event.target.value)} placeholder="Midnight parchment" onKeyDown={(event) => { if (event.key === 'Enter' && name.trim()) { event.preventDefault(); void saveCurrentDesign(); } }} /></label>
+            <button type="button" className="is-primary card-theme-save-button" disabled={!name.trim()} onClick={() => void saveCurrentDesign()}>Save This Design as a Theme</button>
             <h3>Saved themes</h3>
             {themes.length ? <div className="card-theme-list">{themes.map((theme) => <article key={theme.id} className={selectedThemeId === theme.id ? 'is-selected' : ''}><button type="button" onClick={() => setSelectedThemeId(theme.id)}><span style={{ background: theme.design.background }} /><strong>{theme.name}</strong><small>{theme.design.elements.length} elements</small></button><button type="button" className="is-danger" onClick={() => void removeTheme(theme.id)}>Delete</button></article>)}</div> : <p className="card-theme-empty">No custom themes saved yet.</p>}
           </section>
           <section className="card-theme-apply">
-            <h3>Apply theme</h3>
+            <h3>Apply a saved theme</h3>
             <label>Theme<select value={selectedThemeId} onChange={(event) => setSelectedThemeId(event.target.value)}><option value="">Choose a theme</option>{themes.map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}</select></label>
             <div className="card-theme-book-actions"><button type="button" onClick={() => setSelectedBookIds(archive.books.filter((book) => !book.archived).map((book) => book.id))}>Select active</button><button type="button" onClick={() => setSelectedBookIds(archive.books.map((book) => book.id))}>Select all</button><button type="button" onClick={() => setSelectedBookIds([])}>Clear</button></div>
             <div className="card-theme-books">{archive.books.length ? archive.books.map((book) => <label key={book.id}><input type="checkbox" checked={selectedBookIds.includes(book.id)} onChange={() => setSelectedBookIds((ids) => ids.includes(book.id) ? ids.filter((id) => id !== book.id) : [...ids, book.id])} /><span><strong>{book.title}</strong><small>{book.author || 'Unknown author'}{book.archived ? ' · Archived' : ''}</small></span></label>) : <p>No books are available yet.</p>}</div>

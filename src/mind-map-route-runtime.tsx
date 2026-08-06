@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { loadCloudArchive, loadLocalArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState } from './archive';
+import { loadCloudArchive, loadLocalArchive, saveLocalArchive, type V2ArchiveState } from './archive';
+import { saveArchiveCloud } from './archive-cloud';
 import { MindMapWorkspace } from './MindMapWorkspace';
 import { getAuthSnapshot } from './supabase';
 import './mind-map-line-style';
@@ -35,16 +36,11 @@ async function flushCloudSave() {
   try {
     const { user } = await getAuthSnapshot();
     cachedUserId = user?.id || 'local';
-    if (user) await saveCloudArchive(user, next);
+    if (user) await saveArchiveCloud(user, next);
   } catch (reason) {
-    console.warn('Mind Map cloud save deferred after an error.', reason);
-    pendingCloudArchive = cachedArchive;
+    console.warn('Mind Map cloud save failed. Local archive remains current.', reason);
   } finally {
     cloudSaveRunning = false;
-    if (pendingCloudArchive) {
-      if (cloudSaveTimer) window.clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = window.setTimeout(flushCloudSave, 2500);
-    }
   }
 }
 
@@ -93,7 +89,7 @@ function ensureOverlayRoot() {
   overlayHost.className = 'v2-mind-map-route-root v2-mind-map-route-overlay';
   overlayHost.hidden = true;
   Object.assign(overlayHost.style, {
-    position: 'fixed', zIndex: '2147483000', overflow: 'auto', background: 'var(--ink, #160b08)', contain: 'layout paint', isolation: 'isolate',
+    position: 'fixed', zIndex: '2147483000', overflow: 'auto', background: 'var(--v2-bg, #160b08)', contain: 'layout paint', isolation: 'isolate',
   });
   document.body.appendChild(overlayHost);
   overlayRoot = createRoot(overlayHost);

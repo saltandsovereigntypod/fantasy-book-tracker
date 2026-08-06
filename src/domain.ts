@@ -63,7 +63,7 @@ export interface ProgressElement extends ElementBase { type: 'progress'; trackCo
 export interface RatingElement extends ElementBase { type: 'rating'; metric: 'rating' | 'spice' | 'impact' | 'custom'; customRatingId?: string; label: string; icon: string; emptyIcon: string; color: string; fontFamily: string; fontSize: number; }
 export type DesignElement = TextElement | ImageElement | ShapeElement | ProgressElement | RatingElement;
 
-export interface CardDesign { id: string; width: 420; height: 380; background: string; elements: DesignElement[]; version: number; }
+export interface CardDesign { id: string; width: number; height: number; background: string; elements: DesignElement[]; version: number; }
 export interface WorkspaceState { book: BookRecord; design: CardDesign; selectedElementId: string | null; cardSize: CardSize; dirty: boolean; }
 export const CARD_WIDTHS: Record<CardSize, number> = { 'extra-small': 220, small: 300, medium: 420, large: 560 };
 export const FIELD_LABELS: Record<BookFieldPath, string> = { title: 'Title', author: 'Author', series: 'Series', status: 'Reading status', progress: 'Progress', rating: 'Overall rating', spice: 'Spice', impact: 'Emotional impact', reaction: 'Reaction', coverUrl: 'Cover image' };

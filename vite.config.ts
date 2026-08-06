@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.GITHUB_ACTIONS ? '/the-empyrean-book-tracker/' : '/',
+  base: '/the-empyrean-book-tracker/',
   build: {
     outDir: 'dist',
     sourcemap: true,

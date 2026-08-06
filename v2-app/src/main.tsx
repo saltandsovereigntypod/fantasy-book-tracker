@@ -20,6 +20,7 @@ import './mind-map-route-runtime';
 import './mind-map-line-rules-position';
 import './mind-map-relationship-polish.css';
 import './onboarding-runtime';
+import './path-copy-runtime';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V2 application root was not found.');

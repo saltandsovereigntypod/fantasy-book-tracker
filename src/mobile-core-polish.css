@@ -1,0 +1,398 @@
+/* Authoritative small-screen layout for the core application. */
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .core-path-app {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .core-path-app .v2-app-shell {
+    display: block;
+    min-width: 0;
+  }
+
+  .core-path-app .v2-app-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    width: 100% !important;
+    min-width: 0;
+    height: auto;
+    max-height: none;
+    padding: 10px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--v2-border);
+  }
+
+  .core-path-app .v2-brand {
+    min-height: 48px;
+    padding-right: 46px;
+  }
+
+  .core-path-app .v2-brand small {
+    font-size: .66rem;
+  }
+
+  .core-path-app .v2-brand strong {
+    font-size: .92rem;
+  }
+
+  .core-path-app .v2-sidebar-collapse {
+    top: 12px;
+    right: 12px;
+    left: auto;
+  }
+
+  .core-path-app .v2-app-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .core-path-app .v2-app-nav button,
+  .core-path-app .v2-app-nav a {
+    min-width: 0;
+    min-height: 44px;
+    padding: 9px 7px;
+    border-radius: 10px;
+    font-size: .74rem;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .core-path-app .v2-app-nav button span,
+  .core-path-app .v2-app-nav a span {
+    margin: 0 auto;
+  }
+
+  .core-path-app .v2-sidebar-footer {
+    display: none;
+  }
+
+  .core-path-app .v2-app-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .core-path-app .v2-topbar {
+    position: relative;
+    min-height: 76px;
+    padding: 14px 16px;
+  }
+
+  .core-path-app .v2-topbar h1 {
+    max-width: calc(100% - 96px);
+    font-size: clamp(1.55rem, 8vw, 2.15rem);
+    line-height: 1.05;
+  }
+
+  .core-path-app .v2-topbar .eyebrow,
+  .core-path-app .v2-topbar small {
+    font-size: .68rem;
+  }
+
+  .core-path-app .v2-cloud-status {
+    position: absolute;
+    top: 14px;
+    right: 12px;
+    padding: 7px 9px;
+    font-size: .67rem;
+  }
+
+  .core-path-app .v2-view {
+    width: 100%;
+    min-width: 0;
+    padding: 14px 12px 32px;
+  }
+
+  .core-path-app .v2-view h2 {
+    font-size: clamp(1.7rem, 9vw, 2.45rem);
+    line-height: 1.02;
+  }
+
+  .core-path-app .v2-view h3 {
+    font-size: clamp(1.2rem, 6vw, 1.65rem);
+  }
+
+  .core-path-app button,
+  .core-path-app select,
+  .core-path-app input,
+  .core-path-app textarea {
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .core-path-app button,
+  .core-path-app select {
+    min-height: 44px;
+  }
+
+  .core-path-app textarea {
+    min-height: 128px;
+  }
+
+  .core-path-app .core-assignment-compact,
+  .core-path-app .v2-hero,
+  .core-path-app .v2-dashboard-panel,
+  .core-path-app .v2-library-actionbar,
+  .core-path-app .core-profile-assignment,
+  .core-path-app .v2-profile > section,
+  .core-path-app .investigation-panel,
+  .core-path-app .wall-shell {
+    padding: 16px !important;
+    border-radius: 16px;
+  }
+
+  .core-path-app .core-assignment-compact,
+  .core-path-app .v2-hero,
+  .core-path-app .v2-dashboard-panel,
+  .core-path-app .core-profile-assignment {
+    grid-template-columns: 1fr !important;
+  }
+
+  .core-path-app .v2-hero {
+    gap: 16px;
+  }
+
+  .core-path-app .v2-hero h2 {
+    max-width: 100%;
+  }
+
+  .core-path-app .v2-hero-actions,
+  .core-path-app .v2-dashboard-actions,
+  .core-path-app .v2-profile-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .core-path-app .v2-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .core-path-app .v2-metric-grid article {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .core-path-app .v2-metric-grid strong {
+    font-size: 1.65rem;
+  }
+
+  /* Library controls and cards */
+  .core-path-app .v2-library-header,
+  .core-path-app .v2-library-controls,
+  .core-path-app .v2-library-toolbar,
+  .core-path-app .v2-library-actionbar {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    gap: 9px;
+  }
+
+  .core-path-app .v2-library-header > *,
+  .core-path-app .v2-library-controls > *,
+  .core-path-app .v2-library-toolbar > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .core-path-app .v2-library-actionbar button {
+    width: 100%;
+  }
+
+  .core-path-app .v2-library-grid,
+  .core-path-app .v2-library-grid.is-extra-small,
+  .core-path-app .v2-library-grid.is-small,
+  .core-path-app .v2-library-grid.is-medium,
+  .core-path-app .v2-library-grid.is-large {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+
+  .core-path-app .v2-library-grid > article {
+    width: 100%;
+    min-width: 0;
+    padding: 10px !important;
+    overflow: hidden !important;
+    border-radius: 16px;
+  }
+
+  .core-path-app .v2-library-card-open,
+  .core-path-app .v2-library-card-open .card-editor-shell,
+  .core-path-app .v2-library-card-open .card-renderer {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .core-path-app .v2-library-card-open .card-renderer {
+    transform: none !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .core-path-app .v2-library-card-open .design-element,
+  .core-path-app .v2-library-card-open .design-element-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .core-path-app .v2-library-card-open img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .core-path-app .v2-library-card-open h1,
+  .core-path-app .v2-library-card-open h2,
+  .core-path-app .v2-library-card-open h3,
+  .core-path-app .v2-library-card-open p,
+  .core-path-app .v2-library-card-open span,
+  .core-path-app .v2-library-card-open strong,
+  .core-path-app .v2-library-card-open small {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  /* Investigation pages */
+  .core-path-app .investigation-layout,
+  .core-path-app .theory-layout,
+  .core-path-app .suspicion-layout {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .core-path-app .investigation-panel,
+  .core-path-app .theory-card,
+  .core-path-app .suspicion-card {
+    min-width: 0;
+  }
+
+  .core-path-app .theory-card header,
+  .core-path-app .suspicion-card header,
+  .core-path-app .theory-card footer,
+  .core-path-app .suspicion-card footer {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+  }
+
+  .core-path-app .theory-card footer button,
+  .core-path-app .suspicion-card footer button {
+    width: 100%;
+  }
+
+  /* Conspiracy wall */
+  .core-path-app .wall-toolbar,
+  .core-path-app .wall-controls,
+  .core-path-app .wall-search-row,
+  .core-path-app .wall-action-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+  }
+
+  .core-path-app .wall-canvas,
+  .core-path-app .wall-board {
+    min-height: 460px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mind map keeps its canvas usable rather than compressing it to nothing. */
+  .core-path-app .mind-map-toolbar,
+  .core-path-app .mind-map-controls,
+  .core-path-app .mind-map-filter-row,
+  .core-path-app .mind-map-command-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+  }
+
+  .core-path-app .mind-map-canvas,
+  .core-path-app .relationship-map-canvas {
+    min-width: 760px;
+    min-height: 520px;
+  }
+
+  .core-path-app .mind-map-viewport,
+  .core-path-app .relationship-map-viewport {
+    width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Profile and progression */
+  .core-path-app .core-universe-controls,
+  .core-path-app .core-profile-selectors,
+  .core-path-app .profile-selector-grid,
+  .core-path-app .core-power-grid,
+  .core-path-app .court-power-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .core-path-app .core-rank-row,
+  .core-path-app .court-rank-row,
+  .core-path-app .command-rank-row {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .core-path-app .core-rank-row .rank-status,
+  .core-path-app .court-rank-row .rank-status,
+  .core-path-app .command-rank-row .rank-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* Modals and drawers */
+  .core-path-app .modal,
+  .core-path-app .drawer,
+  .core-path-app .profile-drawer,
+  .core-path-app .editor-shell {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px);
+    margin: 10px;
+    overflow: auto;
+  }
+
+  .core-path-app .card-theme-manager,
+  .core-path-app .card-themes-button {
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .core-path-app .v2-app-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .core-path-app .v2-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .core-path-app .v2-topbar h1 {
+    max-width: calc(100% - 76px);
+    font-size: 1.72rem;
+  }
+
+  .core-path-app .v2-view {
+    padding-inline: 10px;
+  }
+}

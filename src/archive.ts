@@ -25,6 +25,25 @@ export interface V2BookRecord extends BookRecord {
   archived?: boolean;
 }
 
+export type PointEventKind =
+  | 'book-added'
+  | 'reading-session-started'
+  | 'reading-session-completed'
+  | 'book-first-completion'
+  | 'book-reread-completion'
+  | 'theory-created'
+  | 'suspicion-created'
+  | 'evidence-added';
+
+export interface PointEvent {
+  id: string;
+  kind: PointEventKind;
+  sourceId: string;
+  label: string;
+  amount: number;
+  occurredAt: string;
+}
+
 export interface V2Profile {
   displayName: string;
   path: string;
@@ -54,6 +73,7 @@ export interface V2ArchiveState {
   dossiers: WallDossierRecord[];
   walls: WallRecord[];
   mindMapNodes: unknown[];
+  pointLog: PointEvent[];
   updatedAt: string;
 }
 
@@ -140,8 +160,6 @@ function normalizeUniverses(value: unknown, profile: V2Profile, archiveSource: R
       : 'empyrean';
   const sharedPoints = numberOr(profile.points);
   const court = validCourt(rawPrythian.court) || profile.court || validCourt(archiveSource.court) || (migratedPrythian ? 'night' : undefined);
-  const prythianPoints = numberOr(rawPrythian.points, migratedPrythian ? sharedPoints : 0);
-  const empyreanPoints = numberOr(rawEmpyrean.points, activeUniverse === 'empyrean' ? sharedPoints : 0);
 
   return {
     activeUniverse,
@@ -149,7 +167,7 @@ function normalizeUniverses(value: unknown, profile: V2Profile, archiveSource: R
       ...base.empyrean,
       path: String(rawEmpyrean.path || profile.path || 'rider'),
       onboarded: rawEmpyrean.onboarded == null ? Boolean(profile.onboarded && activeUniverse === 'empyrean') : Boolean(rawEmpyrean.onboarded),
-      points: empyreanPoints,
+      points: numberOr(rawEmpyrean.points, sharedPoints),
       rankIndex: numberOr(rawEmpyrean.rankIndex, profile.rankIndex),
       completedEvents: strings(rawEmpyrean.completedEvents),
       stories: Array.isArray(rawEmpyrean.stories) ? rawEmpyrean.stories as UniverseProfiles['empyrean']['stories'] : [],
@@ -158,8 +176,8 @@ function normalizeUniverses(value: unknown, profile: V2Profile, archiveSource: R
       ...base.prythian,
       court,
       onboarded: rawPrythian.onboarded == null ? Boolean(migratedPrythian || activeUniverse === 'prythian') : Boolean(rawPrythian.onboarded),
-      points: prythianPoints,
-      rankIndex: numberOr(rawPrythian.rankIndex, prythianRankIndex(prythianPoints)),
+      points: numberOr(rawPrythian.points, sharedPoints),
+      rankIndex: numberOr(rawPrythian.rankIndex, prythianRankIndex(sharedPoints)),
       completedEvents: strings(rawPrythian.completedEvents),
       stories: Array.isArray(rawPrythian.stories) ? rawPrythian.stories as UniverseProfiles['prythian']['stories'] : [],
       primaryPowerId: rawPrythian.primaryPowerId ? String(rawPrythian.primaryPowerId) : profile.primaryPowerId,
@@ -224,6 +242,55 @@ function normalizeBook(value: unknown): V2BookRecord {
   };
 }
 
+function pointEvent(kind: PointEventKind, sourceId: string, label: string, amount: number, occurredAt: string): PointEvent {
+  return { id: `${kind}:${sourceId}`, kind, sourceId, label, amount, occurredAt };
+}
+
+function derivePointLog(books: V2BookRecord[], theories: TheoryRecord[], suspicions: SuspicionRecord[]): PointEvent[] {
+  const events: PointEvent[] = [];
+
+  books.forEach((book) => {
+    events.push(pointEvent('book-added', book.id, `Added ${book.title}`, 100, book.createdAt));
+    const sessions = book.readingSessions ?? [];
+    sessions.forEach((session) => {
+      events.push(pointEvent('reading-session-started', session.id, `Started a reading session for ${book.title}`, 25, session.startedAt));
+      if (session.completedAt) {
+        events.push(pointEvent('reading-session-completed', session.id, `Completed a reading session for ${book.title}`, 75, session.completedAt));
+      }
+    });
+
+    const completionSessions = sessions
+      .filter((session) => Boolean(session.completedAt) && Number(session.endProgress) >= 100)
+      .sort((a, b) => String(a.completedAt).localeCompare(String(b.completedAt)));
+
+    if (completionSessions.length) {
+      const first = completionSessions[0];
+      events.push(pointEvent('book-first-completion', book.id, `Completed ${book.title} for the first time`, 1000, first.completedAt || book.updatedAt));
+      completionSessions.slice(1).forEach((session, index) => {
+        events.push(pointEvent('book-reread-completion', `${book.id}:${session.id}`, `Completed reread ${index + 1} of ${book.title}`, 500, session.completedAt || book.updatedAt));
+      });
+    } else if (book.status === 'completed' || book.progress >= 100) {
+      events.push(pointEvent('book-first-completion', book.id, `Completed ${book.title} for the first time`, 1000, book.updatedAt));
+    }
+  });
+
+  theories.forEach((theory) => {
+    events.push(pointEvent('theory-created', theory.id, `Created theory: ${theory.title}`, 150, theory.createdAt));
+    (theory.evidence ?? []).forEach((evidence) => {
+      events.push(pointEvent('evidence-added', `theory:${theory.id}:${evidence.id}`, `Added evidence to ${theory.title}`, 50, evidence.createdAt));
+    });
+  });
+
+  suspicions.forEach((suspicion) => {
+    events.push(pointEvent('suspicion-created', suspicion.id, `Created suspicion: ${suspicion.title}`, 100, suspicion.createdAt));
+    (suspicion.evidence ?? []).forEach((evidence) => {
+      events.push(pointEvent('evidence-added', `suspicion:${suspicion.id}:${evidence.id}`, `Added evidence to ${suspicion.title}`, 50, evidence.createdAt));
+    });
+  });
+
+  return events.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
 export function freshArchive(user?: User | null): V2ArchiveState {
   const profile = normalizeProfile({}, user);
   return {
@@ -236,6 +303,7 @@ export function freshArchive(user?: User | null): V2ArchiveState {
     dossiers: [],
     walls: [],
     mindMapNodes: [],
+    pointLog: [],
     updatedAt: now(),
   };
 }
@@ -243,13 +311,31 @@ export function freshArchive(user?: User | null): V2ArchiveState {
 export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveState {
   const source = isRecord(value) ? value : {};
   const profile = normalizeProfile(source.profile, user);
-  const universes = normalizeUniverses(source.universes, profile, source);
-  const activePoints = universes.activeUniverse === 'prythian' ? universes.prythian.points : universes.empyrean.points;
+  const baseUniverses = normalizeUniverses(source.universes, profile, source);
+  const books = Array.isArray(source.books) ? source.books.map(normalizeBook) : [];
+  const theories = Array.isArray(source.theories) ? source.theories as TheoryRecord[] : [];
+  const suspicions = Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [];
+  const pointLog = derivePointLog(books, theories, suspicions);
+  const earnedPoints = pointLog.reduce((sum, event) => sum + event.amount, 0);
+  const sharedPoints = Math.max(numberOr(profile.points), earnedPoints);
+  const universes: UniverseProfiles = {
+    ...baseUniverses,
+    empyrean: {
+      ...baseUniverses.empyrean,
+      points: sharedPoints,
+      rankIndex: numberOr(baseUniverses.empyrean.rankIndex),
+    },
+    prythian: {
+      ...baseUniverses.prythian,
+      points: sharedPoints,
+      rankIndex: prythianRankIndex(sharedPoints),
+    },
+  };
   const activeRank = universes.activeUniverse === 'prythian' ? universes.prythian.rankIndex : universes.empyrean.rankIndex;
   const synchronizedProfile: V2Profile = {
     ...profile,
     path: universes.empyrean.path,
-    points: activePoints,
+    points: sharedPoints,
     rankIndex: activeRank,
     onboarded: universes.activeUniverse === 'prythian' ? universes.prythian.onboarded : universes.empyrean.onboarded,
   };
@@ -258,12 +344,13 @@ export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveS
     version: 1,
     profile: synchronizedProfile,
     universes,
-    books: Array.isArray(source.books) ? source.books.map(normalizeBook) : [],
-    theories: Array.isArray(source.theories) ? source.theories as TheoryRecord[] : [],
-    suspicions: Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [],
+    books,
+    theories,
+    suspicions,
     dossiers: Array.isArray(source.dossiers) ? source.dossiers as WallDossierRecord[] : [],
     walls: Array.isArray(source.walls) ? source.walls as WallRecord[] : [],
     mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [],
+    pointLog,
     updatedAt: String(source.updatedAt || now()),
   };
 }

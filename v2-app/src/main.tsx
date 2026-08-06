@@ -28,6 +28,7 @@ import './extra-small-library-runtime';
 import './wall-dossier-resize-fix';
 import './prythian-universe-runtime';
 import './prythian-assessment-runtime';
+import './prythian-progression-runtime';
 import './extra-small-library.css';
 import './library-card-sizing-fix.css';
 import './core-theme-system.css';

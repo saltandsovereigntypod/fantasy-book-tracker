@@ -1,0 +1,16 @@
+.night-court-aspect-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,320px);gap:1rem;align-items:end;padding:1rem 1.15rem;border:1px solid var(--path-border);border-radius:16px;background:color-mix(in srgb,var(--path-panel) 88%,transparent);box-shadow:0 18px 50px rgba(0,0,0,.2);backdrop-filter:blur(12px)}
+.night-court-aspect-panel p{margin:0 0 .25rem;color:var(--path-accent);font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.night-court-aspect-panel h2{margin:0;color:var(--path-text);font-size:1.1rem}
+.night-court-aspect-panel span{display:block;margin-top:.35rem;color:var(--path-muted);font-size:.86rem;line-height:1.5}
+.night-court-aspect-panel label{display:grid;gap:.4rem;color:var(--path-muted);font-size:.76rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.night-court-aspect-panel select{width:100%;padding:.78rem .9rem;border:1px solid var(--path-border);border-radius:10px;background:var(--path-surface);color:var(--path-text);font:inherit;text-transform:none;letter-spacing:0}
+.night-court-aspect-panel>strong{justify-self:end;padding:.65rem .85rem;border:1px solid var(--path-border);border-radius:999px;color:var(--path-muted);font-size:.78rem}
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .core-path-app{--v2-bg:#050307!important;--v2-panel:#100811!important;--v2-panel-raised:#190d1b!important;--v2-border:#4b263f!important;--v2-border-strong:#9f4b7c!important;--v2-text:#f7e8f2!important;--v2-muted:#bea3b5!important;--v2-accent:#b65286!important;--v2-accent-bright:#d97daf!important;--path-background:#050307!important;--path-panel:#100811!important;--path-panel-alt:#190d1b!important;--path-surface:#241128!important;--path-text:#f7e8f2!important;--path-muted:#bea3b5!important;--path-accent:#b65286!important;--path-accent-soft:rgba(182,82,134,.2)!important;--path-border:#4b263f!important;--path-paper:#e4bfd2!important}
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .core-path-app::after{background-image:radial-gradient(circle at 78% 8%,rgba(161,45,100,.22),transparent 24%),linear-gradient(155deg,rgba(50,8,34,.28),transparent 45%),linear-gradient(180deg,transparent 58%,rgba(10,2,8,.5))}
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .v2-app-sidebar,
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .v2-topbar,
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .prythian-universe-panel,
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .prythian-progression-panel,
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .night-court-aspect-panel{box-shadow:0 20px 60px rgba(28,0,18,.4),inset 0 1px 0 rgba(255,255,255,.03)}
+html[data-universe="prythian"][data-court="night"][data-night-aspect="nightmares"] .v2-brand strong::after{content:" · Court of Nightmares";color:var(--path-accent);font-size:.72em}
+@media(max-width:760px){.night-court-aspect-panel{grid-template-columns:1fr}.night-court-aspect-panel>strong{justify-self:start}}

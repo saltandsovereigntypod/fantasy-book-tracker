@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './prythian-experience-bootstrap';
+import './prythian-reveal-gates';
 import CoreFullApp from './CoreFullApp';
 import './creative-libraries.css';
 import './stage-controls.css';

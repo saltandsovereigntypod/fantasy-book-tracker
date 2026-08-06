@@ -24,6 +24,7 @@ import './card-theme-manager-runtime';
 import './library-metadata-runtime';
 import './extra-small-library-runtime';
 import './wall-dossier-resize-fix';
+import './editor-connections-runtime';
 import './extra-small-library.css';
 import './library-card-sizing-fix.css';
 import './core-theme-system.css';
@@ -33,6 +34,8 @@ import './prythian-core-overrides.css';
 import './rider-core-experience.css';
 import './mobile-core-polish.css';
 import './library-card-responsive-final.css';
+import './library-card-interactions.css';
+import './editor-connections-runtime.css';
 
 bootstrapUniverse();
 

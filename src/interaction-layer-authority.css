@@ -1,0 +1,50 @@
+/* Interactive layers must sit above theme atmosphere and card scaling. */
+.core-path-app > .v2-drawer-backdrop,
+html[data-universe] .core-path-app > .v2-drawer-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100000 !important;
+}
+
+.v2-library-grid > article {
+  position: relative !important;
+}
+
+.v2-library-grid > article > .v2-library-select {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 50 !important;
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0 !important;
+  transform: none !important;
+  zoom: 1 !important;
+  pointer-events: auto !important;
+}
+
+.v2-library-grid > article > .v2-library-select input {
+  position: static !important;
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.v2-library-card-open {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+.v2-library-actionbar {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.v2-library-actionbar button {
+  pointer-events: auto !important;
+}

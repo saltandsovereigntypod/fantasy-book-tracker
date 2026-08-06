@@ -1,0 +1,35 @@
+.v2-library-grid {
+  align-items: start;
+}
+
+.v2-library-grid > article {
+  align-self: start;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.v2-library-card-open {
+  display: block;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0;
+  line-height: 0;
+}
+
+.v2-library-card-open .card-renderer {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+  flex: none;
+}
+
+.v2-library-grid.is-extra-small > article,
+.v2-library-grid.is-small > article,
+.v2-library-grid.is-medium > article,
+.v2-library-grid.is-large > article {
+  grid-template-rows: auto;
+}

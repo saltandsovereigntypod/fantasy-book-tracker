@@ -48,12 +48,15 @@ function applyPathPresentation(profile: AssignmentProfile) {
     if (!button.dataset.baseLabel) button.dataset.baseLabel = original;
     const match = Object.keys(replacements).find((label) => original.endsWith(label));
     if (!match) return;
+    const replacement = replacements[match];
+    if (button.textContent?.trim().endsWith(replacement)) return;
     const icon = button.querySelector('span')?.outerHTML || '';
-    button.innerHTML = `${icon}${replacements[match]}`;
+    button.innerHTML = `${icon}${replacement}`;
   });
 
   const footerSmall = document.querySelector<HTMLElement>('.v2-sidebar-footer small');
-  if (footerSmall) footerSmall.textContent = path.ranks[rankIndexForPoints(path.id, profile.points || 0)] || path.name;
+  const rank = path.ranks[rankIndexForPoints(path.id, profile.points || 0)] || path.name;
+  if (footerSmall && footerSmall.textContent !== rank) footerSmall.textContent = rank;
 }
 
 function renderProfileAssignment(profile: AssignmentProfile) {
@@ -68,6 +71,9 @@ function renderProfileAssignment(profile: AssignmentProfile) {
   const path = pathFor(profile.path);
   const rank = path.ranks[rankIndexForPoints(path.id, profile.points || 0)] || path.ranks[0];
   const creature = profile.creature;
+  const signature = JSON.stringify([path.id, rank, profile.abilityName, profile.abilityDescription, creature]);
+  if (card.dataset.signature === signature) return;
+  card.dataset.signature = signature;
   card.innerHTML = `<p>Your assignment</p><h2>${path.glyph} ${path.name}</h2><div class="v2-assignment-grid"><article><span>${path.copy.currentRank}</span><strong>${rank}</strong></article>${profile.abilityName ? `<article><span>${path.id === 'gryphon' ? 'Mindwork gift' : 'Signet'}</span><strong>${profile.abilityName}</strong><small>${profile.abilityDescription || ''}</small></article>` : ''}${creature ? `<article><span>${creature.kind === 'dragon' ? 'Bonded dragon' : creature.kind === 'gryphon' ? 'Bonded gryphon' : 'Wyvern'}</span><strong>${creature.name}</strong><small>${creature.color}${creature.tail ? ` ${creature.tail}` : ''}</small></article>` : ''}</div>`;
 }
 

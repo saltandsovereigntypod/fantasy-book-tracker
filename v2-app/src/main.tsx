@@ -26,6 +26,7 @@ import './card-theme-manager-runtime';
 import './library-metadata-runtime';
 import './extra-small-library-runtime';
 import './extra-small-library.css';
+import './library-card-sizing-fix.css';
 import './core-theme-system.css';
 
 const root = document.getElementById('root');

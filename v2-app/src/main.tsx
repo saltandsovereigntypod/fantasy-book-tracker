@@ -24,6 +24,8 @@ import './rank-story-runtime';
 import './instant-path-preview';
 import './card-theme-manager-runtime';
 import './library-metadata-runtime';
+import './extra-small-library-runtime';
+import './extra-small-library.css';
 import './core-theme-system.css';
 
 const root = document.getElementById('root');

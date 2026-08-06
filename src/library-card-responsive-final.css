@@ -1,0 +1,129 @@
+/* Final authority for library card sizing.
+   CardRenderer uses fixed design canvases, so the surrounding article must
+   follow the rendered canvas instead of stretching independently. */
+
+.v2-library-grid {
+  align-items: start;
+}
+
+.v2-library-grid > article {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  height: auto !important;
+  min-height: 0 !important;
+  justify-self: center;
+  align-self: start;
+  box-sizing: border-box;
+  overflow: hidden !important;
+}
+
+.v2-library-card-open {
+  display: block;
+  width: fit-content !important;
+  max-width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 auto;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.v2-library-card-open .card-editor-shell,
+.v2-library-card-open .card-renderer {
+  display: block;
+  flex: none;
+  margin: 0 auto;
+  max-width: none;
+}
+
+/* Extra-small cards need enough column room for their 220px canvas plus the
+   article border, checkbox, and internal spacing. */
+.v2-library-grid.is-extra-small {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.v2-library-grid.is-extra-small > article {
+  width: 250px;
+}
+
+.v2-library-grid.is-small > article {
+  width: 330px;
+}
+
+.v2-library-grid.is-medium > article {
+  width: 450px;
+}
+
+.v2-library-grid.is-large > article {
+  width: 590px;
+}
+
+@media (max-width: 760px) {
+  .core-path-app .v2-library-grid,
+  .core-path-app .v2-library-grid.is-extra-small,
+  .core-path-app .v2-library-grid.is-small,
+  .core-path-app .v2-library-grid.is-medium,
+  .core-path-app .v2-library-grid.is-large {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+    gap: 18px;
+  }
+
+  .core-path-app .v2-library-grid > article {
+    --card-mobile-space: 28px;
+    width: min(100%, calc(100vw - var(--card-mobile-space))) !important;
+    padding: 10px !important;
+  }
+
+  .core-path-app .v2-library-card-open {
+    width: fit-content !important;
+    max-width: 100%;
+  }
+
+  /* Scale the complete shell, not only the visible canvas. CSS zoom affects
+     layout dimensions too, preventing clipping and phantom empty height. */
+  .core-path-app .v2-library-grid.is-extra-small .card-editor-shell {
+    zoom: min(1, calc((100vw - 68px) / 220));
+  }
+
+  .core-path-app .v2-library-grid.is-small .card-editor-shell {
+    zoom: min(1, calc((100vw - 68px) / 300));
+  }
+
+  .core-path-app .v2-library-grid.is-medium .card-editor-shell {
+    zoom: min(1, calc((100vw - 68px) / 420));
+  }
+
+  .core-path-app .v2-library-grid.is-large .card-editor-shell {
+    zoom: min(1, calc((100vw - 68px) / 560));
+  }
+
+  .core-path-app .v2-library-grid .card-renderer {
+    max-width: none !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .core-path-app .v2-library-grid > article {
+    --card-mobile-space: 20px;
+    padding: 8px !important;
+  }
+
+  .core-path-app .v2-library-grid.is-extra-small .card-editor-shell {
+    zoom: min(1, calc((100vw - 52px) / 220));
+  }
+
+  .core-path-app .v2-library-grid.is-small .card-editor-shell {
+    zoom: min(1, calc((100vw - 52px) / 300));
+  }
+
+  .core-path-app .v2-library-grid.is-medium .card-editor-shell {
+    zoom: min(1, calc((100vw - 52px) / 420));
+  }
+
+  .core-path-app .v2-library-grid.is-large .card-editor-shell {
+    zoom: min(1, calc((100vw - 52px) / 560));
+  }
+}

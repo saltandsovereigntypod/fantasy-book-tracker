@@ -1,0 +1,154 @@
+/* Final, shared V2 theme layer. Loaded after every feature stylesheet. */
+
+html:has(.core-path-app[data-path="rider"]),
+.core-path-app[data-path="rider"] {
+  --theme-bg:#0c0c0d!important;--theme-panel:#141416!important;--theme-raised:#1a1a1d!important;--theme-surface:#202024!important;
+  --theme-text:#f5f2ea!important;--theme-muted:#aaa59b!important;--theme-accent:#9f3442!important;--theme-accent-soft:rgba(159,52,66,.2)!important;--theme-border:#343238!important;--theme-paper:#d8c4a4!important;
+}
+html:has(.core-path-app[data-path="scribe"]),
+.core-path-app[data-path="scribe"] {
+  --theme-bg:#100e0b!important;--theme-panel:#1b1711!important;--theme-raised:#241e16!important;--theme-surface:#2d261d!important;
+  --theme-text:#f4ead7!important;--theme-muted:#b8aa91!important;--theme-accent:#b8863b!important;--theme-accent-soft:rgba(184,134,59,.2)!important;--theme-border:#423725!important;--theme-paper:#dbcaa8!important;
+}
+html:has(.core-path-app[data-path="gryphon"]),
+.core-path-app[data-path="gryphon"] {
+  --theme-bg:#081117!important;--theme-panel:#101c24!important;--theme-raised:#172a35!important;--theme-surface:#203946!important;
+  --theme-text:#edf6fa!important;--theme-muted:#9cb5c2!important;--theme-accent:#4f9fc6!important;--theme-accent-soft:rgba(79,159,198,.2)!important;--theme-border:#2d4b5b!important;--theme-paper:#d4c9ad!important;
+}
+html:has(.core-path-app[data-path="dark"]),
+.core-path-app[data-path="dark"] {
+  --theme-bg:#09080c!important;--theme-panel:#141019!important;--theme-raised:#1c1523!important;--theme-surface:#271c30!important;
+  --theme-text:#f1eaf4!important;--theme-muted:#aa9caf!important;--theme-accent:#8a55ae!important;--theme-accent-soft:rgba(138,85,174,.22)!important;--theme-border:#3e2b49!important;--theme-paper:#cbbbc8!important;
+}
+html:has(.core-path-app[data-path="infantry"]),
+.core-path-app[data-path="infantry"] {
+  --theme-bg:#0c100d!important;--theme-panel:#151b16!important;--theme-raised:#1d251f!important;--theme-surface:#273129!important;
+  --theme-text:#eef1e8!important;--theme-muted:#a4ad9d!important;--theme-accent:#7b925f!important;--theme-accent-soft:rgba(123,146,95,.21)!important;--theme-border:#384438!important;--theme-paper:#d1c7aa!important;
+}
+html:has(.core-path-app[data-path="healer"]),
+.core-path-app[data-path="healer"] {
+  --theme-bg:#091009!important;--theme-panel:#121b12!important;--theme-raised:#192619!important;--theme-surface:#233323!important;
+  --theme-text:#eff6ed!important;--theme-muted:#a8b9a4!important;--theme-accent:#70a96f!important;--theme-accent-soft:rgba(112,169,111,.21)!important;--theme-border:#344a34!important;--theme-paper:#d7ceb6!important;
+}
+
+html:has(.core-path-app) {
+  --v2-bg:var(--theme-bg)!important;--v2-panel:var(--theme-panel)!important;--v2-panel-raised:var(--theme-raised)!important;
+  --v2-border:var(--theme-border)!important;--v2-border-strong:var(--theme-accent)!important;--v2-text:var(--theme-text)!important;
+  --v2-muted:var(--theme-muted)!important;--v2-accent:var(--theme-accent)!important;--v2-accent-bright:var(--theme-accent)!important;
+  --path-background:var(--theme-bg)!important;--path-panel:var(--theme-panel)!important;--path-panel-alt:var(--theme-raised)!important;
+  --path-surface:var(--theme-surface)!important;--path-text:var(--theme-text)!important;--path-muted:var(--theme-muted)!important;
+  --path-accent:var(--theme-accent)!important;--path-accent-soft:var(--theme-accent-soft)!important;--path-border:var(--theme-border)!important;--path-paper:var(--theme-paper)!important;
+  --ink:var(--theme-bg)!important;--panel:var(--theme-panel)!important;--paper:var(--theme-paper)!important;--accent:var(--theme-accent)!important;
+}
+
+html:has(.core-path-app) body,
+.core-path-app,
+.core-path-app .v2-app-main,
+.core-path-app .v2-view,
+.core-path-app .investigation-module,
+.core-path-app .wall-page,
+.core-path-app .mind-map-page {
+  background:var(--theme-bg)!important;color:var(--theme-text)!important;
+}
+
+.core-path-app .v2-app-sidebar,
+.core-path-app .v2-topbar,
+.core-path-app .v2-hero,
+.core-path-app .v2-metric-grid article,
+.core-path-app .v2-dashboard-panel,
+.core-path-app .v2-library-actionbar,
+.core-path-app .v2-library-grid>article,
+.core-path-app .v2-profile>section,
+.core-path-app .investigation-form,
+.core-path-app .investigation-card,
+.core-path-app .wall-toolbar,
+.core-path-app .wall-stage-shell,
+.core-path-app .wall-page-header,
+.core-path-app .mind-map-toolbar,
+.core-path-app .mind-map-filters,
+.core-path-app .mind-map-selection-bar,
+.core-path-app .mind-map-inspector,
+.core-path-app .mind-map-inspector>header,
+.core-path-app .mind-map-node,
+.core-path-app .mind-map-canvas,
+.core-path-app .mind-map-overview,
+.core-path-app .mind-map-minimap,
+.core-path-app [class*="mind-map-overview"] {
+  border-color:var(--theme-border)!important;background-color:var(--theme-panel)!important;color:var(--theme-text)!important;
+}
+
+.core-path-app .v2-topbar,
+.core-path-app .mind-map-inspector>header,
+.core-path-app .v2-hero {
+  background-image:linear-gradient(135deg,var(--theme-raised),var(--theme-panel))!important;
+}
+
+.core-path-app .mind-map-canvas,
+.core-path-app .wall-stage {
+  background-color:color-mix(in srgb,var(--theme-bg) 90%,black)!important;
+  background-image:radial-gradient(circle,color-mix(in srgb,var(--theme-accent) 24%,transparent) 1px,transparent 1px)!important;
+}
+
+.core-path-app input,
+.core-path-app select,
+.core-path-app textarea,
+.core-path-app .mind-map-toolbar input,
+.core-path-app .mind-map-toolbar select,
+.core-path-app .mind-map-filters input,
+.core-path-app .mind-map-filters select,
+.core-path-app .mind-map-note-form input,
+.core-path-app .mind-map-note-form textarea,
+.core-path-app .mind-map-note-form select {
+  border-color:var(--theme-border)!important;background:color-mix(in srgb,var(--theme-bg) 84%,black)!important;color:var(--theme-text)!important;
+}
+
+.core-path-app button:not(.is-danger),
+.core-path-app .mind-map-view-controls button,
+.core-path-app .mind-map-toolbar button,
+.core-path-app .mind-map-filters button,
+.core-path-app .mind-map-inspector button,
+.core-path-app .wall-toolbar button {
+  border-color:var(--theme-border)!important;background:var(--theme-raised)!important;color:var(--theme-text)!important;
+}
+
+.core-path-app .v2-hero button:first-child,
+.core-path-app .v2-library>header button,
+.core-path-app .investigation-form button[type="submit"],
+.core-path-app .core-path-picker button.is-active,
+.core-path-app button.is-active:not(.is-danger) {
+  border-color:var(--theme-accent)!important;background:var(--theme-accent)!important;color:var(--theme-text)!important;
+}
+
+.core-path-app .v2-topbar p,
+.core-path-app .v2-brand small,
+.core-path-app .v2-sidebar-footer small,
+.core-path-app .mind-map-header p,
+.core-path-app .mind-map-node small,
+.core-path-app .investigation-card>span,
+.core-path-app .wall-page-header p {
+  color:var(--theme-accent)!important;
+}
+
+.core-path-app .mind-map-node {
+  border-left-color:var(--theme-accent)!important;background:linear-gradient(160deg,var(--theme-raised),var(--theme-panel))!important;
+}
+.core-path-app .mind-map-edge line:not(.mind-map-edge-hit){stroke:var(--theme-accent)!important}
+.core-path-app .mind-map-edge text{fill:var(--theme-paper)!important;stroke:var(--theme-bg)!important}
+.core-path-app .mind-map-node.is-selected{outline-color:var(--theme-accent)!important}
+.core-path-app input[type="range"]{accent-color:var(--theme-accent)!important}
+
+/* Keep the overview inside the canvas and away from controls at normal browser zoom. */
+.core-path-app .mind-map-overview,
+.core-path-app .mind-map-minimap,
+.core-path-app [class*="mind-map-overview"] {
+  position:absolute!important;top:auto!important;right:14px!important;bottom:14px!important;left:auto!important;
+  width:min(250px,24vw)!important;max-width:calc(100% - 28px)!important;z-index:20!important;
+}
+@media(max-width:1050px){
+  .core-path-app .mind-map-overview,.core-path-app .mind-map-minimap,.core-path-app [class*="mind-map-overview"]{
+    width:min(210px,26vw)!important;
+  }
+}
+@media(max-width:760px){
+  .core-path-app .mind-map-overview,.core-path-app .mind-map-minimap,.core-path-app [class*="mind-map-overview"]{display:none!important}
+}

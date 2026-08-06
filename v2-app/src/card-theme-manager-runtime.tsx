@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { CardDesign } from './domain';
 import { loadCloudArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState, type V2BookRecord } from './archive';
-import { loadWorkspaceDraft } from './library';
+import { loadWorkspaceDraft, WORKSPACE_DRAFT_EVENT } from './library';
 import { getAuthSnapshot } from './supabase';
 import './card-theme-manager-runtime.css';
 
@@ -29,6 +29,13 @@ function designForBook(theme: CardThemePreset, book: V2BookRecord): CardDesign {
     height: 380,
     version: Math.max(4, Number(theme.design.version) || 1),
   };
+}
+
+function publishBookDesign(book: V2BookRecord) {
+  const { design, createdAt: _createdAt, updatedAt: _updatedAt, favorite: _favorite, archived: _archived, ...bookRecord } = book;
+  window.dispatchEvent(new CustomEvent(WORKSPACE_DRAFT_EVENT, {
+    detail: { book: bookRecord, design: cloneDesign(design) },
+  }));
 }
 
 function CardThemeManager() {
@@ -109,8 +116,9 @@ function CardThemeManager() {
     const idSet = new Set(ids);
     const now = new Date().toISOString();
     const books = archive.books.map((book) => idSet.has(book.id) ? { ...book, design: designForBook(selectedTheme, book), updatedAt: now } : book);
-    await persist({ ...archive, books, updatedAt: now }, `Applied “${selectedTheme.name}” to ${ids.length} ${ids.length === 1 ? 'card' : 'cards'}.`);
-    window.dispatchEvent(new CustomEvent('empyrean-card-themes-applied', { detail: { ids } }));
+    const next = { ...archive, books, updatedAt: now };
+    await persist(next, `Applied “${selectedTheme.name}” to ${ids.length} ${ids.length === 1 ? 'card' : 'cards'}.`);
+    books.filter((book) => idSet.has(book.id)).forEach(publishBookDesign);
   }
 
   async function removeTheme(themeId: string) {

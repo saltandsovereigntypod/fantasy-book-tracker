@@ -202,6 +202,16 @@ function start() {
   const host = document.createElement('div');
   host.id = 'prythian-universe-runtime';
   document.body.appendChild(host);
+
+  const placeInline = () => {
+    const profile = document.querySelector<HTMLElement>('.v2-view--profile');
+    if (profile && host.parentElement !== profile) profile.prepend(host);
+    else if (!profile && host.parentElement !== document.body) document.body.appendChild(host);
+  };
+
+  const placementObserver = new MutationObserver(placeInline);
+  placementObserver.observe(document.body, { childList: true, subtree: true });
+  placeInline();
   createRoot(host).render(<StrictMode><UniverseManager /></StrictMode>);
 }
 

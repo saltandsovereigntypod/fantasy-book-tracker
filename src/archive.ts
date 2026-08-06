@@ -99,6 +99,11 @@ function strings(value: unknown): string[] {
     : [];
 }
 
+function timestamp(value: unknown): number {
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function validCourt(value: unknown): PrythianCourtId | undefined {
   return PRYTHIAN_COURT_IDS.includes(value as PrythianCourtId)
     ? value as PrythianCourtId
@@ -208,7 +213,7 @@ function normalizeDesign(value: unknown): CardDesign {
 
 function normalizeBook(value: unknown): V2BookRecord {
   const book = isRecord(value) ? value as Partial<V2BookRecord> : {};
-  const timestamp = now();
+  const createdAt = String(book.createdAt || now());
   return {
     ...(book as BookRecord),
     id: String(book.id || crypto.randomUUID()),
@@ -235,8 +240,8 @@ function normalizeBook(value: unknown): V2BookRecord {
     mindMapNodeIds: strings(book.mindMapNodeIds),
     customRatings: Array.isArray(book.customRatings) ? book.customRatings : [],
     design: normalizeDesign(book.design),
-    createdAt: String(book.createdAt || timestamp),
-    updatedAt: String(book.updatedAt || timestamp),
+    createdAt,
+    updatedAt: String(book.updatedAt || createdAt),
     favorite: Boolean(book.favorite),
     archived: Boolean(book.archived),
   };
@@ -368,38 +373,38 @@ export function saveLocalArchive(state: V2ArchiveState): void {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(normalizeArchive(state)));
 }
 
-function hasLocalArchive(): boolean {
-  try {
-    return Boolean(localStorage.getItem(LOCAL_KEY));
-  } catch {
-    return false;
-  }
-}
-
 function timeoutAfter(ms: number): Promise<never> {
   return new Promise((_, reject) => window.setTimeout(() => reject(new Error('Cloud archive request timed out.')), ms));
 }
 
 export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
   const local = loadLocalArchive(user);
-  if (hasLocalArchive()) return local;
 
   try {
     const request = supabase
       .from('archive_states')
-      .select('state')
+      .select('state, updated_at')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(1);
     const { data, error } = await Promise.race([request, timeoutAfter(CLOUD_READ_TIMEOUT_MS)]);
     if (error) throw error;
+
     const row = Array.isArray(data) ? data[0] : undefined;
     if (!row?.state) return local;
+
     const raw = row.state as Record<string, unknown>;
     const candidate = raw.v2Archive && typeof raw.v2Archive === 'object' ? raw.v2Archive : raw;
     const cloud = normalizeArchive(candidate, user);
-    saveLocalArchive(cloud);
-    return cloud;
+    const cloudUpdatedAt = Math.max(timestamp(cloud.updatedAt), timestamp(row.updated_at));
+    const localUpdatedAt = timestamp(local.updatedAt);
+
+    if (cloudUpdatedAt > localUpdatedAt) {
+      saveLocalArchive(cloud);
+      return cloud;
+    }
+
+    return local;
   } catch {
     return local;
   }

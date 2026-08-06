@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { V2ArchiveState, V2BookRecord } from './archive';
 import type { ReadingStatus } from './domain';
 import './book-profile-editor.css';
@@ -46,6 +47,11 @@ export function BookProfileDrawer({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { setDraft(safeBook(book)); }, [book]);
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, []);
 
   const relationshipNames = draft.relationships.map((relationship) => archive.books.find((item) => item.id === relationship.targetBookId)?.title || 'Missing book');
 
@@ -68,8 +74,8 @@ export function BookProfileDrawer({
   async function addNote() {
     const text = noteText.trim();
     if (!text) return;
-    const now = new Date().toISOString();
-    await commit({ ...draft, notes: [...draft.notes, { id: crypto.randomUUID(), text, createdAt: now, updatedAt: now }] });
+    const timestamp = new Date().toISOString();
+    await commit({ ...draft, notes: [...draft.notes, { id: crypto.randomUUID(), text, createdAt: timestamp, updatedAt: timestamp }] });
     setNoteText('');
   }
 
@@ -78,11 +84,11 @@ export function BookProfileDrawer({
   }
 
   async function startSession() {
-    const now = new Date().toISOString();
+    const timestamp = new Date().toISOString();
     await commit({
       ...draft,
       status: 'reading',
-      readingSessions: [...draft.readingSessions, { id: crypto.randomUUID(), startedAt: now, startProgress: draft.progress, endProgress: draft.progress, notes: sessionNotes.trim() || undefined }],
+      readingSessions: [...draft.readingSessions, { id: crypto.randomUUID(), startedAt: timestamp, startProgress: draft.progress, endProgress: draft.progress, notes: sessionNotes.trim() || undefined }],
     });
     setSessionNotes('');
   }
@@ -90,19 +96,19 @@ export function BookProfileDrawer({
   async function completeCurrentSession() {
     const current = [...draft.readingSessions].reverse().find((session) => !session.completedAt);
     if (!current) return;
-    const now = new Date().toISOString();
+    const timestamp = new Date().toISOString();
     await commit({
       ...draft,
       status: draft.progress >= 100 ? 'completed' : draft.status,
-      readingSessions: draft.readingSessions.map((session) => session.id === current.id ? { ...session, completedAt: now, endProgress: draft.progress } : session),
+      readingSessions: draft.readingSessions.map((session) => session.id === current.id ? { ...session, completedAt: timestamp, endProgress: draft.progress } : session),
     });
   }
 
   async function toggleFavorite() { await commit({ ...draft, favorite: !draft.favorite }); }
   async function toggleArchive() { await commit({ ...draft, archived: !draft.archived }); }
 
-  return <div className="v2-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside className="v2-book-drawer" aria-label={`${draft.title} profile`}>
+  const drawer = <div className="v2-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <aside className="v2-book-drawer" role="dialog" aria-modal="true" aria-label={`${draft.title} profile`}>
       <header><div><p>Book Profile</p><h2>{draft.title}</h2><span>{draft.author || 'Unknown author'}{draft.series ? ` · ${draft.series}` : ''}</span></div><button onClick={onClose} aria-label="Close profile">×</button></header>
       <div className="v2-book-drawer__actions">
         <button onClick={onEdit}>Edit Book & Card</button>
@@ -130,17 +136,19 @@ export function BookProfileDrawer({
 
       <section>
         <div className="v2-section-heading"><h3>Reading History</h3><span>{draft.readingSessions.length} sessions</span></div>
-        <div className="v2-inline-form"><input value={sessionNotes} onChange={(event) => setSessionNotes(event.target.value)} placeholder="Optional session note" /><button onClick={startSession}>Start Session</button><button onClick={completeCurrentSession}>Complete Current</button></div>
+        <div className="v2-inline-form"><input name="session-note" value={sessionNotes} onChange={(event) => setSessionNotes(event.target.value)} placeholder="Optional session note" /><button onClick={startSession}>Start Session</button><button onClick={completeCurrentSession}>Complete Current</button></div>
         {draft.readingSessions.length ? [...draft.readingSessions].reverse().map((session) => <article key={session.id}><strong>{new Date(session.startedAt).toLocaleString()}</strong><p>{session.startProgress}% → {session.endProgress}%{session.completedAt ? ` · completed ${new Date(session.completedAt).toLocaleString()}` : ' · active'}</p>{session.notes && <small>{session.notes}</small>}</article>) : <p>No reading sessions recorded yet.</p>}
       </section>
 
       <section>
         <div className="v2-section-heading"><h3>Notes</h3><span>{draft.notes.length}</span></div>
-        <div className="v2-inline-form"><textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Add a personal note" /><button onClick={addNote}>Add Note</button></div>
+        <div className="v2-inline-form"><textarea name="book-note" value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Add a personal note" /><button onClick={addNote}>Add Note</button></div>
         {draft.notes.length ? draft.notes.map((note) => <article key={note.id}><p>{note.text}</p><small>{new Date(note.updatedAt).toLocaleString()}</small><button className="v2-note-delete" onClick={() => deleteNote(note.id)}>Delete</button></article>) : <p>No personal notes yet.</p>}
       </section>
 
       <section><h3>Investigation Connections</h3><ul><li>{draft.theoryIds.length} linked theories</li><li>{draft.suspicionIds.length} linked suspicions</li><li>{draft.wallCardIds.length} Wall connections</li><li>{draft.mindMapNodeIds.length} Mind Map nodes</li><li>{relationshipNames.length} book relationships{relationshipNames.length ? `: ${relationshipNames.join(', ')}` : ''}</li></ul></section>
     </aside>
   </div>;
+
+  return createPortal(drawer, document.body);
 }

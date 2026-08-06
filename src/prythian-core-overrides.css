@@ -1,3 +1,11 @@
+html[data-universe='prythian'][data-court='night'] { --v2-bg:#070812; --v2-panel:#101225; --v2-panel-raised:#171a33; --v2-border:#30365a; --v2-text:#f1efff; --v2-muted:#aaa8c9; --v2-accent:#7872b9; }
+html[data-universe='prythian'][data-court='spring'] { --v2-bg:#10170f; --v2-panel:#182219; --v2-panel-raised:#213023; --v2-border:#3a4e37; --v2-text:#eff3e7; --v2-muted:#abb89f; --v2-accent:#8b9f62; }
+html[data-universe='prythian'][data-court='summer'] { --v2-bg:#07161a; --v2-panel:#0e2228; --v2-panel-raised:#143039; --v2-border:#28535c; --v2-text:#e8f7f6; --v2-muted:#9ec5c7; --v2-accent:#4ea5ad; }
+html[data-universe='prythian'][data-court='autumn'] { --v2-bg:#170c08; --v2-panel:#24120c; --v2-panel-raised:#321a10; --v2-border:#57301f; --v2-text:#f4e5d8; --v2-muted:#c0a28c; --v2-accent:#a0522d; }
+html[data-universe='prythian'][data-court='winter'] { --v2-bg:#091218; --v2-panel:#101e28; --v2-panel-raised:#172b38; --v2-border:#2d4d5e; --v2-text:#edf6fa; --v2-muted:#a8bec8; --v2-accent:#83b6cf; }
+html[data-universe='prythian'][data-court='day'] { --v2-bg:#171207; --v2-panel:#241d0c; --v2-panel-raised:#322813; --v2-border:#5a4823; --v2-text:#fff2cc; --v2-muted:#cbb98a; --v2-accent:#d0a84f; }
+html[data-universe='prythian'][data-court='dawn'] { --v2-bg:#171014; --v2-panel:#241920; --v2-panel-raised:#32232d; --v2-border:#5a3d4a; --v2-text:#f8eaef; --v2-muted:#c5abb5; --v2-accent:#c9879a; }
+
 html[data-universe='prythian'] .mind-map-workspace,
 html[data-universe='prythian'] .mind-map-page,
 html[data-universe='prythian'] .mind-map-page--enhanced {
@@ -82,14 +90,8 @@ html[data-universe='prythian'] .mind-map-readonly-note {
   color: var(--v2-muted) !important;
 }
 
-html[data-universe='prythian'] .mind-map-edge line:not(.mind-map-edge-hit) {
-  stroke: var(--v2-accent) !important;
-}
-
-html[data-universe='prythian'] .mind-map-edge text {
-  fill: var(--v2-text) !important;
-  stroke: var(--v2-bg) !important;
-}
+html[data-universe='prythian'] .mind-map-edge line:not(.mind-map-edge-hit) { stroke: var(--v2-accent) !important; }
+html[data-universe='prythian'] .mind-map-edge text { fill: var(--v2-text) !important; stroke: var(--v2-bg) !important; }
 
 html[data-universe='prythian'] .mind-map-minimap svg {
   border-color: var(--v2-border) !important;
@@ -97,10 +99,7 @@ html[data-universe='prythian'] .mind-map-minimap svg {
   background-image: radial-gradient(circle, color-mix(in srgb, var(--v2-accent) 28%, transparent) 1px, transparent 1.5px) !important;
 }
 
-html[data-universe='prythian'] .mind-map-minimap circle {
-  fill: var(--v2-accent) !important;
-  stroke: var(--v2-text) !important;
-}
+html[data-universe='prythian'] .mind-map-minimap circle { fill: var(--v2-accent) !important; stroke: var(--v2-text) !important; }
 
 html[data-universe='prythian'][data-court='night'] .v2-sidebar-footer::before {
   content: '“To the stars who listen and the dreams that are answered.”\A\A“I am the rock against which the surf crashes. Nothing can break me.”';

@@ -3,6 +3,7 @@ import { getAuthSnapshot } from './supabase';
 
 const MIN_WIDTH = 160;
 const MIN_HEIGHT = 110;
+const CLICK_SUPPRESSION_MS = 350;
 
 type ActiveResize = {
   pointerId: number;
@@ -16,6 +17,8 @@ type ActiveResize = {
 };
 
 let active: ActiveResize | null = null;
+let suppressCardId = '';
+let suppressUntil = 0;
 
 function currentZoom(card: HTMLElement): number {
   const canvas = card.closest<HTMLElement>('.wall-canvas');
@@ -59,10 +62,14 @@ async function persistSize(cardId: string, width: number, height: number) {
 
 function finish(event: PointerEvent) {
   if (!active || event.pointerId !== active.pointerId) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
   applySize(event.clientX, event.clientY);
   const { card, cardId } = active;
   const width = Math.max(MIN_WIDTH, Math.round(card.offsetWidth));
   const height = Math.max(MIN_HEIGHT, Math.round(card.offsetHeight));
+  suppressCardId = cardId;
+  suppressUntil = performance.now() + CLICK_SUPPRESSION_MS;
   try { card.releasePointerCapture(event.pointerId); } catch { /* capture already released */ }
   active = null;
   document.removeEventListener('pointermove', move, true);
@@ -77,6 +84,17 @@ function move(event: PointerEvent) {
   event.stopImmediatePropagation();
   applySize(event.clientX, event.clientY);
 }
+
+document.addEventListener('click', (event) => {
+  if (performance.now() > suppressUntil) return;
+  const target = event.target as Element | null;
+  const card = target?.closest<HTMLElement>('.wall-card[data-wall-card-id]');
+  if (!card || card.dataset.wallCardId !== suppressCardId) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  suppressCardId = '';
+  suppressUntil = 0;
+}, true);
 
 document.addEventListener('pointerdown', (event) => {
   const target = event.target as Element | null;

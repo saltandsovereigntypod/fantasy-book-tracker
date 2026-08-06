@@ -2,6 +2,7 @@ import { createClient, type Session, type SupabaseClient, type User } from '@sup
 
 const FALLBACK_URL = 'https://udxatwvbxpefbdhnsycf.supabase.co';
 const FALLBACK_KEY = 'sb_publishable_HPoFuihcUtFr1Dsj1cLpwA_8R2z6snG';
+const AUTH_RESTORE_TIMEOUT_MS = 5000;
 
 const url = import.meta.env.VITE_SUPABASE_URL || FALLBACK_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_KEY;
@@ -19,8 +20,18 @@ export interface AuthSnapshot {
   user: User | null;
 }
 
+function authRestoreTimeout(): Promise<never> {
+  return new Promise((_, reject) => {
+    window.setTimeout(() => reject(new Error('Session restoration timed out. Please reopen the app.')), AUTH_RESTORE_TIMEOUT_MS);
+  });
+}
+
 export async function getAuthSnapshot(): Promise<AuthSnapshot> {
-  const { data, error } = await supabase.auth.getSession();
+  const response = await Promise.race([
+    supabase.auth.getSession(),
+    authRestoreTimeout(),
+  ]);
+  const { data, error } = response;
   if (error) throw error;
   return { session: data.session, user: data.session?.user ?? null };
 }

@@ -1,0 +1,75 @@
+/* One sizing contract for library cards. CardRenderer owns the canvas size;
+   the article and button must wrap that exact canvas plus article padding. */
+.v2-library-grid {
+  --library-card-width: 420px;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--library-card-width) + 28px), max-content)) !important;
+  justify-content: start;
+  align-items: start;
+}
+
+.v2-library-grid.is-extra-small { --library-card-width: 220px; }
+.v2-library-grid.is-small { --library-card-width: 300px; }
+.v2-library-grid.is-medium { --library-card-width: 420px; }
+.v2-library-grid.is-large { --library-card-width: 560px; }
+
+.v2-library-grid > article {
+  inline-size: calc(var(--library-card-width) + 28px) !important;
+  max-inline-size: 100%;
+  block-size: auto !important;
+  min-block-size: 0 !important;
+  padding: 14px !important;
+  box-sizing: border-box;
+  justify-items: center;
+  overflow: visible !important;
+}
+
+.v2-library-card-open {
+  inline-size: var(--library-card-width) !important;
+  max-inline-size: var(--library-card-width) !important;
+  block-size: auto !important;
+  min-block-size: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
+}
+
+.v2-library-card-open .card-editor-shell,
+.v2-library-card-open .card-renderer {
+  inline-size: var(--library-card-width) !important;
+  max-inline-size: var(--library-card-width) !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .v2-library-grid,
+  .v2-library-grid.is-extra-small,
+  .v2-library-grid.is-small,
+  .v2-library-grid.is-medium,
+  .v2-library-grid.is-large {
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-content: stretch;
+  }
+
+  .v2-library-grid > article {
+    --library-card-room: calc(100vw - 44px);
+    inline-size: min(100%, var(--library-card-room)) !important;
+    max-inline-size: var(--library-card-room) !important;
+    padding: 10px !important;
+    overflow: hidden !important;
+  }
+
+  .v2-library-card-open {
+    --library-card-scale: min(1, calc((100vw - 64px) / var(--library-card-width)));
+    inline-size: calc(var(--library-card-width) * var(--library-card-scale)) !important;
+    max-inline-size: 100% !important;
+    block-size: calc((var(--library-card-width) * 380 / 420) * var(--library-card-scale)) !important;
+    margin-inline: auto !important;
+    overflow: hidden !important;
+  }
+
+  .v2-library-card-open .card-editor-shell {
+    transform: scale(var(--library-card-scale));
+    transform-origin: top left;
+  }
+}

@@ -99,11 +99,6 @@ function strings(value: unknown): string[] {
     : [];
 }
 
-function timestamp(value: unknown): number {
-  const parsed = Date.parse(String(value || ''));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function validCourt(value: unknown): PrythianCourtId | undefined {
   return PRYTHIAN_COURT_IDS.includes(value as PrythianCourtId)
     ? value as PrythianCourtId
@@ -396,15 +391,8 @@ export async function loadCloudArchive(user: User): Promise<V2ArchiveState> {
     const raw = row.state as Record<string, unknown>;
     const candidate = raw.v2Archive && typeof raw.v2Archive === 'object' ? raw.v2Archive : raw;
     const cloud = normalizeArchive(candidate, user);
-    const cloudUpdatedAt = Math.max(timestamp(cloud.updatedAt), timestamp(row.updated_at));
-    const localUpdatedAt = timestamp(local.updatedAt);
-
-    if (cloudUpdatedAt > localUpdatedAt) {
-      saveLocalArchive(cloud);
-      return cloud;
-    }
-
-    return local;
+    saveLocalArchive(cloud);
+    return cloud;
   } catch {
     return local;
   }

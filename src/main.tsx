@@ -46,6 +46,7 @@ import './point-ledger-runtime.css';
 import './profile-identity-runtime.css';
 import './library-quick-add-runtime.css';
 import './global-scrollbars.css';
+import './mobile-card-editor-authority.css';
 
 bootstrapUniverse();
 

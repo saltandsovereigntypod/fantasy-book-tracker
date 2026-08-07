@@ -20,6 +20,7 @@ import './mind-map-line-rules-position';
 import './mind-map-relationship-polish.css';
 import './card-theme-library-runtime';
 import './recent-colors-runtime';
+import './library-preferences-runtime';
 import './library-metadata-runtime';
 import './extra-small-library-runtime';
 import './wall-dossier-resize-fix';

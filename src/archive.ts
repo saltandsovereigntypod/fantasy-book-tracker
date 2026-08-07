@@ -8,6 +8,7 @@ import type {
   WallRecord,
 } from './domain';
 import { defaultDesign } from './defaults';
+import { normalizeIdentityAssignments, stableFaeRole, type IdentityAssignments } from './identity';
 import { supabase } from './supabase';
 import {
   PRYTHIAN_COURT_IDS,
@@ -50,10 +51,12 @@ export interface V2Profile {
   points: number;
   rankIndex: number;
   onboarded: boolean;
+  identitySeed: string;
+  identityAssignments: IdentityAssignments;
   abilityId?: string;
   abilityName?: string;
   abilityDescription?: string;
-  creature?: { kind: 'dragon' | 'gryphon' | 'wyvern'; name: string; color: string; tail?: string };
+  creature?: { kind: 'dragon' | 'gryphon' | 'wyvern'; name: string; color: string; tail?: string; flameColor?: 'Red' | 'Green' | 'Blue'; strength?: number };
   primaryPowerId?: string;
   primaryPowerName?: string;
   primaryPowerDescription?: string;
@@ -120,23 +123,31 @@ function hasLegacyPrythianIdentity(profile: Record<string, unknown>, source: Rec
 
 function normalizeProfile(value: unknown, user?: User | null): V2Profile {
   const source = isRecord(value) ? value : {};
+  const displayName = String(source.displayName || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader');
+  const identitySeed = String(source.identitySeed || user?.id || `reader:${displayName.toLocaleLowerCase()}`);
+  const sharedCreature = isRecord(source.creature) && source.creature.name
+    ? {
+        kind: source.creature.kind === 'gryphon' || source.creature.kind === 'wyvern' ? source.creature.kind : 'dragon' as const,
+        name: String(source.creature.name),
+        color: String(source.creature.color || ''),
+        tail: source.creature.tail ? String(source.creature.tail) : undefined,
+        flameColor: source.creature.flameColor === 'Red' || source.creature.flameColor === 'Green' || source.creature.flameColor === 'Blue' ? source.creature.flameColor : undefined,
+        strength: Number.isFinite(Number(source.creature.strength)) ? Number(source.creature.strength) : undefined,
+      }
+    : undefined;
+  const identityAssignments = normalizeIdentityAssignments(source.identityAssignments, source, identitySeed);
   return {
-    displayName: String(source.displayName || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader'),
+    displayName,
     path: String(source.path || 'rider'),
     points: numberOr(source.points),
     rankIndex: numberOr(source.rankIndex),
     onboarded: Boolean(source.onboarded),
+    identitySeed,
+    identityAssignments,
     abilityId: source.abilityId ? String(source.abilityId) : undefined,
     abilityName: source.abilityName ? String(source.abilityName) : undefined,
     abilityDescription: source.abilityDescription ? String(source.abilityDescription) : undefined,
-    creature: isRecord(source.creature) && source.creature.name
-      ? {
-          kind: source.creature.kind === 'gryphon' || source.creature.kind === 'wyvern' ? source.creature.kind : 'dragon',
-          name: String(source.creature.name),
-          color: String(source.creature.color || ''),
-          tail: source.creature.tail ? String(source.creature.tail) : undefined,
-        }
-      : undefined,
+    creature: sharedCreature,
     primaryPowerId: source.primaryPowerId ? String(source.primaryPowerId) : undefined,
     primaryPowerName: source.primaryPowerName ? String(source.primaryPowerName) : undefined,
     primaryPowerDescription: source.primaryPowerDescription ? String(source.primaryPowerDescription) : undefined,
@@ -160,6 +171,9 @@ function normalizeUniverses(value: unknown, profile: V2Profile, archiveSource: R
       : 'empyrean';
   const sharedPoints = numberOr(profile.points);
   const court = validCourt(rawPrythian.court) || profile.court || validCourt(archiveSource.court) || (migratedPrythian ? 'night' : undefined);
+  const role = rawPrythian.role === 'lesser-fae' || rawPrythian.role === 'illyrian' || rawPrythian.role === 'high-fae'
+    ? rawPrythian.role
+    : profile.role || (court || activeUniverse === 'prythian' ? stableFaeRole(profile.identitySeed) : undefined);
 
   return {
     activeUniverse,
@@ -185,9 +199,7 @@ function normalizeUniverses(value: unknown, profile: V2Profile, archiveSource: R
       primaryPowerDescription: rawPrythian.primaryPowerDescription ? String(rawPrythian.primaryPowerDescription) : profile.primaryPowerDescription,
       rareAffinityId: rawPrythian.rareAffinityId ? String(rawPrythian.rareAffinityId) : profile.rareAffinityId,
       rareAffinityName: rawPrythian.rareAffinityName ? String(rawPrythian.rareAffinityName) : profile.rareAffinityName,
-      role: rawPrythian.role === 'lesser-fae' || rawPrythian.role === 'illyrian' || rawPrythian.role === 'high-fae'
-        ? rawPrythian.role
-        : profile.role,
+      role,
       distinctions: strings(rawPrythian.distinctions),
     },
   };

@@ -3,33 +3,78 @@
    presentation and interaction chrome. */
 
 @media (max-width: 760px) {
-  /* Library cards should read as cards, not cards inside oversized bordered
-     boxes. Keep the selection control, but remove the heavy outer shell. */
+  /* The route banner must stay in normal flow on phones. A sticky topbar was
+     covering the first controls/content on multiple routes. */
+  .core-path-app .v2-topbar {
+    position: relative !important;
+    top: auto !important;
+    z-index: 20 !important;
+  }
+
+  /* Collapse/minimize affordances are desktop/tablet controls. On mobile the
+     navigation is already a compact horizontal menu, so these only cover UI. */
+  .core-path-app .v2-sidebar-toggle,
+  .core-path-app .v2-sidebar-collapse,
+  .core-path-app .panel-collapse-button {
+    display: none !important;
+  }
+
+  /* Library cards should not sit inside desktop-sized outlines. Size the
+     wrapper from the visual mobile card width, center it, and remove all shell
+     decoration including theme pseudo-elements. */
+  .core-path-app .v2-library-grid {
+    justify-items: center !important;
+  }
+
   .core-path-app .v2-library-grid > article {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 4px 0 14px !important;
+    --library-mobile-card-width: min(var(--library-card-width), calc(100vw - 40px));
+    inline-size: calc(var(--library-mobile-card-width) + 8px) !important;
+    width: calc(var(--library-mobile-card-width) + 8px) !important;
+    max-inline-size: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    justify-self: center !important;
+    padding: 4px !important;
     border: 0 !important;
+    outline: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     overflow: visible !important;
+  }
+
+  .core-path-app .v2-library-grid > article::before,
+  .core-path-app .v2-library-grid > article::after {
+    content: none !important;
+    display: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
 
   .core-path-app .v2-library-grid > article.is-selected {
-    background: color-mix(in srgb, var(--v2-accent) 8%, transparent) !important;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 0 0 1px var(--v2-accent) !important;
   }
 
   .core-path-app .v2-library-card-open {
-    width: fit-content !important;
-    max-width: 100% !important;
+    inline-size: var(--library-mobile-card-width) !important;
+    width: var(--library-mobile-card-width) !important;
+    max-inline-size: var(--library-mobile-card-width) !important;
+    max-width: var(--library-mobile-card-width) !important;
     margin-inline: auto !important;
+    padding: 0 !important;
     border: 0 !important;
+    outline: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     overflow: visible !important;
+  }
+
+  .core-path-app .v2-library-card-open::before,
+  .core-path-app .v2-library-card-open::after {
+    content: none !important;
+    display: none !important;
   }
 
   .core-path-app .v2-library-grid > article > .v2-library-select {
@@ -67,9 +112,7 @@
     justify-content: center !important;
   }
 
-  /* Fit the actual editor canvas to the phone without changing CardDesign.
-     CSS zoom keeps layout dimensions in sync with the visual dimensions, so
-     medium/large previews no longer extend behind the stage edge. */
+  /* Fit the editor canvas to the phone without changing CardDesign. */
   .v2-view--editor .card-renderer--editor[data-card-size='medium'] {
     zoom: min(1, calc((100vw - 42px) / 420));
   }
@@ -110,8 +153,7 @@
     font-size: .78rem !important;
   }
 
-  /* The global mobile 44px button rule was inflating every resize handle and
-     covering the selected object. Restore compact editor handles explicitly. */
+  /* Restore compact resize handles after the global mobile 44px button rule. */
   .v2-view--editor .selection-controls button {
     width: 12px !important;
     height: 12px !important;
@@ -139,12 +181,19 @@
     min-height: 14px !important;
   }
 
-  /* Turn the remote editor header actions into a persistent thumb-friendly
-     editing dock. The editor already autosaves locally, so the duplicate Save
-     Draft button is hidden on phones to keep the dock focused. */
+  /* Keep the existing editor controls, but make them a compact sticky strip.
+     This is deliberately not a fixed bottom dock, which could disappear behind
+     browser chrome or later mobile positioning rules. */
   .v2-view--editor .app-header {
-    position: static !important;
-    padding: 10px 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 900 !important;
+    display: block !important;
+    width: 100% !important;
+    padding: 7px 10px !important;
+    border-bottom: 1px solid var(--v2-border-strong) !important;
+    background: rgba(15, 9, 7, .96) !important;
+    backdrop-filter: blur(14px);
   }
 
   .v2-view--editor .app-header > div:first-child {
@@ -152,21 +201,19 @@
   }
 
   .v2-view--editor .header-actions {
-    position: fixed !important;
-    left: 10px !important;
-    right: 10px !important;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
-    z-index: 1200 !important;
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
     display: grid !important;
-    grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr) !important;
-    gap: 7px !important;
-    width: auto !important;
-    padding: 7px !important;
-    border: 1px solid var(--v2-border-strong) !important;
-    border-radius: 15px !important;
-    background: rgba(15, 9, 7, .94) !important;
-    box-shadow: 0 12px 34px rgba(0,0,0,.55) !important;
-    backdrop-filter: blur(14px);
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   .v2-view--editor .header-actions > .primary-button {
@@ -187,21 +234,20 @@
 
   .v2-view--editor .history-controls button,
   .v2-view--editor .size-switcher button {
+    display: block !important;
     min-width: 0 !important;
-    min-height: 36px !important;
-    padding: 6px 5px !important;
-    font-size: .76rem !important;
+    min-height: 34px !important;
+    padding: 5px 4px !important;
+    font-size: .74rem !important;
   }
 
   .v2-view--editor .workspace-grid {
-    padding-bottom: 92px !important;
+    padding-bottom: 12px !important;
   }
 
-  /* Keep floating theme controls above the editor dock instead of covering the
-     preview and the browser-safe-area edge. */
   .v2-view--editor .card-themes-button,
   .v2-view--editor .card-theme-manager {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 82px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
   }
 }
 

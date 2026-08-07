@@ -1,0 +1,93 @@
+/* Final page-level mobile overflow boundary.
+   Normal routes must never widen the browser viewport. Components that are
+   intentionally pannable keep their own internal horizontal scrolling. */
+
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow-x: clip !important;
+    overscroll-behavior-x: none;
+  }
+
+  .core-path-app,
+  .core-path-app.v2-full-app,
+  .core-path-app .v2-app-main,
+  .core-path-app .v2-view,
+  .core-path-app .v2-view > * {
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .core-path-app,
+  .core-path-app.v2-full-app,
+  .core-path-app .v2-app-main,
+  .core-path-app .v2-view {
+    inline-size: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  /* The mobile navigation may scroll within its own strip, but it must not
+     enlarge the document itself. */
+  .core-path-app .v2-app-sidebar {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    min-inline-size: 0 !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+  }
+
+  .core-path-app .v2-app-sidebar nav {
+    max-inline-size: 100%;
+  }
+
+  /* Forms, grids and route shells are common sources of min-content overflow
+     on phones. Let their children shrink instead of widening the page. */
+  .core-path-app .v2-library,
+  .core-path-app .v2-library-controls,
+  .core-path-app .v2-library-actionbar,
+  .core-path-app .v2-library-grid,
+  .core-path-app .v2-dashboard,
+  .core-path-app .v2-profile,
+  .core-path-app .investigation-module,
+  .core-path-app .investigation-layout,
+  .core-path-app .wall-shell,
+  .core-path-app .app-shell,
+  .core-path-app .workspace-grid,
+  .core-path-app .book-panel,
+  .core-path-app .design-stage,
+  .core-path-app .inspector-panel,
+  .core-path-app .stage-heading,
+  .core-path-app .stage-canvas,
+  .core-path-app .card-editor-shell,
+  .core-path-app .card-inline-tools {
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* The editor card is already scaled to fit on mobile. Do not allow its
+     surrounding stage to turn that internal canvas into document-level pan. */
+  .core-path-app .v2-view--editor .design-stage,
+  .core-path-app .v2-view--editor .stage-canvas {
+    overflow-x: clip !important;
+  }
+
+  /* These canvases are intentionally wider than a phone. Keep the pan local to
+     their viewport instead of handing horizontal scroll to the whole page. */
+  .core-path-app .mind-map-viewport,
+  .core-path-app .relationship-map-viewport,
+  .core-path-app .wall-canvas,
+  .core-path-app .wall-board {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    min-inline-size: 0 !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}

@@ -59,11 +59,6 @@
     overflow: visible !important;
   }
 
-  /* Keep CardRenderer as the authority for the actual canvas and element
-     geometry. On narrow screens, scale the finished shell visually without
-     changing its saved design dimensions. Unlike CSS zoom, transform does not
-     depend on mobile-browser zoom layout behavior, and the unscaled shell keeps
-     its real height in document flow so card contents cannot collapse away. */
   .v2-library-card-open {
     --library-card-scale: min(1, calc((100vw - 64px) / var(--library-card-width)));
     inline-size: 100% !important;
@@ -74,13 +69,59 @@
     overflow: visible !important;
   }
 
-  .v2-library-card-open .card-editor-shell {
+  /* The design canvas is not normal responsive page content. Earlier mobile
+     rules intentionally constrain generic descendants, but those constraints
+     corrupt CardRenderer's absolutely positioned canvas on narrow screens.
+     Reset them here, after the mobile stylesheet, and scale only the complete
+     renderer shell. Saved CardDesign geometry remains untouched. */
+  .core-path-app .v2-library-card-open .card-editor-shell {
+    inline-size: var(--library-card-width) !important;
+    width: var(--library-card-width) !important;
+    min-inline-size: var(--library-card-width) !important;
+    max-inline-size: none !important;
+    max-width: none !important;
     transform: scale(var(--library-card-scale)) !important;
     transform-origin: top left !important;
     zoom: 1 !important;
+    overflow: visible !important;
   }
 
-  .v2-library-card-open .card-renderer {
+  .core-path-app .v2-library-card-open .card-renderer {
+    inline-size: var(--library-card-width) !important;
+    width: var(--library-card-width) !important;
+    min-inline-size: var(--library-card-width) !important;
+    max-inline-size: none !important;
+    max-width: none !important;
+    position: relative !important;
+    transform: none !important;
     overflow: hidden !important;
+  }
+
+  .core-path-app .v2-library-card-open .design-element {
+    min-width: 0 !important;
+    max-width: none !important;
+    max-inline-size: none !important;
+  }
+
+  .core-path-app .v2-library-card-open .design-element-content {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-inline-size: none !important;
+  }
+
+  .core-path-app .v2-library-card-open img.design-element-content {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+  }
+
+  .core-path-app .v2-library-card-open .rating-glyph-row,
+  .core-path-app .v2-library-card-open .rating-glyph-slot,
+  .core-path-app .v2-library-card-open .rating-glyph-empty,
+  .core-path-app .v2-library-card-open .rating-glyph-fill,
+  .core-path-app .v2-library-card-open .rating-glyph-fill > span {
+    max-width: none !important;
   }
 }

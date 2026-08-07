@@ -2,9 +2,10 @@ export type CardSize = 'extra-small' | 'small' | 'medium' | 'large';
 export type ReadingStatus = 'want' | 'reading' | 'paused' | 'completed' | 'dnf';
 export type BookFieldPath = 'title' | 'author' | 'series' | 'status' | 'progress' | 'rating' | 'spice' | 'impact' | 'reaction' | 'coverUrl';
 export type TheoryStatus = 'open' | 'confirmed' | 'disproven' | 'dormant';
-export type SuspicionStatus = 'open' | 'resolved' | 'dismissed';
+export type SuspicionStatus = 'open' | 'confirmed' | 'cleared' | 'resolved' | 'dismissed';
 export type SuspicionSeverity = 'low' | 'guarded' | 'high' | 'critical';
 export type SuspicionSignalKind = 'clue' | 'behavior' | 'contradiction' | 'pattern';
+export type InvestigationHistoryAction = 'created' | 'updated' | 'evidence-added' | 'signal-added' | 'archived' | 'restored';
 export type WallDossierCategory = 'character' | 'location' | 'faction' | 'object' | 'event' | 'creature' | 'custom';
 export type WallSourceType = 'book' | 'theory' | 'suspicion' | 'dossier';
 export type WallCardKind = 'home' | 'reference';
@@ -20,8 +21,22 @@ export interface BookRelationship { id: string; targetBookId: string; type: stri
 export interface CustomBookRating { id: string; label: string; value: number; max: number; icon: string; emptyIcon: string; }
 export interface EvidenceNote { id: string; text: string; createdAt: string; }
 export interface SuspicionSignal extends EvidenceNote { kind: SuspicionSignalKind; }
-export interface InvestigationRevision { id: string; editedAt: string; title: string; body: string; confidence: number; status: TheoryStatus | SuspicionStatus; bookIds: string[]; severity?: SuspicionSeverity; }
-export interface TheoryRecord { id: string; title: string; statement: string; status: TheoryStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; history: InvestigationRevision[]; createdAt: string; updatedAt: string; }
+export interface InvestigationChange { field: string; before: string; after: string; }
+export interface InvestigationRevision {
+  id: string;
+  editedAt: string;
+  title: string;
+  body: string;
+  confidence: number;
+  status: TheoryStatus | SuspicionStatus;
+  bookIds: string[];
+  severity?: SuspicionSeverity;
+  action?: InvestigationHistoryAction;
+  reason?: string;
+  changes?: InvestigationChange[];
+  archived?: boolean;
+}
+export interface TheoryRecord { id: string; title: string; statement: string; status: TheoryStatus; confidence: number; bookIds: string[]; evidence: EvidenceNote[]; history: InvestigationRevision[]; createdAt: string; updatedAt: string; archived?: boolean; archivedAt?: string; }
 export interface SuspicionRecord {
   id: string;
   subject: string;
@@ -33,6 +48,8 @@ export interface SuspicionRecord {
   history: InvestigationRevision[];
   createdAt: string;
   updatedAt: string;
+  archived?: boolean;
+  archivedAt?: string;
   /* Legacy compatibility fields are retained so existing records and wall/card
      integrations continue to work while Suspicion has its own domain model. */
   title: string;

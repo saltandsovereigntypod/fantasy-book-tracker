@@ -1,0 +1,56 @@
+.core-identity-reveals {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.core-identity-reveals > header {
+  display: grid;
+  gap: 4px;
+}
+
+.core-identity-reveals > header > span {
+  color: var(--v2-muted, #aaa8c9);
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.core-identity-reveals > header > h3 {
+  margin: 0;
+}
+
+.core-identity-reveal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.core-identity-reveal-card {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid var(--v2-border, #30365a);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--v2-panel-raised, #171a33) 88%, transparent);
+}
+
+.core-identity-reveal-card > span {
+  color: var(--v2-muted, #aaa8c9);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.core-identity-reveal-card > strong {
+  font-size: 1.05rem;
+}
+
+.core-identity-reveal-card > small,
+.core-identity-reveal-card > p {
+  margin: 0;
+  color: var(--v2-muted, #aaa8c9);
+  line-height: 1.45;
+}

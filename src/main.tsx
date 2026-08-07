@@ -43,6 +43,7 @@ import './library-card-layout-authority.css';
 import './interaction-layer-authority.css';
 import './point-ledger-runtime.css';
 import './profile-identity-runtime.css';
+import './global-scrollbars.css';
 
 bootstrapUniverse();
 

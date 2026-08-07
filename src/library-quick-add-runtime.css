@@ -1,0 +1,24 @@
+.library-quick-add-button {
+  position: fixed;
+  z-index: 5001;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--v2-accent, #8c78c9);
+  border-radius: 12px;
+  color: var(--v2-text, #fff);
+  background: color-mix(in srgb, var(--v2-panel-raised, #171a33) 92%, transparent);
+  box-shadow: 0 14px 38px rgba(0,0,0,.35);
+  font-size: 1.55rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.library-quick-add-button:hover,
+.library-quick-add-button:focus-visible {
+  background: color-mix(in srgb, var(--v2-accent, #8c78c9) 24%, var(--v2-panel-raised, #171a33));
+  outline: none;
+}

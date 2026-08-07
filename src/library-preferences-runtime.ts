@@ -5,6 +5,10 @@ type LibraryPreferences = {
   sort?: string;
   size?: string;
   detailedSort?: string;
+  sortPrimary?: string;
+  sortSecondary?: string;
+  sortTertiary?: string;
+  groupBy?: string;
 };
 
 const LOCAL_KEY = 'empyrean-v2-library-preferences';
@@ -27,6 +31,8 @@ function writeLocal(next: LibraryPreferences) {
 }
 
 function selectKind(select: HTMLSelectElement): keyof LibraryPreferences | null {
+  const explicit = select.dataset.libraryPref as keyof LibraryPreferences | undefined;
+  if (explicit) return explicit;
   if (select.closest('.advanced-library-sort')) return 'detailedSort';
   const values = [...select.options].map((option) => option.value);
   if (values.includes('active') && values.includes('archived')) return 'filter';
@@ -38,7 +44,8 @@ function selectKind(select: HTMLSelectElement): keyof LibraryPreferences | null 
 function applyPreference(select: HTMLSelectElement) {
   const kind = selectKind(select);
   if (!kind) return;
-  const value = preferences[kind];
+  let value = preferences[kind];
+  if (kind === 'sortPrimary' && !value && preferences.detailedSort) value = preferences.detailedSort;
   if (!value || select.value === value || ![...select.options].some((option) => option.value === value)) return;
   select.value = value;
   select.dispatchEvent(new Event('change', { bubbles: true }));

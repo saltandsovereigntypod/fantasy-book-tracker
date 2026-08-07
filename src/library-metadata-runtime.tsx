@@ -63,7 +63,67 @@ function LibraryMetadataTools(){
   useEffect(()=>{let active=true;const syncTargets=()=>{setEditorTarget(document.querySelector('.v2-view--editor .book-panel .field-stack'));setLibraryTarget(document.querySelector('.v2-view--library .v2-library-controls'));};syncTargets();const observer=new MutationObserver(syncTargets);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});getAuthSnapshot().then(async({user})=>{if(!user||!active)return;const next=await loadCloudArchive(user) as ExtendedArchive;if(active)setArchive(next);}).catch(()=>undefined);return()=>{active=false;observer.disconnect();};},[]);
   useEffect(()=>{if(!editorTarget||!archive)return;loadWorkspaceDraft().then(draft=>{const id=draft?.book?.id||'';setCurrentBookId(id);setPosition(id?(archive.bookSeriesPositions?.[id]||''):'');}).catch(()=>undefined);},[editorTarget,archive]);
   const booksByTitle=useMemo(()=>{const map=new Map<string,V2BookRecord[]>();for(const book of archive?.books||[]){const key=book.title.trim().toLowerCase();map.set(key,[...(map.get(key)||[]),book]);}return map;},[archive?.books]);
-  useEffect(()=>{if(!libraryTarget||!archive)return;const timer=window.setTimeout(()=>{const grid=document.querySelector<HTMLElement>('.v2-view--library .v2-library-grid');if(!grid)return;grid.querySelectorAll(':scope > .library-group-marker').forEach(marker=>marker.remove());const articles=[...grid.querySelectorAll<HTMLElement>(':scope > article')];const used=new Set<string>();const mapped=articles.map(article=>{const textValue=(article.querySelector('.card-title,[data-binding="title"],h2,h3,strong')?.textContent||article.textContent||'').trim().toLowerCase();const matches=[...(booksByTitle.get(textValue)||[])];const book=matches.find(item=>!used.has(item.id))||archive.books.find(item=>article.textContent?.includes(item.title)&&!used.has(item.id));if(book){used.add(book.id);article.dataset.bookId=book.id;}return{article,book};}).filter((entry):entry is {article:HTMLElement;book:V2BookRecord}=>Boolean(entry.book));mapped.sort((a,b)=>compareBooks(a.book,b.book,[primary,secondary,tertiary],archive.bookSeriesPositions||{}));let previousGroup='';mapped.forEach(entry=>{if(group!=='none'){const label=groupLabel(entry.book,group);if(label!==previousGroup){const marker=document.createElement('div');marker.className='library-group-marker';marker.innerHTML=`<span>${label}</span>`;grid.appendChild(marker);previousGroup=label;}}grid.appendChild(entry.article);});},20);return()=>window.clearTimeout(timer);},[libraryTarget,archive,primary,secondary,tertiary,group,booksByTitle]);
+  useEffect(()=>{
+    if(!libraryTarget||!archive)return;
+    const libraryView=libraryTarget.closest('.v2-view--library');
+    if(!libraryView)return;
+    let timer:number|null=null;
+    let arranging=false;
+
+    const arrangeGrid=()=>{
+      if(arranging)return;
+      arranging=true;
+      const grid=libraryView.querySelector<HTMLElement>('.v2-library-grid');
+      if(!grid){arranging=false;return;}
+      grid.querySelectorAll(':scope > .library-group-marker').forEach(marker=>marker.remove());
+      const articles=[...grid.querySelectorAll<HTMLElement>(':scope > article')];
+      const used=new Set<string>();
+      const mapped=articles.map(article=>{
+        const existingId=article.dataset.bookId;
+        const existingBook=existingId?archive.books.find(item=>item.id===existingId&&!used.has(item.id)):undefined;
+        const textValue=(article.querySelector('.card-title,[data-binding="title"],h2,h3,strong')?.textContent||article.textContent||'').trim().toLowerCase();
+        const matches=[...(booksByTitle.get(textValue)||[])];
+        const book=existingBook||matches.find(item=>!used.has(item.id))||archive.books.find(item=>article.textContent?.includes(item.title)&&!used.has(item.id));
+        if(book){used.add(book.id);article.dataset.bookId=book.id;}
+        return{article,book};
+      }).filter((entry):entry is {article:HTMLElement;book:V2BookRecord}=>Boolean(entry.book));
+      mapped.sort((a,b)=>compareBooks(a.book,b.book,[primary,secondary,tertiary],archive.bookSeriesPositions||{}));
+      let previousGroup='';
+      mapped.forEach(entry=>{
+        if(group!=='none'){
+          const label=groupLabel(entry.book,group);
+          if(label!==previousGroup){
+            const marker=document.createElement('div');
+            marker.className='library-group-marker';
+            marker.innerHTML=`<span>${label}</span>`;
+            grid.appendChild(marker);
+            previousGroup=label;
+          }
+        }
+        grid.appendChild(entry.article);
+      });
+      arranging=false;
+    };
+
+    const scheduleArrange=()=>{
+      if(arranging)return;
+      if(timer!==null)window.clearTimeout(timer);
+      timer=window.setTimeout(()=>{timer=null;arrangeGrid();},20);
+    };
+
+    const observer=new MutationObserver((mutations)=>{
+      if(arranging)return;
+      const shouldArrange=mutations.some(mutation=>
+        [...mutation.addedNodes,...mutation.removedNodes].some(node=>
+          node instanceof HTMLElement && (node.matches('article,.v2-library-grid,.v2-empty-state')||Boolean(node.querySelector?.('article,.v2-library-grid,.v2-empty-state')))
+        )
+      );
+      if(shouldArrange)scheduleArrange();
+    });
+    observer.observe(libraryView,{childList:true,subtree:true});
+    scheduleArrange();
+    return()=>{observer.disconnect();if(timer!==null)window.clearTimeout(timer);};
+  },[libraryTarget,archive,primary,secondary,tertiary,group,booksByTitle]);
   async function savePosition(){if(!archive||!currentBookId)return;const clean=position.trim();const nextMap={...(archive.bookSeriesPositions||{})};if(!clean||clean.toLowerCase()==='n/a'||clean.toLowerCase()==='na')delete nextMap[currentBookId];else nextMap[currentBookId]=clean;const next={...archive,bookSeriesPositions:nextMap,updatedAt:new Date().toISOString()};setArchive(next);saveLocalArchive(next);setSaveState('Saving…');try{const{user}=await getAuthSnapshot();if(!user)throw new Error('Session expired');await saveCloudArchive(user,next);setSaveState(clean&&clean.toLowerCase()!=='n/a'?'Saved':'Standalone book');window.setTimeout(()=>setSaveState(''),1500);}catch{setSaveState('Save failed');}}
   const sortSelect=(label:string,value:SortCriterion,onChange:(next:SortCriterion)=>void,key:string)=><label><span>{label}</span><select data-library-pref={key} value={value} onChange={event=>onChange(event.target.value as SortCriterion)}>{SORT_OPTIONS.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>;
   return <>{editorTarget&&createPortal(<section className="series-position-field"><div><label htmlFor="series-position-input">Book number in series</label><small>Use a number such as 1, 2, or 3.5. Enter N/A or leave blank for a standalone.</small></div><div><input id="series-position-input" value={position} onChange={event=>setPosition(event.target.value)} onBlur={()=>void savePosition()} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void savePosition();}}} placeholder="N/A"/><button type="button" onClick={()=>void savePosition()}>Save</button></div>{saveState&&<em>{saveState}</em>}</section>,editorTarget)}{libraryTarget&&createPortal(<div className="advanced-library-sort"><div className="advanced-library-sort-priorities">{sortSelect('1st',primary,setPrimary,'sortPrimary')}{sortSelect('2nd',secondary,setSecondary,'sortSecondary')}{sortSelect('3rd',tertiary,setTertiary,'sortTertiary')}</div><label className="advanced-library-group"><span>Group</span><select data-library-pref="groupBy" value={group} onChange={event=>setGroup(event.target.value as GroupCriterion)}>{GROUP_OPTIONS.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label></div>,libraryTarget)}</>;

@@ -134,7 +134,7 @@
 .v2-sidebar-toggle {
   position: absolute;
   top: 16px;
-  right: -15px;
+  right: 8px;
   z-index: 160;
   width: 30px;
   height: 30px;
@@ -150,15 +150,7 @@
 }
 
 .v2-app-sidebar {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow-y: auto;
-  overflow-x: visible;
-  scrollbar-width: thin;
+  position: relative;
   z-index: 120;
   transition: width .18s ease, min-width .18s ease, padding .18s ease;
 }
@@ -201,6 +193,58 @@
 .v2-full-app.is-sidebar-collapsed .v2-sidebar-footer {
   border-top: 0;
   padding: 0;
+}
+
+/* Desktop/tablet app shell: the navigation rail stays put while every main route scrolls independently. */
+@media (min-width: 761px) {
+  html:has(.v2-full-app),
+  body:has(.v2-full-app) {
+    height: 100%;
+    overflow: hidden !important;
+  }
+
+  body:has(.v2-full-app) #root {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden !important;
+  }
+
+  .v2-full-app {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    max-height: 100dvh;
+    overflow: hidden !important;
+  }
+
+  .v2-full-app > .v2-app-sidebar {
+    position: relative;
+    top: auto;
+    align-self: stretch;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow-x: hidden !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .v2-full-app > .v2-app-sidebar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .v2-full-app > .v2-app-main {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
 }
 
 @media (max-width: 760px) {

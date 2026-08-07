@@ -1,9 +1,20 @@
-import { loadLocalArchive } from './archive';
+import { loadLocalArchive, saveCloudArchive, saveLocalArchive } from './archive';
+import { getAuthSnapshot } from './supabase';
 
 function faeRoleName(role: 'high-fae' | 'lesser-fae' | 'illyrian' | undefined): string {
   if (role === 'illyrian') return 'Illyrian';
   if (role === 'lesser-fae') return 'Lesser Fae';
   return 'High Fae';
+}
+
+function ordinal(value: number): string {
+  const remainder100 = value % 100;
+  if (remainder100 >= 11 && remainder100 <= 13) return `${value}th`;
+  const remainder10 = value % 10;
+  if (remainder10 === 1) return `${value}st`;
+  if (remainder10 === 2) return `${value}nd`;
+  if (remainder10 === 3) return `${value}rd`;
+  return `${value}th`;
 }
 
 function makeCard(label: string, title: string, detail?: string, description?: string): HTMLElement {
@@ -25,6 +36,101 @@ function makeCard(label: string, title: string, detail?: string, description?: s
     article.appendChild(paragraph);
   }
   return article;
+}
+
+async function saveRiderAssignment(section: HTMLElement, wing: number, riderSection: 'Flame' | 'Claw' | 'Tail', squad: 1 | 2 | 3): Promise<void> {
+  const archive = loadLocalArchive();
+  const next = {
+    ...archive,
+    profile: {
+      ...archive.profile,
+      identityAssignments: {
+        ...archive.profile.identityAssignments,
+        rider: {
+          ...archive.profile.identityAssignments.rider,
+          wing,
+          section: riderSection,
+          squad,
+        },
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  saveLocalArchive(next);
+  section.dataset.signature = '';
+  renderIdentity();
+
+  const status = section.querySelector<HTMLElement>('[data-rider-assignment-status]');
+  if (status) status.textContent = 'Saving…';
+  try {
+    const { user } = await getAuthSnapshot();
+    if (!user) throw new Error('No signed-in user');
+    await saveCloudArchive(user, next);
+    if (status) status.textContent = 'Saved to your account';
+  } catch {
+    if (status) status.textContent = 'Saved locally. Cloud save failed.';
+  }
+}
+
+function makeRiderEditor(section: HTMLElement, wing: number, riderSection: 'Flame' | 'Claw' | 'Tail', squad: 1 | 2 | 3): HTMLElement {
+  const details = document.createElement('details');
+  details.className = 'core-rider-assignment-editor';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Edit Rider assignment';
+  details.appendChild(summary);
+
+  const form = document.createElement('div');
+  form.className = 'core-rider-assignment-controls';
+
+  const wingSelect = document.createElement('select');
+  wingSelect.setAttribute('aria-label', 'Wing');
+  [1, 2, 3, 4].forEach((value) => {
+    const option = document.createElement('option');
+    option.value = String(value);
+    option.textContent = `${ordinal(value)} Wing`;
+    option.selected = value === wing;
+    wingSelect.appendChild(option);
+  });
+
+  const sectionSelect = document.createElement('select');
+  sectionSelect.setAttribute('aria-label', 'Section');
+  (['Flame', 'Claw', 'Tail'] as const).forEach((value) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = `${value} Section`;
+    option.selected = value === riderSection;
+    sectionSelect.appendChild(option);
+  });
+
+  const squadSelect = document.createElement('select');
+  squadSelect.setAttribute('aria-label', 'Squad');
+  [1, 2, 3].forEach((value) => {
+    const option = document.createElement('option');
+    option.value = String(value);
+    option.textContent = `${ordinal(value)} Squad`;
+    option.selected = value === squad;
+    squadSelect.appendChild(option);
+  });
+
+  const saveButton = document.createElement('button');
+  saveButton.type = 'button';
+  saveButton.textContent = 'Save assignment';
+  saveButton.addEventListener('click', () => {
+    void saveRiderAssignment(
+      section,
+      Number(wingSelect.value),
+      sectionSelect.value as 'Flame' | 'Claw' | 'Tail',
+      Number(squadSelect.value) as 1 | 2 | 3,
+    );
+  });
+
+  const status = document.createElement('small');
+  status.dataset.riderAssignmentStatus = 'true';
+
+  form.append(wingSelect, sectionSelect, squadSelect, saveButton);
+  details.append(form, status);
+  return details;
 }
 
 function renderIdentity(): void {
@@ -63,14 +169,14 @@ function renderIdentity(): void {
   if (section.dataset.signature === signature) return;
   section.dataset.signature = signature;
 
-  section.querySelectorAll('.core-identity-reveal-grid').forEach((node) => node.remove());
+  section.querySelectorAll('.core-identity-reveal-grid, .core-rider-assignment-editor').forEach((node) => node.remove());
   const grid = document.createElement('div');
   grid.className = 'core-identity-reveal-grid';
 
   if (universe === 'prythian') {
     grid.appendChild(makeCard('Fae identity', faeRoleName(prythianRole), `${court.charAt(0).toUpperCase()}${court.slice(1)} Court`));
   } else if (path === 'rider') {
-    grid.appendChild(makeCard('Wing assignment', `${identity.rider.wing} Wing`, `${identity.rider.section} Section · Squad ${identity.rider.squad}`));
+    grid.appendChild(makeCard('Wing assignment', `${ordinal(identity.rider.wing)} Wing`, `${identity.rider.section} Section · ${ordinal(identity.rider.squad)} Squad`));
     if (identity.rider.dragon) {
       const dragon = identity.rider.dragon;
       grid.appendChild(makeCard('Bonded dragon', dragon.name, `${dragon.color}${dragon.tail ? ` · ${dragon.tail}` : ''}`));
@@ -95,6 +201,9 @@ function renderIdentity(): void {
   }
 
   section.appendChild(grid);
+  if (universe !== 'prythian' && path === 'rider') {
+    section.appendChild(makeRiderEditor(section, identity.rider.wing, identity.rider.section, identity.rider.squad));
+  }
 }
 
 let queued = false;

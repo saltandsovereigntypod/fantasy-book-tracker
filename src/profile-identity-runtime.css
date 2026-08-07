@@ -54,3 +54,43 @@
   color: var(--v2-muted, #aaa8c9);
   line-height: 1.45;
 }
+
+.core-rider-assignment-editor {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--v2-border, #30365a);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--v2-panel-raised, #171a33) 80%, transparent);
+}
+
+.core-rider-assignment-editor > summary {
+  padding: 8px 11px;
+  color: var(--v2-muted, #aaa8c9);
+  font-size: .76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.core-rider-assignment-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 10px 10px;
+}
+
+.core-rider-assignment-controls select,
+.core-rider-assignment-controls button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--v2-border, #30365a);
+  border-radius: 8px;
+  background: var(--v2-panel-raised, #171a33);
+  color: var(--v2-text, #f1efff);
+}
+
+.core-rider-assignment-editor > small {
+  display: block;
+  padding: 0 10px 9px;
+  color: var(--v2-muted, #aaa8c9);
+  font-size: .72rem;
+}

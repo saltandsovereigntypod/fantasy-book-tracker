@@ -90,4 +90,16 @@
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* iOS may promote Unicode rating symbols into full-color emoji. The half-fill
+     rating treatment depends on ordinary text glyphs that can be clipped, so
+     explicitly request text presentation and a symbol-capable text font. */
+  .core-path-app .rating-glyph-row,
+  .core-path-app .rating-glyph-slot,
+  .core-path-app .rating-glyph-empty,
+  .core-path-app .rating-glyph-fill,
+  .core-path-app .rating-glyph-fill > span {
+    font-variant-emoji: text;
+    font-family: "Apple Symbols", "Arial Unicode MS", "Times New Roman", serif !important;
+  }
 }

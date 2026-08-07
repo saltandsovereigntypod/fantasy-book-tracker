@@ -1,0 +1,136 @@
+import { getAuthSnapshot, supabase } from './supabase';
+
+type LibraryPreferences = {
+  filter?: string;
+  sort?: string;
+  size?: string;
+  detailedSort?: string;
+};
+
+const LOCAL_KEY = 'empyrean-v2-library-preferences';
+let preferences: LibraryPreferences = readLocal();
+let hydrated = false;
+let saveTimer: number | null = null;
+
+function readLocal(): LibraryPreferences {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed as LibraryPreferences : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLocal(next: LibraryPreferences) {
+  preferences = { ...preferences, ...next };
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(preferences)); } catch {}
+}
+
+function selectKind(select: HTMLSelectElement): keyof LibraryPreferences | null {
+  if (select.closest('.advanced-library-sort')) return 'detailedSort';
+  const values = [...select.options].map((option) => option.value);
+  if (values.includes('active') && values.includes('archived')) return 'filter';
+  if (values.includes('updated') && values.includes('rating')) return 'sort';
+  if (values.includes('small') && values.includes('medium') && values.includes('large')) return 'size';
+  return null;
+}
+
+function applyPreference(select: HTMLSelectElement) {
+  const kind = selectKind(select);
+  if (!kind) return;
+  const value = preferences[kind];
+  if (!value || select.value === value || ![...select.options].some((option) => option.value === value)) return;
+  select.value = value;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function applyAll() {
+  document.querySelectorAll<HTMLSelectElement>('.v2-view--library .v2-library-controls select, .v2-view--library .advanced-library-sort select').forEach(applyPreference);
+}
+
+async function loadCloudPreferences() {
+  try {
+    const { user } = await getAuthSnapshot();
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('archive_states')
+      .select('state')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : undefined;
+    const state = row?.state && typeof row.state === 'object' ? row.state as Record<string, unknown> : {};
+    const cloud = state.libraryPreferences;
+    if (cloud && typeof cloud === 'object' && !Array.isArray(cloud)) {
+      preferences = { ...preferences, ...(cloud as LibraryPreferences) };
+      writeLocal(preferences);
+    }
+  } catch {
+    // Local preferences remain the offline fallback.
+  } finally {
+    hydrated = true;
+    applyAll();
+  }
+}
+
+async function saveCloudPreferences() {
+  if (!hydrated) return;
+  try {
+    const { user } = await getAuthSnapshot();
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('archive_states')
+      .select('state')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : undefined;
+    if (!row?.state || typeof row.state !== 'object') return;
+    const state = row.state as Record<string, unknown>;
+    const { error: updateError } = await supabase
+      .from('archive_states')
+      .update({ state: { ...state, libraryPreferences: preferences }, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+    if (updateError) throw updateError;
+  } catch {
+    // Preferences stay local and will retry on a later change.
+  }
+}
+
+function scheduleCloudSave() {
+  if (saveTimer !== null) window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    saveTimer = null;
+    void saveCloudPreferences();
+  }, 350);
+}
+
+function handleChange(event: Event) {
+  const select = event.target instanceof HTMLSelectElement ? event.target : null;
+  if (!select || !select.matches('.v2-view--library .v2-library-controls select, .v2-view--library .advanced-library-sort select')) return;
+  const kind = selectKind(select);
+  if (!kind) return;
+  writeLocal({ [kind]: select.value });
+  scheduleCloudSave();
+}
+
+let frame = 0;
+function scheduleApply() {
+  if (frame) return;
+  frame = requestAnimationFrame(() => {
+    frame = 0;
+    applyAll();
+  });
+}
+
+function start() {
+  document.addEventListener('change', handleChange, true);
+  const observer = new MutationObserver(scheduleApply);
+  observer.observe(document.body, { childList: true, subtree: true });
+  void loadCloudPreferences();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+else start();

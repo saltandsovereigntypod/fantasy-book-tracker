@@ -19,6 +19,7 @@ import './mind-map-route-runtime';
 import './mind-map-line-rules-position';
 import './mind-map-relationship-polish.css';
 import './card-theme-library-runtime';
+import './library-quick-add-runtime';
 import './recent-colors-runtime';
 import './library-preferences-runtime';
 import './library-metadata-runtime';
@@ -43,6 +44,7 @@ import './library-card-layout-authority.css';
 import './interaction-layer-authority.css';
 import './point-ledger-runtime.css';
 import './profile-identity-runtime.css';
+import './library-quick-add-runtime.css';
 import './global-scrollbars.css';
 
 bootstrapUniverse();

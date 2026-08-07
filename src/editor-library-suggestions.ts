@@ -66,12 +66,6 @@ function applySuggestions() {
       ? unique(books.filter((book) => (book.author || '').trim().toLowerCase() === author).map((book) => book.series || ''))
       : allSeries;
     fillList(seriesList, matching.length ? matching : allSeries);
-
-    if (!seriesInput.value.trim() && matching.length === 1) {
-      seriesInput.value = matching[0];
-      seriesInput.dispatchEvent(new Event('input', { bubbles: true }));
-      seriesInput.dispatchEvent(new Event('change', { bubbles: true }));
-    }
   };
 
   if (authorInput.dataset.librarySuggestionsBound !== 'true') {

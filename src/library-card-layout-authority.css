@@ -59,17 +59,22 @@
     overflow: hidden !important;
   }
 
+  /* CardRenderer remains the authority for canvas width, aspect ratio, and
+     element scaling. Mobile only shrinks that complete rendered shell in
+     layout, so arbitrary saved CardDesign dimensions remain intact. */
   .v2-library-card-open {
     --library-card-scale: min(1, calc((100vw - 64px) / var(--library-card-width)));
-    inline-size: calc(var(--library-card-width) * var(--library-card-scale)) !important;
+    inline-size: fit-content !important;
     max-inline-size: 100% !important;
-    block-size: calc((var(--library-card-width) * 380 / 420) * var(--library-card-scale)) !important;
+    block-size: auto !important;
+    min-block-size: 0 !important;
     margin-inline: auto !important;
     overflow: hidden !important;
   }
 
   .v2-library-card-open .card-editor-shell {
-    transform: scale(var(--library-card-scale));
-    transform-origin: top left;
+    transform: none !important;
+    transform-origin: initial !important;
+    zoom: var(--library-card-scale);
   }
 }

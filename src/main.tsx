@@ -47,6 +47,7 @@ import './profile-identity-runtime.css';
 import './library-quick-add-runtime.css';
 import './global-scrollbars.css';
 import './mobile-card-editor-authority.css';
+import './mobile-overflow-authority.css';
 
 bootstrapUniverse();
 

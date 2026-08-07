@@ -56,25 +56,31 @@
     inline-size: min(100%, var(--library-card-room)) !important;
     max-inline-size: var(--library-card-room) !important;
     padding: 10px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
-  /* CardRenderer remains the authority for canvas width, aspect ratio, and
-     element scaling. Mobile only shrinks that complete rendered shell in
-     layout, so arbitrary saved CardDesign dimensions remain intact. */
+  /* Keep CardRenderer as the authority for the actual canvas and element
+     geometry. On narrow screens, scale the finished shell visually without
+     changing its saved design dimensions. Unlike CSS zoom, transform does not
+     depend on mobile-browser zoom layout behavior, and the unscaled shell keeps
+     its real height in document flow so card contents cannot collapse away. */
   .v2-library-card-open {
     --library-card-scale: min(1, calc((100vw - 64px) / var(--library-card-width)));
-    inline-size: fit-content !important;
+    inline-size: 100% !important;
     max-inline-size: 100% !important;
     block-size: auto !important;
     min-block-size: 0 !important;
     margin-inline: auto !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .v2-library-card-open .card-editor-shell {
-    transform: none !important;
-    transform-origin: initial !important;
-    zoom: var(--library-card-scale);
+    transform: scale(var(--library-card-scale)) !important;
+    transform-origin: top left !important;
+    zoom: 1 !important;
+  }
+
+  .v2-library-card-open .card-renderer {
+    overflow: hidden !important;
   }
 }

@@ -314,7 +314,7 @@ export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveS
   const baseUniverses = normalizeUniverses(source.universes, profile, source);
   const books = Array.isArray(source.books) ? source.books.map(normalizeBook) : [];
   const theories = Array.isArray(source.theories) ? source.theories as TheoryRecord[] : [];
-  const suspicions = Array.isArray(source.suspicion s) ? source.suspicion s as SuspicionRecord[] : [];
+  const suspicions = Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [];
   const pointLog = derivePointLog(books, theories, suspicions);
   const earnedPoints = pointLog.reduce((sum, event) => sum + event.amount, 0);
   const sharedPoints = earnedPoints;

@@ -27,6 +27,7 @@ import './wall-dossier-resize-fix';
 import './editor-connections-runtime';
 import './editor-library-suggestions';
 import './point-ledger-runtime';
+import './profile-identity-runtime';
 import './extra-small-library.css';
 import './library-card-sizing-fix.css';
 import './core-theme-system.css';
@@ -41,6 +42,7 @@ import './editor-connections-runtime.css';
 import './library-card-layout-authority.css';
 import './interaction-layer-authority.css';
 import './point-ledger-runtime.css';
+import './profile-identity-runtime.css';
 
 bootstrapUniverse();
 

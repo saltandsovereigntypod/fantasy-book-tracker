@@ -6,7 +6,7 @@ const EMPYREAN_CURRENCIES: Record<string, string> = {
   rider: 'Command Marks',
   scribe: 'Archive Seals',
   gryphon: 'Flight Honors',
-  'dark-wielder': 'Shadow Marks',
+  dark: 'Shadow Marks',
   infantry: 'Service Marks',
   healer: 'Mending Honors',
 };
@@ -22,9 +22,14 @@ const PRYTHIAN_CURRENCIES: Record<string, string> = {
 };
 
 function currencyName(): string {
-  const html = document.documentElement;
-  if (html.dataset.universe === 'prythian') return PRYTHIAN_CURRENCIES[html.dataset.court || 'night'] || 'Court Favor';
-  return EMPYREAN_CURRENCIES[html.dataset.path || 'rider'] || 'Archive Marks';
+  const root = document.querySelector<HTMLElement>('.core-path-app');
+  const universe = root?.dataset.universe || document.documentElement.dataset.universe || 'empyrean';
+  if (universe === 'prythian') {
+    const court = root?.dataset.court || document.documentElement.dataset.court || 'night';
+    return PRYTHIAN_CURRENCIES[court] || 'Court Favor';
+  }
+  const path = root?.dataset.path || document.documentElement.dataset.path || 'rider';
+  return EMPYREAN_CURRENCIES[path] || 'Archive Marks';
 }
 
 function readArchive(): V2ArchiveState | null {
@@ -36,6 +41,8 @@ function readArchive(): V2ArchiveState | null {
   }
 }
 
+const pointTextTemplates = new WeakMap<Text, string>();
+
 function replacePointLanguage(root: ParentNode = document): void {
   const currency = currencyName();
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -44,9 +51,15 @@ function replacePointLanguage(root: ParentNode = document): void {
   nodes.forEach((node) => {
     const parent = node.parentElement;
     if (!parent || parent.closest('script, style, input, textarea, option, [data-point-ledger]')) return;
-    const original = node.nodeValue || '';
-    const replaced = original.replace(/\baccount points\b/gi, currency).replace(/\bpoints\b/gi, currency);
-    if (replaced !== original) node.nodeValue = replaced;
+    let template = pointTextTemplates.get(node);
+    if (!template) {
+      const current = node.nodeValue || '';
+      if (!/\b(?:account )?points\b/i.test(current)) return;
+      template = current;
+      pointTextTemplates.set(node, template);
+    }
+    const replaced = template.replace(/\baccount points\b/gi, currency).replace(/\bpoints\b/gi, currency);
+    if (node.nodeValue !== replaced) node.nodeValue = replaced;
   });
 }
 
@@ -94,7 +107,7 @@ function renderLedger(): void {
   events.slice(0, 30).forEach((event) => {
     const row = document.createElement('article');
     const date = event.occurredAt ? new Date(event.occurredAt).toLocaleDateString() : '';
-    row.innerHTML = `<div><strong>${eventLabel(event)}</strong><span>${event.label}</span><small>${date}</small></div><b>+${event.amount.toLocaleString()}</b>`;
+    row.innerHTML = `<div><strong>${eventLabel(event)}</strong><span>${event.label}</span><small>${date}</small></div><b>+${event.amount.toLocaleString()} ${currency}</b>`;
     list.appendChild(row);
   });
   if (!events.length) list.innerHTML = '<p>No activity rewards recorded yet.</p>';
@@ -112,10 +125,12 @@ function refresh(): void {
   });
 }
 
-const observer = new MutationObserver(refresh);
+const bodyObserver = new MutationObserver(refresh);
+const themeObserver = new MutationObserver(refresh);
 function start(): void {
   refresh();
-  observer.observe(document.body, { childList: true, subtree: true });
+  bodyObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-universe', 'data-court', 'data-path'] });
   window.addEventListener('storage', refresh);
   window.addEventListener('empyrean-v2-workspace-draft', refresh);
 }

@@ -108,6 +108,10 @@ function validCourt(value: unknown): PrythianCourtId | undefined {
     : undefined;
 }
 
+function creatureKind(value: unknown): 'dragon' | 'gryphon' | 'wyvern' {
+  return value === 'gryphon' || value === 'wyvern' ? value : 'dragon';
+}
+
 function hasLegacyPrythianIdentity(profile: Record<string, unknown>, source: Record<string, unknown>): boolean {
   return Boolean(
     validCourt(profile.court)
@@ -125,9 +129,9 @@ function normalizeProfile(value: unknown, user?: User | null): V2Profile {
   const source = isRecord(value) ? value : {};
   const displayName = String(source.displayName || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Reader');
   const identitySeed = String(source.identitySeed || user?.id || `reader:${displayName.toLocaleLowerCase()}`);
-  const sharedCreature = isRecord(source.creature) && source.creature.name
+  const sharedCreature: V2Profile['creature'] = isRecord(source.creature) && source.creature.name
     ? {
-        kind: source.creature.kind === 'gryphon' || source.creature.kind === 'wyvern' ? source.creature.kind : 'dragon' as const,
+        kind: creatureKind(source.creature.kind),
         name: String(source.creature.name),
         color: String(source.creature.color || ''),
         tail: source.creature.tail ? String(source.creature.tail) : undefined,

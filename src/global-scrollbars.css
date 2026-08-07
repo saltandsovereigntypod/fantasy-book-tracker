@@ -1,0 +1,93 @@
+/* Global scrollbar system. Theme-aware and intentionally subtle. */
+:root {
+  --scrollbar-track: color-mix(in srgb, var(--v2-panel, var(--panel, #17171a)) 82%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--v2-accent, var(--accent, #6f2833)) 72%, var(--v2-muted, var(--muted, #98938c)) 28%);
+  --scrollbar-thumb-hover: var(--v2-accent, var(--accent, #6f2833));
+}
+
+html,
+body,
+.core-path-app,
+.core-path-app *,
+.investigation-modal,
+.investigation-modal *,
+.wall-modal-backdrop,
+.wall-modal-backdrop *,
+.mind-map-inspector,
+.mind-map-inspector * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.core-path-app::-webkit-scrollbar,
+.core-path-app *::-webkit-scrollbar,
+.investigation-modal::-webkit-scrollbar,
+.investigation-modal *::-webkit-scrollbar,
+.wall-modal-backdrop::-webkit-scrollbar,
+.wall-modal-backdrop *::-webkit-scrollbar,
+.mind-map-inspector::-webkit-scrollbar,
+.mind-map-inspector *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+.core-path-app::-webkit-scrollbar-track,
+.core-path-app *::-webkit-scrollbar-track,
+.investigation-modal::-webkit-scrollbar-track,
+.investigation-modal *::-webkit-scrollbar-track,
+.wall-modal-backdrop::-webkit-scrollbar-track,
+.wall-modal-backdrop *::-webkit-scrollbar-track,
+.mind-map-inspector::-webkit-scrollbar-track,
+.mind-map-inspector *::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+.core-path-app::-webkit-scrollbar-thumb,
+.core-path-app *::-webkit-scrollbar-thumb,
+.investigation-modal::-webkit-scrollbar-thumb,
+.investigation-modal *::-webkit-scrollbar-thumb,
+.wall-modal-backdrop::-webkit-scrollbar-thumb,
+.wall-modal-backdrop *::-webkit-scrollbar-thumb,
+.mind-map-inspector::-webkit-scrollbar-thumb,
+.mind-map-inspector *::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  min-width: 34px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+.core-path-app::-webkit-scrollbar-thumb:hover,
+.core-path-app *::-webkit-scrollbar-thumb:hover,
+.investigation-modal::-webkit-scrollbar-thumb:hover,
+.investigation-modal *::-webkit-scrollbar-thumb:hover,
+.wall-modal-backdrop::-webkit-scrollbar-thumb:hover,
+.wall-modal-backdrop *::-webkit-scrollbar-thumb:hover,
+.mind-map-inspector::-webkit-scrollbar-thumb:hover,
+.mind-map-inspector *::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+.core-path-app::-webkit-scrollbar-corner,
+.core-path-app *::-webkit-scrollbar-corner,
+.investigation-modal::-webkit-scrollbar-corner,
+.investigation-modal *::-webkit-scrollbar-corner,
+.wall-modal-backdrop::-webkit-scrollbar-corner,
+.wall-modal-backdrop *::-webkit-scrollbar-corner,
+.mind-map-inspector::-webkit-scrollbar-corner,
+.mind-map-inspector *::-webkit-scrollbar-corner {
+  background: transparent;
+}

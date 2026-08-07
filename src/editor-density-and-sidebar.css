@@ -150,7 +150,16 @@
 }
 
 .v2-app-sidebar {
-  position: relative;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overflow-x: visible;
+  scrollbar-width: thin;
+  z-index: 120;
   transition: width .18s ease, min-width .18s ease, padding .18s ease;
 }
 
@@ -192,4 +201,14 @@
 .v2-full-app.is-sidebar-collapsed .v2-sidebar-footer {
   border-top: 0;
   padding: 0;
+}
+
+@media (max-width: 760px) {
+  .v2-app-sidebar {
+    position: relative;
+    top: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
 }

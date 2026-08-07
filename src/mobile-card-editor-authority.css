@@ -94,18 +94,19 @@
     display: none !important;
   }
 
-  /* This is the final scaling authority for the rendered library canvas. The
-     shell remains based on the selected desktop output size, while the visual
-     scale now follows the distinct Small/Medium/Large mobile target above. */
+  /* Final mobile scaling authority for library cards. Use layout-aware zoom
+     rather than transform scaling so the shell's reserved height shrinks with
+     the visible card. This removes the blank wrapper area below each card while
+     preserving the saved CardDesign canvas and the distinct mobile size targets. */
   .core-path-app .v2-library-card-open .card-editor-shell {
     inline-size: var(--library-card-width) !important;
     width: var(--library-card-width) !important;
     min-inline-size: var(--library-card-width) !important;
     max-inline-size: none !important;
     max-width: none !important;
-    transform: scale(var(--library-card-scale)) !important;
-    transform-origin: top left !important;
-    zoom: 1 !important;
+    transform: none !important;
+    transform-origin: initial !important;
+    zoom: var(--library-card-scale) !important;
   }
 
   .core-path-app .v2-library-card-open .card-renderer {

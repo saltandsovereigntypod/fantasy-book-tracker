@@ -250,12 +250,12 @@ function derivePointLog(books: V2BookRecord[], theories: TheoryRecord[], suspici
   const events: PointEvent[] = [];
 
   books.forEach((book) => {
-    events.push(pointEvent('book-added', book.id, `Added ${book.title}`, 100, book.createdAt));
+    events.push(pointEvent('book-added', book.id, `Added ${book.title}`, 10, book.createdAt));
     const sessions = book.readingSessions ?? [];
     sessions.forEach((session) => {
-      events.push(pointEvent('reading-session-started', session.id, `Started a reading session for ${book.title}`, 25, session.startedAt));
+      events.push(pointEvent('reading-session-started', session.id, `Started a reading session for ${book.title}`, 1, session.startedAt));
       if (session.completedAt) {
-        events.push(pointEvent('reading-session-completed', session.id, `Completed a reading session for ${book.title}`, 75, session.completedAt));
+        events.push(pointEvent('reading-session-completed', session.id, `Completed a reading session for ${book.title}`, 4, session.completedAt));
       }
     });
 
@@ -265,26 +265,26 @@ function derivePointLog(books: V2BookRecord[], theories: TheoryRecord[], suspici
 
     if (completionSessions.length) {
       const first = completionSessions[0];
-      events.push(pointEvent('book-first-completion', book.id, `Completed ${book.title} for the first time`, 1000, first.completedAt || book.updatedAt));
+      events.push(pointEvent('book-first-completion', book.id, `Completed ${book.title} for the first time`, 100, first.completedAt || book.updatedAt));
       completionSessions.slice(1).forEach((session, index) => {
-        events.push(pointEvent('book-reread-completion', `${book.id}:${session.id}`, `Completed reread ${index + 1} of ${book.title}`, 500, session.completedAt || book.updatedAt));
+        events.push(pointEvent('book-reread-completion', `${book.id}:${session.id}`, `Completed reread ${index + 1} of ${book.title}`, 40, session.completedAt || book.updatedAt));
       });
     } else if (book.status === 'completed' || book.progress >= 100) {
-      events.push(pointEvent('book-first-completion', book.id, `Completed ${book.title} for the first time`, 1000, book.updatedAt));
+      events.push(pointEvent('book-first-completion', book.id, `Completed ${book.title} for the first time`, 100, book.updatedAt));
     }
   });
 
   theories.forEach((theory) => {
-    events.push(pointEvent('theory-created', theory.id, `Created theory: ${theory.title}`, 150, theory.createdAt));
+    events.push(pointEvent('theory-created', theory.id, `Created theory: ${theory.title}`, 15, theory.createdAt));
     (theory.evidence ?? []).forEach((evidence) => {
-      events.push(pointEvent('evidence-added', `theory:${theory.id}:${evidence.id}`, `Added evidence to ${theory.title}`, 50, evidence.createdAt));
+      events.push(pointEvent('evidence-added', `theory:${theory.id}:${evidence.id}`, `Added evidence to ${theory.title}`, 3, evidence.createdAt));
     });
   });
 
   suspicions.forEach((suspicion) => {
-    events.push(pointEvent('suspicion-created', suspicion.id, `Created suspicion: ${suspicion.title}`, 100, suspicion.createdAt));
+    events.push(pointEvent('suspicion-created', suspicion.id, `Created suspicion: ${suspicion.title}`, 10, suspicion.createdAt));
     (suspicion.evidence ?? []).forEach((evidence) => {
-      events.push(pointEvent('evidence-added', `suspicion:${suspicion.id}:${evidence.id}`, `Added evidence to ${suspicion.title}`, 50, evidence.createdAt));
+      events.push(pointEvent('evidence-added', `suspicion:${suspicion.id}:${evidence.id}`, `Added evidence to ${suspicion.title}`, 3, evidence.createdAt));
     });
   });
 
@@ -314,10 +314,10 @@ export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveS
   const baseUniverses = normalizeUniverses(source.universes, profile, source);
   const books = Array.isArray(source.books) ? source.books.map(normalizeBook) : [];
   const theories = Array.isArray(source.theories) ? source.theories as TheoryRecord[] : [];
-  const suspicions = Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [];
+  const suspicions = Array.isArray(source.suspicion s) ? source.suspicion s as SuspicionRecord[] : [];
   const pointLog = derivePointLog(books, theories, suspicions);
   const earnedPoints = pointLog.reduce((sum, event) => sum + event.amount, 0);
-  const sharedPoints = Math.max(numberOr(profile.points), earnedPoints);
+  const sharedPoints = earnedPoints;
   const universes: UniverseProfiles = {
     ...baseUniverses,
     empyrean: {

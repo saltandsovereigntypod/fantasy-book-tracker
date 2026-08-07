@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import type { CardDesign } from './domain';
 import { loadCloudArchive, saveCloudArchive, saveLocalArchive, type V2ArchiveState, type V2BookRecord } from './archive';
 import { loadWorkspaceDraft } from './library';
-import { getAuthSnapshot } from './supabase';
+import { getAuthSnapshot, supabase } from './supabase';
 import './card-theme-library-runtime.css';
 
 type CardThemePreset = { id: string; name: string; design: CardDesign; createdAt: string; updatedAt: string };
@@ -24,6 +24,63 @@ function themedDesign(theme: CardThemePreset, book: V2BookRecord): CardDesign {
     height: Number(theme.design.height) || 380,
     version: Math.max(4, Number(theme.design.version) || 1),
   };
+}
+
+function validTheme(value: unknown): value is CardThemePreset {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const source = value as Partial<CardThemePreset>;
+  return Boolean(source.id && source.name && source.design && source.createdAt && source.updatedAt);
+}
+
+function normalizeThemes(value: unknown): CardThemePreset[] {
+  return Array.isArray(value) ? value.filter(validTheme).map((theme) => ({ ...theme, design: cloneDesign(theme.design) })) : [];
+}
+
+function mergeThemes(localThemes: CardThemePreset[], cloudThemes: CardThemePreset[]): CardThemePreset[] {
+  const merged = new Map<string, CardThemePreset>();
+  [...localThemes, ...cloudThemes].forEach((theme) => {
+    const key = theme.id || theme.name.toLocaleLowerCase();
+    const existing = merged.get(key);
+    if (!existing || String(theme.updatedAt).localeCompare(String(existing.updatedAt)) >= 0) merged.set(key, theme);
+  });
+  return [...merged.values()].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+async function loadCloudThemes(userId: string): Promise<CardThemePreset[]> {
+  const { data, error } = await supabase
+    .from('archive_states')
+    .select('state')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : undefined;
+  const state = row?.state && typeof row.state === 'object' ? row.state as Record<string, unknown> : {};
+  return normalizeThemes(state.cardThemes);
+}
+
+async function saveCloudThemes(userId: string, themes: CardThemePreset[]): Promise<void> {
+  const { data, error: readError } = await supabase
+    .from('archive_states')
+    .select('state')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  if (readError) throw readError;
+
+  const existing = Array.isArray(data) ? data[0] : undefined;
+  const state = existing?.state && typeof existing.state === 'object' ? existing.state as Record<string, unknown> : {};
+  const timestamp = new Date().toISOString();
+  const payload = { state: { ...state, cardThemes: themes }, updated_at: timestamp };
+
+  if (existing) {
+    const { error } = await supabase.from('archive_states').update(payload).eq('user_id', userId);
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase.from('archive_states').insert({ user_id: userId, ...payload });
+  if (error) throw error;
 }
 
 function CardThemeLibrary() {
@@ -51,8 +108,14 @@ function CardThemeLibrary() {
     let active = true;
     getAuthSnapshot().then(async ({ user }) => {
       if (!user || !active) return;
-      const next = await loadCloudArchive(user);
-      if (active) setArchive(next);
+      const [nextArchive, cloudThemes] = await Promise.all([loadCloudArchive(user), loadCloudThemes(user.id)]);
+      if (!active) return;
+      setArchive(nextArchive);
+      const localThemes = loadThemes();
+      const merged = mergeThemes(localThemes, cloudThemes);
+      setThemes(merged);
+      storeThemes(merged);
+      if (JSON.stringify(merged) !== JSON.stringify(cloudThemes)) await saveCloudThemes(user.id, merged);
     }).catch(() => undefined);
     return () => { active = false; };
   }, [view, open]);
@@ -65,6 +128,14 @@ function CardThemeLibrary() {
     return (archive?.books || []).filter((book) => !needle || `${book.title} ${book.author} ${book.series}`.toLowerCase().includes(needle));
   }, [archive?.books, query]);
 
+  async function persistThemes(next: CardThemePreset[]) {
+    setThemes(next);
+    storeThemes(next);
+    const { user } = await getAuthSnapshot();
+    if (!user) throw new Error('Your session expired.');
+    await saveCloudThemes(user.id, next);
+  }
+
   async function saveCurrentDesign() {
     const cleanName = name.trim();
     if (!cleanName) return;
@@ -76,20 +147,33 @@ function CardThemeLibrary() {
       ? { ...existing, design: cloneDesign(draft.design), updatedAt: timestamp }
       : { id: crypto.randomUUID(), name: cleanName, design: cloneDesign(draft.design), createdAt: timestamp, updatedAt: timestamp };
     const next = existing ? themes.map((theme) => theme.id === existing.id ? preset : theme) : [preset, ...themes];
-    setThemes(next);
-    storeThemes(next);
     setSelectedThemeId(preset.id);
     setName('');
-    setStatus(existing ? `Updated “${preset.name}”.` : `Saved “${preset.name}”.`);
+    setStatus('Saving theme to your account…');
+    try {
+      await persistThemes(next);
+      setStatus(existing ? `Updated “${preset.name}” and synced it across devices.` : `Saved “${preset.name}” and synced it across devices.`);
+    } catch (reason) {
+      setThemes(next);
+      storeThemes(next);
+      setStatus(reason instanceof Error ? `${reason.message} The theme is still saved on this device.` : 'Theme saved on this device, but cloud sync failed.');
+    }
   }
 
-  function deleteTheme(id: string) {
+  async function deleteTheme(id: string) {
     const target = themes.find((theme) => theme.id === id);
-    if (!target || !window.confirm(`Delete the card theme “${target.name}”?`)) return;
+    if (!target || !window.confirm(`Delete the card theme “${target.name}”? This removes it from every synced device.`)) return;
     const next = themes.filter((theme) => theme.id !== id);
-    setThemes(next);
-    storeThemes(next);
     setSelectedThemeId(next[0]?.id || '');
+    setStatus('Removing theme from your account…');
+    try {
+      await persistThemes(next);
+      setStatus(`Deleted “${target.name}” from your synced theme library.`);
+    } catch (reason) {
+      setThemes(next);
+      storeThemes(next);
+      setStatus(reason instanceof Error ? `${reason.message} The local copy was removed.` : 'Local theme removed, but cloud sync failed.');
+    }
   }
 
   async function applySelected() {
@@ -125,7 +209,7 @@ function CardThemeLibrary() {
       <section className="card-theme-library-dialog" role="dialog" aria-modal="true">
         <header><div><p>Reusable card designs</p><h2>Card Theme Library</h2></div><button type="button" disabled={applying} onClick={() => setOpen(false)}>×</button></header>
         <div className="card-theme-library-columns">
-          <section><h3>Save current design</h3><label>Theme name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Midnight parchment" /></label><button className="is-primary" type="button" disabled={!name.trim()} onClick={() => void saveCurrentDesign()}>Save This Design</button><h3>Saved themes</h3><div className="card-theme-library-list">{themes.map((theme) => <article key={theme.id} className={selectedThemeId === theme.id ? 'is-selected' : ''}><button type="button" onClick={() => setSelectedThemeId(theme.id)}><span style={{ background: theme.design.background }} /><strong>{theme.name}</strong><small>{theme.design.elements.length} elements</small></button><button type="button" className="is-danger" onClick={() => deleteTheme(theme.id)}>Delete</button></article>)}{!themes.length && <p>No themes saved yet.</p>}</div></section>
+          <section><h3>Save current design</h3><label>Theme name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Midnight parchment" /></label><button className="is-primary" type="button" disabled={!name.trim()} onClick={() => void saveCurrentDesign()}>Save This Design</button><h3>Saved themes</h3><div className="card-theme-library-list">{themes.map((theme) => <article key={theme.id} className={selectedThemeId === theme.id ? 'is-selected' : ''}><button type="button" onClick={() => setSelectedThemeId(theme.id)}><span style={{ background: theme.design.background }} /><strong>{theme.name}</strong><small>{theme.design.elements.length} elements</small></button><button type="button" className="is-danger" onClick={() => void deleteTheme(theme.id)}>Delete</button></article>)}{!themes.length && <p>No themes saved yet.</p>}</div></section>
           <section><h3>Apply to library cards</h3><label>Theme<select value={selectedThemeId} onChange={(event) => setSelectedThemeId(event.target.value)}><option value="">Choose a theme</option>{themes.map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}</select></label><label>Search books<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Title, author, or series" /></label><div className="card-theme-library-select-actions"><button type="button" onClick={() => setSelectedBookIds(filteredBooks.map((book) => book.id))}>Select shown</button><button type="button" onClick={() => setSelectedBookIds([])}>Clear</button></div><div className="card-theme-library-books">{filteredBooks.map((book) => <label key={book.id}><input type="checkbox" checked={selectedBookIds.includes(book.id)} onChange={() => setSelectedBookIds((current) => current.includes(book.id) ? current.filter((id) => id !== book.id) : [...current, book.id])} /><span><strong>{book.title}</strong><small>{book.author || 'Unknown author'}{book.series ? ` · ${book.series}` : ''}</small></span></label>)}{!filteredBooks.length && <p>No books match this search.</p>}</div><button type="button" className="is-primary" disabled={!selectedTheme || !selectedBookIds.length || applying} onClick={() => void applySelected()}>{applying ? 'Applying…' : `Apply to Selected (${selectedBookIds.length})`}</button></section>
         </div>{status && <footer>{status}</footer>}
       </section>

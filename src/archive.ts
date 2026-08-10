@@ -77,6 +77,7 @@ export interface V2ArchiveState {
   walls: WallRecord[];
   mindMapNodes: unknown[];
   pointLog: PointEvent[];
+  pointResetAt?: string;
   updatedAt: string;
 }
 
@@ -330,8 +331,12 @@ export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveS
   const baseUniverses = normalizeUniverses(source.universes, profile, source);
   const books = Array.isArray(source.books) ? source.books.map(normalizeBook) : [];
   const theories = Array.isArray(source.theories) ? source.theories as TheoryRecord[] : [];
-  const suspicions = Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [];
-  const pointLog = derivePointLog(books, theories, suspicions);
+  const suspicions = Array.isArray(source.suspicious) ? source.suspicious as SuspicionRecord[] : Array.isArray(source.suspicions) ? source.suspicions as SuspicionRecord[] : [];
+  const pointResetAt = source.pointResetAt ? String(source.pointResetAt) : undefined;
+  const allPointEvents = derivePointLog(books, theories, suspicions);
+  const pointLog = pointResetAt
+    ? allPointEvents.filter((event) => event.occurredAt > pointResetAt)
+    : allPointEvents;
   const earnedPoints = pointLog.reduce((sum, event) => sum + event.amount, 0);
   const sharedPoints = earnedPoints;
   const universes: UniverseProfiles = {
@@ -367,6 +372,7 @@ export function normalizeArchive(value: unknown, user?: User | null): V2ArchiveS
     walls: Array.isArray(source.walls) ? source.walls as WallRecord[] : [],
     mindMapNodes: Array.isArray(source.mindMapNodes) ? source.mindMapNodes : [],
     pointLog,
+    pointResetAt,
     updatedAt: String(source.updatedAt || now()),
   };
 }

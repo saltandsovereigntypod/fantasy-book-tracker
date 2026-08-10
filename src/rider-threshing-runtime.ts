@@ -187,9 +187,14 @@ async function persistOutcome(config: EventConfig, answers: StoryAnswer[], survi
       };
     } else {
       const resetAt = new Date().toISOString();
+      const suppressedPointEventIds = [...new Set([
+        ...(latest.suppressedPointEventIds || []),
+        ...(latest.pointLog || []).map((event) => event.id),
+      ])];
       next = {
         ...latest,
         pointResetAt: resetAt,
+        suppressedPointEventIds,
         universes: {
           ...latest.universes,
           empyrean: {
@@ -209,7 +214,7 @@ async function persistOutcome(config: EventConfig, answers: StoryAnswer[], survi
     result.className = survived ? 'rider-threshing-result is-success' : 'rider-threshing-result is-fallen';
     result.innerHTML = survived
       ? `<strong>You made it back.</strong><p>${creature.name}, a ${creature.color.toLocaleLowerCase()} ${config.creatureLabel}, chose you. You are bonded.</p>`
-      : '<strong>You fell.</strong><p>Your books, notes, theories, sessions, and every other archive record are untouched. The points earned before this attempt have been nullified, so your progression begins again from zero.</p>';
+      : '<strong>You fell.</strong><p>Your books, notes, theories, sessions, and every other archive record are untouched. The point events those records had already earned are now nullified, so your progression begins again from zero. New activity can earn points normally.</p>';
     panel.replaceChildren(result);
     window.dispatchEvent(new StorageEvent('storage', { key: 'empyrean-v2-archive' }));
     window.setTimeout(() => window.location.reload(), survived ? 2200 : 3200);

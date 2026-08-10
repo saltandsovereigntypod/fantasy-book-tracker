@@ -20,6 +20,13 @@ function chooseCourtPower(archive: V2ArchiveState) {
   return court.powers[stableNumber(`${archive.profile.identitySeed}:prythian:${courtId}:court-power`) % court.powers.length];
 }
 
+function currentPowerMatchesCourt(archive: V2ArchiveState): boolean {
+  const courtId = archive.universes.prythian.court;
+  const powerId = archive.universes.prythian.primaryPowerId;
+  if (!courtId || !powerId) return false;
+  return PRYTHIAN_COURTS[courtId].powers.some((power) => power.id === powerId);
+}
+
 function chooseRareAffinity(archive: V2ArchiveState) {
   const roll = stableNumber(`${archive.profile.identitySeed}:prythian:rare-affinity-roll`) % 8;
   if (roll !== 0) return { id: 'none', name: 'N/A', description: 'No rare affinity manifested.' };
@@ -42,7 +49,7 @@ async function syncUnlocks(): Promise<void> {
     let next = archive;
     let changed = false;
 
-    if (points >= COURT_POWER_THRESHOLD && !archive.universes.prythian.primaryPowerId) {
+    if (points >= COURT_POWER_THRESHOLD && !currentPowerMatchesCourt(archive)) {
       const power = chooseCourtPower(archive);
       if (power) {
         next = {

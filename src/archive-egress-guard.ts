@@ -1,5 +1,5 @@
 const ARCHIVE_ROUTE = '/rest/v1/archive_states';
-const CACHE_TTL_MS = 5000;
+const CACHE_TTL_MS = 30000;
 
 type CachedResponse = {
   response: Response;

@@ -1,4 +1,5 @@
 import { loadLocalArchive } from './archive';
+import nightCourtBackground from './assets/themes/night-court/night-court-background.png';
 
 const LAST_THEME_KEY = 'fantasy-book-tracker-last-visible-theme';
 
@@ -72,6 +73,8 @@ function visibleThemeIdentity(): PersistedTheme | undefined {
  * universe/path/court for the next reload.
  */
 export function bootstrapUniverse(): void {
+  document.documentElement.style.setProperty('--night-court-background-image', `url("${nightCourtBackground}")`);
+
   const archive = loadLocalArchive();
   const archiveTheme: PersistedTheme = archive.universes.activeUniverse === 'prythian'
     ? { universe: 'prythian', court: archive.universes.prythian.court || 'night' }
